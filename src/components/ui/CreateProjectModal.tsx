@@ -67,23 +67,23 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
           />
-          
+
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="w-full max-w-2xl relative z-10"
           >
-            <GlassCard className="max-h-[90vh] overflow-y-auto custom-scrollbar border-white/10" gradient>
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-200 max-h-[90vh] overflow-y-auto custom-scrollbar">
               <div className="p-8">
                 <div className="flex items-center justify-between mb-8">
                   <div>
-                    <h2 className="text-2xl font-bold text-white">Create New Project</h2>
-                    <p className="text-sm text-slate-400 mt-1">Initialize a new construction workspace.</p>
+                    <h2 className="text-2xl font-bold text-gray-900">Create New Project</h2>
+                    <p className="text-sm text-slate-500 mt-1">Initialize a new construction workspace.</p>
                   </div>
-                  <button onClick={onClose} className="p-2 text-slate-400 hover:text-white bg-white/5 rounded-xl transition-colors">
+                  <button onClick={onClose} className="p-2 text-slate-400 hover:text-gray-900 bg-gray-50 rounded-xl transition-colors">
                     <X className="w-6 h-6" />
                   </button>
                 </div>
@@ -91,29 +91,29 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                 <form onSubmit={handleSubmit} className="space-y-8">
                   {/* Basic Info */}
                   <div className="space-y-4">
-                    <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center space-x-2">
+                    <h3 className="text-xs font-bold text-blue-600 uppercase tracking-wider flex items-center space-x-2">
                       <Info className="w-3 h-3" />
                       <span>Project Information</span>
                     </h3>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300 ml-1">Project Name</label>
+                        <label className="text-sm font-medium text-slate-600 ml-1">Project Name</label>
                         <input
                           type="text"
                           required
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                           placeholder="e.g. Sky Tower Phase 1"
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300 ml-1">Priority</label>
+                        <label className="text-sm font-medium text-slate-600 ml-1">Priority</label>
                         <select
                           value={formData.priority}
                           onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                          className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                         >
                           <option value="Low">Low</option>
                           <option value="Medium">Medium</option>
@@ -124,12 +124,12 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-300 ml-1">Description</label>
+                      <label className="text-sm font-medium text-slate-600 ml-1">Description</label>
                       <textarea
                         rows={3}
                         value={formData.description}
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all resize-none"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none"
                         placeholder="Project overview and objectives..."
                       />
                     </div>
@@ -137,37 +137,37 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
 
                   {/* Client Info */}
                   <div className="space-y-4">
-                    <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center space-x-2">
+                    <h3 className="text-xs font-bold text-purple-600 uppercase tracking-wider flex items-center space-x-2">
                       <UserPlus className="w-3 h-3" />
                       <span>Client Details</span>
                     </h3>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300 ml-1">Client Name</label>
+                        <label className="text-sm font-medium text-slate-600 ml-1">Client Name</label>
                         <input
                           type="text"
                           value={formData.clientName}
                           onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                          className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300 ml-1">Client Email</label>
+                        <label className="text-sm font-medium text-slate-600 ml-1">Client Email</label>
                         <input
                           type="email"
                           value={formData.clientEmail}
                           onChange={(e) => setFormData({ ...formData, clientEmail: e.target.value })}
-                          className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300 ml-1">Client Phone</label>
+                        <label className="text-sm font-medium text-slate-600 ml-1">Client Phone</label>
                         <input
                           type="text"
                           value={formData.clientPhone}
                           onChange={(e) => setFormData({ ...formData, clientPhone: e.target.value })}
-                          className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                         />
                       </div>
                     </div>
@@ -175,55 +175,55 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
 
                   {/* Timeline & Budget */}
                   <div className="space-y-4">
-                    <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center space-x-2">
+                    <h3 className="text-xs font-bold text-emerald-600 uppercase tracking-wider flex items-center space-x-2">
                       <Calendar className="w-3 h-3" />
                       <span>Timeline & Financials</span>
                     </h3>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300 ml-1">Start Date</label>
+                        <label className="text-sm font-medium text-slate-600 ml-1">Start Date</label>
                         <input
                           type="date"
                           value={formData.startDate}
                           onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                          className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300 ml-1">End Date</label>
+                        <label className="text-sm font-medium text-slate-600 ml-1">End Date</label>
                         <input
                           type="date"
                           value={formData.endDate}
                           onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                          className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300 ml-1">Initial Budget (₹)</label>
+                        <label className="text-sm font-medium text-slate-600 ml-1">Initial Budget (₹)</label>
                         <input
                           type="number"
                           value={formData.budget}
                           onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
-                          className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                         />
                       </div>
                     </div>
                   </div>
 
                   {/* Options */}
-                  <div className="flex items-center space-x-6 p-4 rounded-2xl bg-white/5 border border-white/10">
+                  <div className="flex items-center space-x-6 p-4 rounded-2xl bg-gray-50 border border-gray-200">
                     <label className="flex items-center space-x-3 cursor-pointer group">
-                      <div className={`w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center ${formData.needSiteSurvey ? 'bg-blue-600 border-blue-600' : 'border-slate-700 group-hover:border-slate-500'}`}>
+                      <div className={`w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center ${formData.needSiteSurvey ? 'bg-blue-600 border-blue-600' : 'border-gray-300 group-hover:border-gray-400'}`}>
                         {formData.needSiteSurvey && <Layout className="w-4 h-4 text-white" />}
-                        <input 
-                          type="checkbox" 
-                          className="hidden" 
+                        <input
+                          type="checkbox"
+                          className="hidden"
                           checked={formData.needSiteSurvey}
                           onChange={(e) => setFormData({ ...formData, needSiteSurvey: e.target.checked })}
                         />
                       </div>
-                      <span className="text-sm text-slate-300 group-hover:text-white transition-colors">Requires Site Survey</span>
+                      <span className="text-sm text-slate-600 group-hover:text-gray-900 transition-colors">Requires Site Survey</span>
                     </label>
                   </div>
 
@@ -231,7 +231,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                     <button
                       type="button"
                       onClick={onClose}
-                      className="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-all active:scale-[0.98]"
+                      className="flex-1 py-3 px-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-slate-600 font-medium transition-all active:scale-[0.98]"
                     >
                       Cancel
                     </button>
@@ -252,7 +252,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                   </div>
                 </form>
               </div>
-            </GlassCard>
+            </div>
           </motion.div>
         </div>
       )}

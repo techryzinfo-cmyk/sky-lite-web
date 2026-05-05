@@ -16,8 +16,8 @@ export const GlassCard: React.FC<GlassCardProps> = ({ children, className, gradi
   return (
     <div
       className={cn(
-        'backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl shadow-xl overflow-hidden',
-        gradient && 'bg-gradient-to-br from-white/20 to-white/5',
+        'bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden',
+        gradient && 'bg-gradient-to-br from-white to-gray-50',
         className
       )}
     >

@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, ShoppingCart, Plus, Trash2, Calendar, User, DollarSign, FileText } from 'lucide-react';
-import { GlassCard } from '@/components/ui/GlassCard';
 import { useToast } from '@/context/ToastContext';
 import api from '@/lib/api';
 
@@ -15,10 +14,10 @@ interface MaterialPurchaseModalProps {
   materials: any[];
 }
 
-export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  onSuccess, 
+export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
   projectId,
   materials
 }) => {
@@ -34,7 +33,7 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
     deliveryDate: '',
     terms: ''
   });
-  
+
   const toast = useToast();
 
   const addItem = () => {
@@ -96,28 +95,28 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
           />
-          
+
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="w-full max-w-2xl relative z-10"
           >
-            <GlassCard className="border-white/10" gradient>
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-200">
               <div className="p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center space-x-3">
-                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
-                      <ShoppingCart className="w-6 h-6 text-blue-400" />
+                    <div className="p-3 rounded-2xl bg-gray-50 border border-gray-200">
+                      <ShoppingCart className="w-6 h-6 text-blue-600" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-white">Create Purchase Order</h2>
-                      <p className="text-xs text-slate-400 mt-0.5">Formal procurement request to vendor.</p>
+                      <h2 className="text-xl font-bold text-gray-900">Create Purchase Order</h2>
+                      <p className="text-xs text-slate-500 mt-0.5">Formal procurement request to vendor.</p>
                     </div>
                   </div>
-                  <button onClick={onClose} className="p-2 text-slate-400 hover:text-white bg-white/5 rounded-xl transition-colors">
+                  <button onClick={onClose} className="p-2 text-slate-400 hover:text-gray-900 bg-gray-50 rounded-xl transition-colors">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -125,34 +124,34 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-300 ml-1">Vendor Name</label>
+                      <label className="text-sm font-medium text-slate-600 ml-1">Vendor Name</label>
                       <input
                         type="text"
                         required
                         value={formData.vendorName}
                         onChange={(e) => setFormData({ ...formData, vendorName: e.target.value })}
-                        className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"
                         placeholder="e.g. UltraTech Cement"
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-300 ml-1">PO Number</label>
+                      <label className="text-sm font-medium text-slate-600 ml-1">PO Number</label>
                       <input
                         type="text"
                         disabled
                         value={formData.poNumber}
-                        className="w-full bg-slate-950 border border-white/5 rounded-xl py-2 px-4 text-slate-500 text-sm font-mono"
+                        className="w-full bg-gray-100 border border-gray-200 rounded-xl py-2 px-4 text-slate-400 text-sm font-mono"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-slate-300 ml-1">Order Items</label>
-                      <button 
+                      <label className="text-sm font-medium text-slate-600 ml-1">Order Items</label>
+                      <button
                         type="button"
                         onClick={addItem}
-                        className="text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center space-x-1"
+                        className="text-xs font-bold text-blue-600 hover:text-blue-500 flex items-center space-x-1"
                       >
                         <Plus className="w-3 h-3" />
                         <span>Add Item</span>
@@ -161,14 +160,14 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
 
                     <div className="space-y-3">
                       {formData.items.map((item, index) => (
-                        <div key={index} className="grid grid-cols-12 gap-3 items-end bg-white/[0.02] p-3 rounded-xl border border-white/5">
+                        <div key={index} className="grid grid-cols-12 gap-3 items-end bg-gray-50 p-3 rounded-xl border border-gray-200">
                           <div className="col-span-4 space-y-1">
-                            <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Material</label>
+                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Material</label>
                             <select
                               required
                               value={item.materialId}
                               onChange={(e) => updateItem(index, 'materialId', e.target.value)}
-                              className="w-full bg-slate-950 border border-white/5 rounded-lg py-1.5 px-3 text-xs text-white"
+                              className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-3 text-xs text-gray-900 focus:outline-none focus:border-blue-500"
                             >
                               <option value="">Select Material</option>
                               {materials.map(m => (
@@ -177,33 +176,33 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
                             </select>
                           </div>
                           <div className="col-span-3 space-y-1">
-                            <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Quantity</label>
-                            <div className="flex items-center bg-slate-950 border border-white/5 rounded-lg pr-2">
+                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Quantity</label>
+                            <div className="flex items-center bg-white border border-gray-200 rounded-lg pr-2">
                               <input
                                 type="number"
                                 required
                                 value={item.quantity}
                                 onChange={(e) => updateItem(index, 'quantity', Number(e.target.value))}
-                                className="w-full bg-transparent py-1.5 px-3 text-xs text-white focus:outline-none"
+                                className="w-full bg-transparent py-1.5 px-3 text-xs text-gray-900 focus:outline-none"
                               />
-                              <span className="text-[9px] font-bold text-slate-500 uppercase">{item.unit || '-'}</span>
+                              <span className="text-[9px] font-bold text-slate-400 uppercase">{item.unit || '-'}</span>
                             </div>
                           </div>
                           <div className="col-span-3 space-y-1">
-                            <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Rate (₹)</label>
+                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Rate (₹)</label>
                             <input
                               type="number"
                               required
                               value={item.rate}
                               onChange={(e) => updateItem(index, 'rate', Number(e.target.value))}
-                              className="w-full bg-slate-950 border border-white/5 rounded-lg py-1.5 px-3 text-xs text-white"
+                              className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-3 text-xs text-gray-900 focus:outline-none focus:border-blue-500"
                             />
                           </div>
                           <div className="col-span-2 flex justify-center pb-1">
-                            <button 
+                            <button
                               type="button"
                               onClick={() => removeItem(index)}
-                              className="p-2 text-slate-600 hover:text-red-400 transition-colors"
+                              className="p-2 text-slate-400 hover:text-red-500 transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -213,24 +212,24 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-300 ml-1">Expected Delivery</label>
+                      <label className="text-sm font-medium text-slate-600 ml-1">Expected Delivery</label>
                       <input
                         type="date"
                         required
                         value={formData.deliveryDate}
                         onChange={(e) => setFormData({ ...formData, deliveryDate: e.target.value })}
-                        className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-300 ml-1">Advance Amount (₹)</label>
+                      <label className="text-sm font-medium text-slate-600 ml-1">Advance Amount (₹)</label>
                       <input
                         type="number"
                         value={formData.advancePaid}
                         onChange={(e) => setFormData({ ...formData, advancePaid: Number(e.target.value) })}
-                        className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"
                         placeholder="0"
                       />
                     </div>
@@ -240,7 +239,7 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
                     <button
                       type="button"
                       onClick={onClose}
-                      className="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-all active:scale-[0.98]"
+                      className="flex-1 py-3 px-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-slate-600 font-medium transition-all active:scale-[0.98]"
                     >
                       Cancel
                     </button>
@@ -261,7 +260,7 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
                   </div>
                 </form>
               </div>
-            </GlassCard>
+            </div>
           </motion.div>
         </div>
       )}

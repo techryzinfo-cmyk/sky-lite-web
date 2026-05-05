@@ -3,7 +3,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, X, CheckCircle, Info } from 'lucide-react';
-import { GlassCard } from './GlassCard';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -53,36 +52,36 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
           />
-          
+
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="w-full max-w-md relative z-10"
           >
-            <GlassCard className="p-6 overflow-visible shadow-2xl border-white/10" gradient>
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 overflow-visible">
               <button
                 onClick={onClose}
-                className="absolute right-4 top-4 text-slate-400 hover:text-white transition-colors"
+                className="absolute right-4 top-4 text-slate-400 hover:text-gray-900 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
 
               <div className="flex flex-col items-center text-center mb-6">
-                <div className="mb-4 p-3 rounded-2xl bg-white/5 border border-white/10">
+                <div className="mb-4 p-3 rounded-2xl bg-gray-50 border border-gray-200">
                   {getIcon()}
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">{message}</p>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">{title}</h3>
+                <p className="text-slate-500 text-sm leading-relaxed">{message}</p>
               </div>
 
               <div className="flex space-x-3">
                 <button
                   onClick={onClose}
                   disabled={isLoading}
-                  className="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-all active:scale-[0.98] disabled:opacity-50"
+                  className="flex-1 py-3 px-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-slate-600 font-medium transition-all active:scale-[0.98] disabled:opacity-50"
                 >
                   {cancelText}
                 </button>
@@ -94,7 +93,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
                   {isLoading ? 'Processing...' : confirmText}
                 </button>
               </div>
-            </GlassCard>
+            </div>
           </motion.div>
         </div>
       )}

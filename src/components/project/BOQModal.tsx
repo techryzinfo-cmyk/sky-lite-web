@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, Info, Layout, Tag, Hash, Scale, IndianRupee, MessageSquare } from 'lucide-react';
-import { GlassCard } from '@/components/ui/GlassCard';
 import { useToast } from '@/context/ToastContext';
 import api from '@/lib/api';
 import { BOQItem } from '@/types';
@@ -86,157 +85,155 @@ export const BOQModal: React.FC<BOQModalProps> = ({ isOpen, onClose, onSuccess, 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
           />
-          
+
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="w-full max-w-lg relative z-10"
           >
-            <GlassCard className="border-white/10" gradient>
-              <div className="p-8">
-                <div className="flex items-center justify-between mb-8">
-                  <div>
-                    <h2 className="text-2xl font-bold text-white">{initialData ? 'Edit BOQ Item' : 'Add BOQ Item'}</h2>
-                    <p className="text-sm text-slate-400 mt-1">Specify item details for project costing.</p>
-                  </div>
-                  <button onClick={onClose} className="p-2 text-slate-400 hover:text-white bg-white/5 rounded-xl transition-colors">
-                    <X className="w-6 h-6" />
-                  </button>
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">{initialData ? 'Edit BOQ Item' : 'Add BOQ Item'}</h2>
+                  <p className="text-sm text-slate-500 mt-1">Specify item details for project costing.</p>
                 </div>
+                <button onClick={onClose} className="p-2 text-slate-400 hover:text-gray-900 bg-gray-50 rounded-xl transition-colors">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-300 ml-1">Group Name</label>
-                      <div className="relative group">
-                        <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
-                        <input
-                          type="text"
-                          required
-                          value={formData.groupName}
-                          onChange={(e) => setFormData({ ...formData, groupName: e.target.value })}
-                          className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all text-sm"
-                          placeholder="e.g. Concrete Works"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-300 ml-1">Item # (Optional)</label>
-                      <div className="relative group">
-                        <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
-                        <input
-                          type="text"
-                          value={formData.itemNumber}
-                          onChange={(e) => setFormData({ ...formData, itemNumber: e.target.value })}
-                          className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all text-sm"
-                          placeholder="e.g. CW-01"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-300 ml-1">Description</label>
+                    <label className="text-sm font-medium text-slate-600 ml-1">Group Name</label>
                     <div className="relative group">
-                      <Layout className="absolute left-3 top-3 w-4 h-4 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
-                      <textarea
-                        required
-                        rows={3}
-                        value={formData.itemDescription}
-                        onChange={(e) => setFormData({ ...formData, itemDescription: e.target.value })}
-                        className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all text-sm resize-none"
-                        placeholder="Detailed item description..."
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-300 ml-1">Unit</label>
-                      <div className="relative group">
-                        <Scale className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
-                        <input
-                          type="text"
-                          value={formData.unit}
-                          onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                          className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all text-sm"
-                          placeholder="e.g. Cum"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-300 ml-1">Quantity</label>
-                      <input
-                        type="number"
-                        required
-                        value={formData.quantity}
-                        onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
-                        className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all text-sm"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-300 ml-1">Unit Cost (₹)</label>
-                      <input
-                        type="number"
-                        required
-                        value={formData.unitCost}
-                        onChange={(e) => setFormData({ ...formData, unitCost: Number(e.target.value) })}
-                        className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all text-sm"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <IndianRupee className="w-4 h-4 text-blue-400" />
-                      <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">Calculated Total</span>
-                    </div>
-                    <span className="text-lg font-black text-white">₹{totalCost.toLocaleString()}</span>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-300 ml-1">Remark (Optional)</label>
-                    <div className="relative group">
-                      <MessageSquare className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
+                      <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                       <input
                         type="text"
-                        value={formData.remark}
-                        onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
-                        className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all text-sm"
-                        placeholder="Any additional notes..."
+                        required
+                        value={formData.groupName}
+                        onChange={(e) => setFormData({ ...formData, groupName: e.target.value })}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                        placeholder="e.g. Concrete Works"
                       />
                     </div>
                   </div>
-
-                  <div className="pt-4 flex space-x-4">
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      className="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-all active:scale-[0.98]"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      className="flex-2 py-3 px-8 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-blue-600/20 flex items-center justify-center space-x-2"
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          <span>Saving...</span>
-                        </>
-                      ) : (
-                        <span>{initialData ? 'Update Item' : 'Add to BOQ'}</span>
-                      )}
-                    </button>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-600 ml-1">Item # (Optional)</label>
+                    <div className="relative group">
+                      <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                      <input
+                        type="text"
+                        value={formData.itemNumber}
+                        onChange={(e) => setFormData({ ...formData, itemNumber: e.target.value })}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                        placeholder="e.g. CW-01"
+                      />
+                    </div>
                   </div>
-                </form>
-              </div>
-            </GlassCard>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-600 ml-1">Description</label>
+                  <div className="relative group">
+                    <Layout className="absolute left-3 top-3 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                    <textarea
+                      required
+                      rows={3}
+                      value={formData.itemDescription}
+                      onChange={(e) => setFormData({ ...formData, itemDescription: e.target.value })}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm resize-none"
+                      placeholder="Detailed item description..."
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-600 ml-1">Unit</label>
+                    <div className="relative group">
+                      <Scale className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                      <input
+                        type="text"
+                        value={formData.unit}
+                        onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                        placeholder="e.g. Cum"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-600 ml-1">Quantity</label>
+                    <input
+                      type="number"
+                      required
+                      value={formData.quantity}
+                      onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-600 ml-1">Unit Cost (₹)</label>
+                    <input
+                      type="number"
+                      required
+                      value={formData.unitCost}
+                      onChange={(e) => setFormData({ ...formData, unitCost: Number(e.target.value) })}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <IndianRupee className="w-4 h-4 text-blue-600" />
+                    <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Calculated Total</span>
+                  </div>
+                  <span className="text-lg font-black text-gray-900">₹{totalCost.toLocaleString()}</span>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-600 ml-1">Remark (Optional)</label>
+                  <div className="relative group">
+                    <MessageSquare className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                    <input
+                      type="text"
+                      value={formData.remark}
+                      onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                      placeholder="Any additional notes..."
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-4 flex space-x-4">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="flex-1 py-3 px-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-slate-600 font-medium transition-all active:scale-[0.98]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="flex-2 py-3 px-8 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-blue-600/20 flex items-center justify-center space-x-2"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <span>{initialData ? 'Update Item' : 'Add to BOQ'}</span>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
           </motion.div>
         </div>
       )}
