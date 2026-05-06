@@ -41,7 +41,15 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
   const fetchSurveys = async () => {
     try {
       const response = await api.get(`/projects/${projectId}/survey`);
-      setSurveys(response.data);
+      const payload = response.data;
+      const normalized = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.surveys)
+        ? payload.surveys
+        : Array.isArray(payload?.data)
+        ? payload.data
+        : [];
+      setSurveys(normalized);
     } catch (error) {
       console.error('Error fetching surveys:', error);
       toast.error('Failed to load site surveys');
@@ -91,7 +99,7 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
 
       {/* Survey List */}
       <div className="grid grid-cols-1 gap-4">
-        {surveys.map((survey) => (
+        {Array.isArray(surveys) && surveys.map((survey) => (
           <GlassCard key={survey._id} className="p-6 border-gray-200 group hover:border-blue-500/50 transition-all cursor-pointer" gradient>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="flex flex-1 items-start space-x-6">
