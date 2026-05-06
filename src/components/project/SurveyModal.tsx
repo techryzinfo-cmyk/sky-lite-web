@@ -2,14 +2,14 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  X, 
-  Loader2, 
-  Map, 
-  Zap, 
-  Droplets, 
-  Mountain, 
-  MessageSquare, 
+import {
+  X,
+  Loader2,
+  Map,
+  Zap,
+  Droplets,
+  Mountain,
+  MessageSquare,
   DollarSign,
   AlertTriangle,
   Info
@@ -17,6 +17,7 @@ import {
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useToast } from '@/context/ToastContext';
 import api from '@/lib/api';
+import { cn } from '@/lib/utils';
 
 interface SurveyModalProps {
   isOpen: boolean;
@@ -25,11 +26,11 @@ interface SurveyModalProps {
   projectId: string;
 }
 
-export const SurveyModal: React.FC<SurveyModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  onSuccess, 
-  projectId 
+export const SurveyModal: React.FC<SurveyModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  projectId
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -42,7 +43,7 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
     recommendedBudget: 0,
     budgetReason: ''
   });
-  
+
   const toast = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -80,42 +81,41 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
           />
-          
+
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="w-full max-w-2xl relative z-10"
           >
-            <GlassCard className="border-white/10" gradient>
+            <GlassCard className="border-gray-200" gradient>
               <div className="p-8">
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center space-x-3">
-                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
-                      <Map className="w-6 h-6 text-blue-400" />
+                    <div className="p-3 rounded-2xl bg-blue-50 border border-blue-200">
+                      <Map className="w-6 h-6 text-blue-600" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-white">Record Site Survey</h2>
-                      <p className="text-xs text-slate-400 mt-0.5">Physical terrain and resource assessment.</p>
+                      <h2 className="text-xl font-bold text-gray-900">Record Site Survey</h2>
+                      <p className="text-xs text-slate-500 mt-0.5">Physical terrain and resource assessment.</p>
                     </div>
                   </div>
-                  <button onClick={onClose} className="p-2 text-slate-400 hover:text-white bg-white/5 rounded-xl transition-colors">
+                  <button onClick={onClose} className="p-2 text-slate-400 hover:text-gray-900 bg-gray-50 rounded-xl transition-colors">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Basic Info */}
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300 ml-1">Accessibility</label>
+                        <label className="text-sm font-medium text-slate-600 ml-1">Accessibility</label>
                         <select
                           value={formData.accessibility}
                           onChange={(e) => setFormData({ ...formData, accessibility: e.target.value })}
-                          className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all"
                         >
                           <option value="Good">Good (Easy vehicle access)</option>
                           <option value="Fair">Fair (Minor obstacles)</option>
@@ -127,12 +127,12 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
                       <div className="flex space-x-4">
                         <label className={cn(
                           "flex-1 p-4 rounded-2xl border transition-all cursor-pointer flex flex-col items-center justify-center space-y-2",
-                          formData.powerAvailable ? "bg-amber-500/10 border-amber-500/30 text-amber-400" : "bg-white/5 border-white/5 text-slate-500"
+                          formData.powerAvailable ? "bg-amber-50 border-amber-300 text-amber-600" : "bg-gray-50 border-gray-200 text-slate-400"
                         )}>
-                          <input 
-                            type="checkbox" 
-                            className="hidden" 
-                            checked={formData.powerAvailable} 
+                          <input
+                            type="checkbox"
+                            className="hidden"
+                            checked={formData.powerAvailable}
                             onChange={(e) => setFormData({ ...formData, powerAvailable: e.target.checked })}
                           />
                           <Zap className="w-6 h-6" />
@@ -141,12 +141,12 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
 
                         <label className={cn(
                           "flex-1 p-4 rounded-2xl border transition-all cursor-pointer flex flex-col items-center justify-center space-y-2",
-                          formData.waterAvailable ? "bg-blue-500/10 border-blue-500/30 text-blue-400" : "bg-white/5 border-white/5 text-slate-500"
+                          formData.waterAvailable ? "bg-blue-50 border-blue-300 text-blue-600" : "bg-gray-50 border-gray-200 text-slate-400"
                         )}>
-                          <input 
-                            type="checkbox" 
-                            className="hidden" 
-                            checked={formData.waterAvailable} 
+                          <input
+                            type="checkbox"
+                            className="hidden"
+                            checked={formData.waterAvailable}
                             onChange={(e) => setFormData({ ...formData, waterAvailable: e.target.checked })}
                           />
                           <Droplets className="w-6 h-6" />
@@ -155,50 +155,48 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Notes */}
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300 ml-1">Terrain Notes</label>
+                        <label className="text-sm font-medium text-slate-600 ml-1">Terrain Notes</label>
                         <textarea
                           required
                           rows={2}
                           value={formData.terrainNotes}
                           onChange={(e) => setFormData({ ...formData, terrainNotes: e.target.value })}
-                          className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm resize-none"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all resize-none"
                           placeholder="Soil type, slope, clearing needed..."
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300 ml-1">Surveyor Comments</label>
+                        <label className="text-sm font-medium text-slate-600 ml-1">Surveyor Comments</label>
                         <textarea
                           rows={2}
                           value={formData.surveyorComments}
                           onChange={(e) => setFormData({ ...formData, surveyorComments: e.target.value })}
-                          className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm resize-none"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all resize-none"
                           placeholder="General observations..."
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* Budget Impact Section */}
                   <div className={cn(
                     "p-4 rounded-2xl border transition-all",
-                    formData.affectsBudget ? "bg-red-500/10 border-red-500/20" : "bg-white/5 border-white/5"
+                    formData.affectsBudget ? "bg-red-50 border-red-200" : "bg-gray-50 border-gray-200"
                   )}>
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center space-x-2">
-                        <div className={cn("p-2 rounded-lg", formData.affectsBudget ? "bg-red-500/20" : "bg-white/5")}>
-                          <DollarSign className={cn("w-4 h-4", formData.affectsBudget ? "text-red-400" : "text-slate-500")} />
+                        <div className={cn("p-2 rounded-lg", formData.affectsBudget ? "bg-red-100" : "bg-gray-100")}>
+                          <DollarSign className={cn("w-4 h-4", formData.affectsBudget ? "text-red-600" : "text-slate-400")} />
                         </div>
-                        <span className="text-sm font-bold text-white">Affects Project Budget?</span>
+                        <span className="text-sm font-bold text-gray-900">Affects Project Budget?</span>
                       </div>
-                      <button 
+                      <button
                         type="button"
                         onClick={() => setFormData({ ...formData, affectsBudget: !formData.affectsBudget })}
                         className={cn(
                           "w-12 h-6 rounded-full relative transition-all",
-                          formData.affectsBudget ? "bg-red-600" : "bg-slate-700"
+                          formData.affectsBudget ? "bg-red-600" : "bg-gray-300"
                         )}
                       >
                         <div className={cn(
@@ -211,23 +209,23 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
                     {formData.affectsBudget && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
                         <div className="space-y-2">
-                          <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Estimated Impact Amt</label>
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Estimated Impact Amt</label>
                           <input
                             type="number"
                             required
                             value={formData.recommendedBudget}
                             onChange={(e) => setFormData({ ...formData, recommendedBudget: Number(e.target.value) })}
-                            className="w-full bg-slate-950 border border-red-500/30 rounded-xl py-2 px-4 text-white focus:outline-none focus:ring-2 focus:ring-red-500/50 text-sm"
+                            className="w-full bg-white border border-red-200 rounded-xl py-2 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 text-sm"
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Reason for Budget Impact</label>
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Reason for Budget Impact</label>
                           <input
                             type="text"
                             required
                             value={formData.budgetReason}
                             onChange={(e) => setFormData({ ...formData, budgetReason: e.target.value })}
-                            className="w-full bg-slate-950 border border-red-500/30 rounded-xl py-2 px-4 text-white focus:outline-none focus:ring-2 focus:ring-red-500/50 text-sm"
+                            className="w-full bg-white border border-red-200 rounded-xl py-2 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 text-sm"
                             placeholder="e.g. Extra clearing needed"
                           />
                         </div>
@@ -239,7 +237,7 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
                     <button
                       type="button"
                       onClick={onClose}
-                      className="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-all active:scale-[0.98]"
+                      className="flex-1 py-3 px-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-slate-600 font-medium transition-all active:scale-[0.98]"
                     >
                       Cancel
                     </button>

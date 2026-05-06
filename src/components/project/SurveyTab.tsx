@@ -56,10 +56,10 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Approved': return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
-      case 'Needs Attention': return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
-      case 'Draft': return 'text-slate-400 bg-slate-500/10 border-slate-500/20';
-      default: return 'text-blue-400 bg-blue-500/10 border-blue-500/20';
+      case 'Approved': return 'text-emerald-700 bg-emerald-100 border-emerald-200';
+      case 'Needs Attention': return 'text-amber-700 bg-amber-100 border-amber-200';
+      case 'Draft': return 'text-slate-600 bg-gray-100 border-gray-200';
+      default: return 'text-blue-700 bg-blue-100 border-blue-200';
     }
   };
 
@@ -67,7 +67,7 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-        <p className="text-slate-400 font-medium">Loading terrain data...</p>
+        <p className="text-slate-500 font-medium">Loading terrain data...</p>
       </div>
     );
   }
@@ -77,8 +77,8 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h3 className="text-xl font-bold text-white">Site Surveys & Audits</h3>
-          <p className="text-sm text-slate-400 mt-1">Pre-construction assessments and site verification reports.</p>
+          <h3 className="text-xl font-bold text-gray-900">Site Surveys & Audits</h3>
+          <p className="text-sm text-slate-500 mt-1">Pre-construction assessments and site verification reports.</p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
@@ -92,11 +92,11 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
       {/* Survey List */}
       <div className="grid grid-cols-1 gap-4">
         {surveys.map((survey) => (
-          <GlassCard key={survey._id} className="p-6 border-white/5 group hover:border-blue-500/30 transition-all cursor-pointer" gradient>
+          <GlassCard key={survey._id} className="p-6 border-gray-200 group hover:border-blue-500/50 transition-all cursor-pointer" gradient>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="flex flex-1 items-start space-x-6">
-                <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
-                  <Map className="w-8 h-8 text-blue-400" />
+                <div className="w-16 h-16 rounded-2xl bg-blue-100 border border-blue-200 flex items-center justify-center shrink-0">
+                  <Map className="w-8 h-8 text-blue-600" />
                 </div>
                 <div className="space-y-2 flex-1">
                   <div className="flex items-center space-x-3">
@@ -110,21 +110,21 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
                       Accessibility: {survey.accessibility}
                     </span>
                   </div>
-                  <h4 className="text-lg font-bold text-white group-hover:text-blue-400 transition-colors line-clamp-1">
+                  <h4 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1">
                     {survey.terrainNotes || 'Site Assessment Report'}
                   </h4>
-                  
+
                   <div className="flex items-center space-x-6">
                     <div className="flex items-center space-x-2 text-[10px] font-bold text-slate-500">
-                      <Zap className={cn("w-3 h-3", survey.powerAvailable ? "text-amber-400" : "text-slate-700")} />
+                      <Zap className={cn("w-3 h-3", survey.powerAvailable ? "text-amber-500" : "text-gray-300")} />
                       <span>Power: {survey.powerAvailable ? 'Available' : 'N/A'}</span>
                     </div>
                     <div className="flex items-center space-x-2 text-[10px] font-bold text-slate-500">
-                      <Droplets className={cn("w-3 h-3", survey.waterAvailable ? "text-blue-400" : "text-slate-700")} />
+                      <Droplets className={cn("w-3 h-3", survey.waterAvailable ? "text-blue-500" : "text-gray-300")} />
                       <span>Water: {survey.waterAvailable ? 'Available' : 'N/A'}</span>
                     </div>
                     {survey.affectsBudget && (
-                      <div className="flex items-center space-x-2 text-[10px] font-bold text-red-400">
+                      <div className="flex items-center space-x-2 text-[10px] font-bold text-red-600">
                         <DollarSign className="w-3 h-3" />
                         <span>Budget Impact Identified</span>
                       </div>
@@ -133,17 +133,17 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
                 </div>
               </div>
 
-              <div className="flex flex-col md:items-end justify-between gap-4 border-t md:border-t-0 border-white/5 pt-4 md:pt-0">
+              <div className="flex flex-col md:items-end justify-between gap-4 border-t md:border-t-0 border-gray-100 pt-4 md:pt-0">
                 <div className="flex items-center space-x-3">
                   <div className="text-right">
-                    <p className="text-sm font-bold text-white leading-tight">{survey.surveyor?.name || 'Assigned Surveyor'}</p>
+                    <p className="text-sm font-bold text-gray-900 leading-tight">{survey.surveyor?.name || 'Assigned Surveyor'}</p>
                     <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{new Date(survey.createdAt).toLocaleDateString()}</p>
                   </div>
-                  <div className="w-10 h-10 rounded-full bg-slate-800 border border-white/5 flex items-center justify-center text-xs font-bold text-slate-400 uppercase">
+                  <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-xs font-bold text-slate-500 uppercase">
                     {survey.surveyor?.name?.charAt(0) || 'S'}
                   </div>
                 </div>
-                <button className="flex items-center space-x-2 text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors">
+                <button className="flex items-center space-x-2 text-xs font-bold text-blue-600 hover:text-blue-500 transition-colors">
                   <span>View Full Audit</span>
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -153,12 +153,12 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
         ))}
 
         {surveys.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed border-white/5 rounded-[2rem]">
-            <div className="p-6 rounded-full bg-slate-900/50 border border-white/5 mb-6">
-              <ClipboardCheck className="w-12 h-12 text-slate-700" />
+          <div className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed border-gray-200 rounded-[2rem]">
+            <div className="p-6 rounded-full bg-gray-100 border border-gray-200 mb-6">
+              <ClipboardCheck className="w-12 h-12 text-gray-400" />
             </div>
             <h3 className="text-xl font-bold text-slate-500 mb-2">No surveys recorded yet</h3>
-            <p className="text-slate-600 max-w-sm">Site surveys are essential for pre-construction planning. Record your first audit to get started.</p>
+            <p className="text-slate-400 max-w-sm">Site surveys are essential for pre-construction planning. Record your first audit to get started.</p>
           </div>
         )}
       </div>

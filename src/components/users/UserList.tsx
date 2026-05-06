@@ -53,7 +53,7 @@ export const UserList = () => {
     return (
       <div className="flex flex-col items-center justify-center py-40">
         <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
-        <p className="text-slate-400 font-medium">Syncing directory...</p>
+        <p className="text-slate-500 font-medium">Syncing directory...</p>
       </div>
     );
   }
@@ -69,12 +69,12 @@ export const UserList = () => {
             placeholder="Search by name or email..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-3 pl-12 pr-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+            className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 pl-12 pr-4 text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
           />
         </div>
         
         <div className="flex items-center space-x-3">
-          <button className="p-3 bg-slate-900/50 border border-white/5 rounded-xl text-slate-400 hover:text-white transition-all">
+          <button className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-slate-400 hover:text-gray-900 transition-all">
             <Filter className="w-5 h-5" />
           </button>
           <button 
@@ -90,14 +90,14 @@ export const UserList = () => {
       {/* Users Table / List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredUsers.map((user) => (
-          <GlassCard key={user._id} className="p-6 border-white/5 group hover:border-blue-500/30 transition-all cursor-pointer" gradient>
+          <GlassCard key={user._id} className="p-6 border-gray-200 group hover:border-blue-500/50 transition-all cursor-pointer" gradient>
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-center space-x-4">
                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-xl font-black text-white shadow-lg shadow-blue-600/20">
                   {user.name.charAt(0)}
                 </div>
                 <div>
-                  <h4 className="text-lg font-bold text-white group-hover:text-blue-400 transition-colors">{user.name}</h4>
+                  <h4 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{user.name}</h4>
                   <div className="flex items-center space-x-1.5 mt-1">
                     <Shield className="w-3 h-3 text-blue-500" />
                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.1em]">
@@ -106,28 +106,28 @@ export const UserList = () => {
                   </div>
                 </div>
               </div>
-              <button className="p-2 text-slate-500 hover:text-white transition-colors">
+              <button className="p-2 text-slate-400 hover:text-gray-900 transition-colors">
                 <MoreVertical className="w-5 h-5" />
               </button>
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-center space-x-3 text-slate-400">
+              <div className="flex items-center space-x-3 text-slate-500">
                 <Mail className="w-4 h-4" />
                 <span className="text-sm truncate">{user.email}</span>
               </div>
-              <div className="flex items-center space-x-3 text-slate-400">
+              <div className="flex items-center space-x-3 text-slate-500">
                 <Clock className="w-4 h-4" />
                 <span className="text-sm">Joined {new Date(user.createdAt).toLocaleDateString()}</span>
               </div>
             </div>
 
-            <div className="mt-6 pt-6 border-t border-white/5 flex items-center justify-between">
+            <div className="mt-6 pt-6 border-t border-gray-100 flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Active</span>
               </div>
-              <button className="flex items-center space-x-1 text-[10px] font-black text-blue-400 hover:text-blue-300 uppercase tracking-widest transition-colors">
+              <button className="flex items-center space-x-1 text-[10px] font-black text-blue-600 hover:text-blue-500 uppercase tracking-widest transition-colors">
                 <span>View Profile</span>
                 <ChevronRight className="w-3 h-3" />
               </button>
@@ -137,9 +137,9 @@ export const UserList = () => {
 
         {filteredUsers.length === 0 && (
           <div className="col-span-full py-40 flex flex-col items-center justify-center text-center">
-            <XCircle className="w-16 h-16 text-slate-700 mb-4" />
+            <XCircle className="w-16 h-16 text-gray-300 mb-4" />
             <h3 className="text-xl font-bold text-slate-500">No users found</h3>
-            <p className="text-slate-600 mt-1">Try adjusting your search query.</p>
+            <p className="text-slate-400 mt-1">Try adjusting your search query.</p>
           </div>
         )}
       </div>

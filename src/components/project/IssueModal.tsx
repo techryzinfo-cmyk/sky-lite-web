@@ -84,7 +84,7 @@ export const IssueModal: React.FC<IssueModalProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
           />
           
           <motion.div
@@ -93,43 +93,43 @@ export const IssueModal: React.FC<IssueModalProps> = ({
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="w-full max-w-lg relative z-10"
           >
-            <GlassCard className="border-white/10" gradient>
+            <GlassCard className="border-gray-200" gradient>
               <div className="p-8">
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center space-x-3">
-                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
-                      <AlertTriangle className="w-6 h-6 text-amber-400" />
+                    <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200">
+                      <AlertTriangle className="w-6 h-6 text-amber-600" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-white">Report New {type}</h2>
-                      <p className="text-xs text-slate-400 mt-0.5">Project Tracking & Accountability</p>
+                      <h2 className="text-xl font-bold text-gray-900">Report New {type}</h2>
+                      <p className="text-xs text-slate-500 mt-0.5">Project Tracking & Accountability</p>
                     </div>
                   </div>
-                  <button onClick={onClose} className="p-2 text-slate-400 hover:text-white bg-white/5 rounded-xl transition-colors">
+                  <button onClick={onClose} className="p-2 text-slate-400 hover:text-gray-900 bg-gray-50 rounded-xl transition-colors">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-300 ml-1">Title</label>
+                    <label className="text-sm font-medium text-slate-600 ml-1">Title</label>
                     <input
                       type="text"
                       required
                       value={formData.title}
                       onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all"
                       placeholder={`e.g. ${type === 'Issue' ? 'Delayed material arrival' : 'Cracks in pillar #4'}`}
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-300 ml-1">Priority</label>
+                      <label className="text-sm font-medium text-slate-600 ml-1">Priority</label>
                       <select
                         value={formData.priority}
                         onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                        className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all"
                       >
                         <option value="Low">Low</option>
                         <option value="Medium">Medium</option>
@@ -138,12 +138,12 @@ export const IssueModal: React.FC<IssueModalProps> = ({
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-300 ml-1">Category</label>
+                      <label className="text-sm font-medium text-slate-600 ml-1">Category</label>
                       <select
                         disabled={type === 'Snag'}
                         value={type === 'Snag' ? 'Site' : formData.category}
                         onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                        className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm disabled:opacity-50"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all disabled:opacity-50"
                       >
                         <option value="Technical">Technical</option>
                         <option value="Resource">Resource</option>
@@ -156,11 +156,11 @@ export const IssueModal: React.FC<IssueModalProps> = ({
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-300 ml-1">Assign To</label>
+                    <label className="text-sm font-medium text-slate-600 ml-1">Assign To</label>
                     <select
                       value={formData.assignedTo}
                       onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-                      className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all"
                     >
                       <option value="">Select Assignee (Optional)</option>
                       {users.map(u => (
@@ -170,13 +170,13 @@ export const IssueModal: React.FC<IssueModalProps> = ({
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-300 ml-1">Description</label>
+                    <label className="text-sm font-medium text-slate-600 ml-1">Description</label>
                     <textarea
                       required
                       rows={3}
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm resize-none"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all resize-none"
                       placeholder="Detail the issue and impact..."
                     />
                   </div>
@@ -185,7 +185,7 @@ export const IssueModal: React.FC<IssueModalProps> = ({
                     <button
                       type="button"
                       onClick={onClose}
-                      className="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-all active:scale-[0.98]"
+                      className="flex-1 py-3 px-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-slate-600 font-medium transition-all active:scale-[0.98]"
                     >
                       Cancel
                     </button>
