@@ -11,48 +11,68 @@ interface CreateProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialData?: any;
+  projectId?: string;
 }
 
-export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose, onSuccess }) => {
+const emptyForm = {
+  name: '',
+  description: '',
+  clientName: '',
+  clientEmail: '',
+  clientPhone: '',
+  priority: 'Medium',
+  startDate: '',
+  endDate: '',
+  budget: '',
+  needSiteSurvey: false,
+};
+
+export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose, onSuccess, initialData, projectId }) => {
   const [isLoading, setIsLoading] = useState(false);
   const toast = useToast();
+  const isEditing = !!initialData && !!projectId;
 
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    clientName: '',
-    clientEmail: '',
-    clientPhone: '',
-    priority: 'Medium',
-    startDate: '',
-    endDate: '',
-    budget: '',
-    needSiteSurvey: false,
-  });
+  const [formData, setFormData] = useState(emptyForm);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      if (initialData) {
+        setFormData({
+          name: initialData.name || '',
+          description: initialData.description || '',
+          clientName: initialData.clientName || '',
+          clientEmail: initialData.clientEmail || '',
+          clientPhone: initialData.clientPhone || '',
+          priority: initialData.priority || 'Medium',
+          startDate: initialData.startDate ? initialData.startDate.split('T')[0] : '',
+          endDate: initialData.endDate ? initialData.endDate.split('T')[0] : '',
+          budget: '',
+          needSiteSurvey: initialData.needSiteSurvey || false,
+        });
+      } else {
+        setFormData(emptyForm);
+      }
+    }
+  }, [isOpen, initialData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      await api.post('/projects', formData);
-      toast.success('Project created successfully!');
+      if (isEditing) {
+        const { budget, ...editPayload } = formData;
+        await api.patch(`/projects/${projectId}`, editPayload);
+        toast.success('Project updated successfully!');
+      } else {
+        await api.post('/projects', formData);
+        toast.success('Project created successfully!');
+      }
       onSuccess();
       onClose();
-      setFormData({
-        name: '',
-        description: '',
-        clientName: '',
-        clientEmail: '',
-        clientPhone: '',
-        priority: 'Medium',
-        startDate: '',
-        endDate: '',
-        budget: '',
-        needSiteSurvey: false,
-      });
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to create project');
+      toast.error(error.response?.data?.message || (isEditing ? 'Failed to update project' : 'Failed to create project'));
     } finally {
       setIsLoading(false);
     }
@@ -80,8 +100,8 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
               <div className="p-8">
                 <div className="flex items-center justify-between mb-8">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Create New Project</h2>
-                    <p className="text-sm text-slate-500 mt-1">Initialize a new construction workspace.</p>
+                    <h2 className="text-2xl font-bold text-gray-900">{isEditing ? 'Edit Project' : 'Create New Project'}</h2>
+                    <p className="text-sm text-slate-500 mt-1">{isEditing ? 'Update project details and settings.' : 'Initialize a new construction workspace.'}</p>
                   </div>
                   <button onClick={onClose} className="p-2 text-slate-400 hover:text-gray-900 bg-gray-50 rounded-xl transition-colors">
                     <X className="w-6 h-6" />
@@ -199,15 +219,17 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                           className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-600 ml-1">Initial Budget (₹)</label>
-                        <input
-                          type="number"
-                          value={formData.budget}
-                          onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                        />
-                      </div>
+                      {!isEditing && (
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-600 ml-1">Initial Budget (₹)</label>
+                          <input
+                            type="number"
+                            value={formData.budget}
+                            onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -243,10 +265,10 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                       {isLoading ? (
                         <>
                           <Loader2 className="w-5 h-5 animate-spin" />
-                          <span>Creating...</span>
+                          <span>{isEditing ? 'Saving...' : 'Creating...'}</span>
                         </>
                       ) : (
-                        <span>Create Project</span>
+                        <span>{isEditing ? 'Save Changes' : 'Create Project'}</span>
                       )}
                     </button>
                   </div>

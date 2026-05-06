@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Shell } from '@/components/layout/Shell';
+import { CreateProjectModal } from '@/components/ui/CreateProjectModal';
 import { BOQTab } from '@/components/project/BOQTab';
 import { BudgetTab } from '@/components/project/BudgetTab';
 import { MaterialsTab } from '@/components/project/MaterialsTab';
@@ -18,7 +19,7 @@ import {
   Info, FileText, IndianRupee, Package, Files, Map,
   AlertCircle, CheckSquare, ShieldAlert, Calendar,
   TrendingUp, GanttChart, ClipboardList, CreditCard,
-  Loader2, ChevronLeft,
+  Loader2, ChevronLeft, Pencil,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { Project } from '@/types';
@@ -52,6 +53,7 @@ export default function ProjectWorkspacePage() {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('details');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const toast = useToast();
 
   useProjectSocket(id as string);
@@ -138,8 +140,12 @@ export default function ProjectWorkspacePage() {
           </div>
 
           <div className="flex items-center space-x-2">
-            <button className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all">
-              Team Settings
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all"
+            >
+              <Pencil className="w-4 h-4" />
+              <span>Edit Project</span>
             </button>
             <button className="px-4 py-2 bg-blue-600 rounded-xl text-sm font-bold text-white hover:bg-blue-500 shadow-sm shadow-blue-600/20 transition-all">
               Export Report
@@ -281,6 +287,14 @@ export default function ProjectWorkspacePage() {
           )}
         </div>
       </div>
+
+      <CreateProjectModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSuccess={fetchProject}
+        initialData={project}
+        projectId={id as string}
+      />
     </Shell>
   );
 }

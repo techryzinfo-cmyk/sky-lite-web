@@ -1,21 +1,21 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Search, 
-  UserPlus, 
-  MoreVertical, 
-  Mail, 
-  Shield, 
-  Clock, 
-  ChevronRight,
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Search,
+  UserPlus,
+  MoreVertical,
+  Mail,
+  Shield,
+  Clock,
   Loader2,
-  CheckCircle2,
   XCircle,
-  Filter
+  Filter,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { cn } from '@/lib/utils';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { UserModal } from './UserModal';
@@ -25,7 +25,12 @@ export const UserList = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+  const [editingUser, setEditingUser] = useState<any>(null);
+  const [deletingUser, setDeletingUser] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
   const toast = useToast();
 
   const fetchUsers = async () => {
@@ -44,7 +49,43 @@ export const UserList = () => {
     fetchUsers();
   }, []);
 
-  const filteredUsers = users.filter(u => 
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleDelete = async () => {
+    if (!deletingUser) return;
+    setIsDeleting(true);
+    try {
+      await api.delete(`/users/${deletingUser._id}`);
+      toast.success(`${deletingUser.name} has been removed`);
+      setDeletingUser(null);
+      fetchUsers();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to remove user');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const openEdit = (user: any) => {
+    setEditingUser(user);
+    setOpenMenuId(null);
+    setIsModalOpen(true);
+  };
+
+  const openDelete = (user: any) => {
+    setDeletingUser(user);
+    setOpenMenuId(null);
+  };
+
+  const filteredUsers = users.filter(u =>
     u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -60,11 +101,10 @@ export const UserList = () => {
 
   return (
     <div className="space-y-6">
-      {/* Action Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="relative flex-1 max-w-md group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
-          <input 
+          <input
             type="text"
             placeholder="Search by name or email..."
             value={searchQuery}
@@ -72,13 +112,13 @@ export const UserList = () => {
             className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 pl-12 pr-4 text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
           />
         </div>
-        
+
         <div className="flex items-center space-x-3">
           <button className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-slate-400 hover:text-gray-900 transition-all">
             <Filter className="w-5 h-5" />
           </button>
-          <button 
-            onClick={() => setIsModalOpen(true)}
+          <button
+            onClick={() => { setEditingUser(null); setIsModalOpen(true); }}
             className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-2xl text-sm font-bold transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20"
           >
             <UserPlus className="w-4 h-4" />
@@ -87,10 +127,9 @@ export const UserList = () => {
         </div>
       </div>
 
-      {/* Users Table / List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredUsers.map((user) => (
-          <GlassCard key={user._id} className="p-6 border-gray-200 group hover:border-blue-500/50 transition-all cursor-pointer" gradient>
+          <GlassCard key={user._id} className="p-6 border-gray-200 group hover:border-blue-500/50 transition-all" gradient>
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-center space-x-4">
                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-xl font-black text-white shadow-lg shadow-blue-600/20">
@@ -101,14 +140,38 @@ export const UserList = () => {
                   <div className="flex items-center space-x-1.5 mt-1">
                     <Shield className="w-3 h-3 text-blue-500" />
                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.1em]">
-                      {typeof user.role === 'object' ? user.role.name : user.role}
+                      {typeof user.role === 'object' ? user.role?.name : user.role}
                     </span>
                   </div>
                 </div>
               </div>
-              <button className="p-2 text-slate-400 hover:text-gray-900 transition-colors">
-                <MoreVertical className="w-5 h-5" />
-              </button>
+
+              <div className="relative" ref={openMenuId === user._id ? menuRef : null}>
+                <button
+                  onClick={() => setOpenMenuId(openMenuId === user._id ? null : user._id)}
+                  className="p-2 text-slate-400 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100"
+                >
+                  <MoreVertical className="w-5 h-5" />
+                </button>
+                {openMenuId === user._id && (
+                  <div className="absolute right-0 top-9 w-40 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
+                    <button
+                      onClick={() => openEdit(user)}
+                      className="w-full flex items-center space-x-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <Pencil className="w-4 h-4 text-slate-400" />
+                      <span>Edit Member</span>
+                    </button>
+                    <button
+                      onClick={() => openDelete(user)}
+                      className="w-full flex items-center space-x-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>Remove</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -127,9 +190,11 @@ export const UserList = () => {
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Active</span>
               </div>
-              <button className="flex items-center space-x-1 text-[10px] font-black text-blue-600 hover:text-blue-500 uppercase tracking-widest transition-colors">
-                <span>View Profile</span>
-                <ChevronRight className="w-3 h-3" />
+              <button
+                onClick={() => openEdit(user)}
+                className="text-[10px] font-black text-blue-600 hover:text-blue-500 uppercase tracking-widest transition-colors"
+              >
+                Edit Profile
               </button>
             </div>
           </GlassCard>
@@ -144,10 +209,22 @@ export const UserList = () => {
         )}
       </div>
 
-      <UserModal 
+      <UserModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => { setIsModalOpen(false); setEditingUser(null); }}
         onSuccess={fetchUsers}
+        initialData={editingUser}
+      />
+
+      <ConfirmModal
+        isOpen={!!deletingUser}
+        onClose={() => setDeletingUser(null)}
+        onConfirm={handleDelete}
+        title="Remove Team Member"
+        message={`Are you sure you want to remove ${deletingUser?.name}? This action cannot be undone.`}
+        confirmText="Remove"
+        type="danger"
+        isLoading={isDeleting}
       />
     </div>
   );
