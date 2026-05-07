@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, UserPlus, Mail, Shield, Lock, Info } from 'lucide-react';
+import { X, Loader2, UserPlus, UserCog, Mail, Lock } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useToast } from '@/context/ToastContext';
 import api from '@/lib/api';
@@ -11,12 +11,14 @@ interface UserModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialData?: any;
 }
 
-export const UserModal: React.FC<UserModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  onSuccess 
+export const UserModal: React.FC<UserModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  initialData,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [roles, setRoles] = useState<any[]>([]);
@@ -24,10 +26,11 @@ export const UserModal: React.FC<UserModalProps> = ({
     name: '',
     email: '',
     password: '',
-    role: ''
+    role: '',
   });
-  
+
   const toast = useToast();
+  const isEditing = !!initialData;
 
   useEffect(() => {
     if (isOpen) {
@@ -40,21 +43,39 @@ export const UserModal: React.FC<UserModalProps> = ({
         }
       };
       fetchRoles();
+
+      if (initialData) {
+        setFormData({
+          name: initialData.name || '',
+          email: initialData.email || '',
+          password: '',
+          role: typeof initialData.role === 'object' ? initialData.role?.name : initialData.role || '',
+        });
+      } else {
+        setFormData({ name: '', email: '', password: '', role: '' });
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, initialData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      await api.post('/users', formData);
-      toast.success('Team member onboarded successfully!');
+      const payload: any = { name: formData.name, email: formData.email, role: formData.role };
+      if (formData.password) payload.password = formData.password;
+
+      if (isEditing) {
+        await api.patch(`/users/${initialData._id}`, payload);
+        toast.success('Member updated successfully!');
+      } else {
+        await api.post('/users', { ...payload, password: formData.password });
+        toast.success('Team member onboarded successfully!');
+      }
       onSuccess();
       onClose();
-      setFormData({ name: '', email: '', password: '', role: '' });
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to onboard user');
+      toast.error(error.response?.data?.message || (isEditing ? 'Failed to update user' : 'Failed to onboard user'));
     } finally {
       setIsLoading(false);
     }
@@ -69,55 +90,62 @@ export const UserModal: React.FC<UserModalProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
           />
-          
+
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="w-full max-w-lg relative z-10"
           >
-            <GlassCard className="border-white/10" gradient>
+            <GlassCard className="border-gray-200" gradient>
               <div className="p-8">
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center space-x-3">
-                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
-                      <UserPlus className="w-6 h-6 text-blue-400" />
+                    <div className="p-3 rounded-2xl bg-blue-50 border border-blue-200">
+                      {isEditing
+                        ? <UserCog className="w-6 h-6 text-blue-600" />
+                        : <UserPlus className="w-6 h-6 text-blue-600" />
+                      }
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-white">Onboard New Member</h2>
-                      <p className="text-xs text-slate-400 mt-0.5">Invite a team member to the platform.</p>
+                      <h2 className="text-xl font-bold text-gray-900">
+                        {isEditing ? 'Edit Member' : 'Onboard New Member'}
+                      </h2>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {isEditing ? 'Update team member details.' : 'Invite a team member to the platform.'}
+                      </p>
                     </div>
                   </div>
-                  <button onClick={onClose} className="p-2 text-slate-400 hover:text-white bg-white/5 rounded-xl transition-colors">
+                  <button onClick={onClose} className="p-2 text-slate-400 hover:text-gray-900 bg-gray-50 rounded-xl transition-colors">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-300 ml-1">Full Name</label>
+                    <label className="text-sm font-medium text-slate-600 ml-1">Full Name</label>
                     <input
                       type="text"
                       required
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all"
                       placeholder="e.g. Rahul Sharma"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-300 ml-1">Email Address</label>
+                    <label className="text-sm font-medium text-slate-600 ml-1">Email Address</label>
                     <div className="relative group">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                       <input
                         type="email"
                         required
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all"
                         placeholder="rahul@example.com"
                       />
                     </div>
@@ -125,26 +153,28 @@ export const UserModal: React.FC<UserModalProps> = ({
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-300 ml-1">Initial Password</label>
+                      <label className="text-sm font-medium text-slate-600 ml-1">
+                        {isEditing ? 'New Password' : 'Initial Password'}
+                      </label>
                       <div className="relative group">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                         <input
                           type="password"
-                          required
+                          required={!isEditing}
                           value={formData.password}
                           onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                          className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
-                          placeholder="••••••••"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all"
+                          placeholder={isEditing ? 'Leave blank to keep' : '••••••••'}
                         />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-300 ml-1">Access Role</label>
+                      <label className="text-sm font-medium text-slate-600 ml-1">Access Role</label>
                       <select
                         required
                         value={formData.role}
                         onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                        className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all"
                       >
                         <option value="">Select Role</option>
                         {roles.map(r => (
@@ -158,7 +188,7 @@ export const UserModal: React.FC<UserModalProps> = ({
                     <button
                       type="button"
                       onClick={onClose}
-                      className="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-all active:scale-[0.98]"
+                      className="flex-1 py-3 px-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-slate-600 font-medium transition-all active:scale-[0.98]"
                     >
                       Cancel
                     </button>
@@ -170,10 +200,10 @@ export const UserModal: React.FC<UserModalProps> = ({
                       {isLoading ? (
                         <>
                           <Loader2 className="w-5 h-5 animate-spin" />
-                          <span>Onboarding...</span>
+                          <span>{isEditing ? 'Saving...' : 'Onboarding...'}</span>
                         </>
                       ) : (
-                        <span>Send Invitation</span>
+                        <span>{isEditing ? 'Save Changes' : 'Send Invitation'}</span>
                       )}
                     </button>
                   </div>

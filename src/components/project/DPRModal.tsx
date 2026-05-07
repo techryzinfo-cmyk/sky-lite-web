@@ -14,11 +14,11 @@ interface DPRModalProps {
   projectId: string;
 }
 
-export const DPRModal: React.FC<DPRModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  onSuccess, 
-  projectId 
+export const DPRModal: React.FC<DPRModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  projectId
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [milestones, setMilestones] = useState<any[]>([]);
@@ -29,7 +29,7 @@ export const DPRModal: React.FC<DPRModalProps> = ({
     date: new Date().toISOString().split('T')[0],
     photos: [] as string[]
   });
-  
+
   const toast = useToast();
 
   useEffect(() => {
@@ -90,28 +90,28 @@ export const DPRModal: React.FC<DPRModalProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
           />
-          
+
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="w-full max-w-lg relative z-10"
           >
-            <GlassCard className="border-white/10" gradient>
+            <GlassCard className="border-gray-200" gradient>
               <div className="p-8">
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center space-x-3">
-                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
-                      <TrendingUp className="w-6 h-6 text-blue-400" />
+                    <div className="p-3 rounded-2xl bg-blue-50 border border-blue-200">
+                      <TrendingUp className="w-6 h-6 text-blue-600" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-white">Post Progress Update</h2>
-                      <p className="text-xs text-slate-400 mt-0.5">Daily site report & milestone log.</p>
+                      <h2 className="text-xl font-bold text-gray-900">Post Progress Update</h2>
+                      <p className="text-xs text-slate-500 mt-0.5">Daily site report & milestone log.</p>
                     </div>
                   </div>
-                  <button onClick={onClose} className="p-2 text-slate-400 hover:text-white bg-white/5 rounded-xl transition-colors">
+                  <button onClick={onClose} className="p-2 text-slate-400 hover:text-gray-900 bg-gray-50 rounded-xl transition-colors">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -119,24 +119,24 @@ export const DPRModal: React.FC<DPRModalProps> = ({
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-300 ml-1">Update Date</label>
+                      <label className="text-sm font-medium text-slate-600 ml-1">Update Date</label>
                       <div className="relative group">
-                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
+                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                         <input
                           type="date"
                           required
                           value={formData.date}
                           onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                          className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 pl-10 pr-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all"
                         />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-300 ml-1">Milestone Tag</label>
+                      <label className="text-sm font-medium text-slate-600 ml-1">Milestone Tag</label>
                       <select
                         value={formData.milestone}
                         onChange={(e) => setFormData({ ...formData, milestone: e.target.value })}
-                        className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all"
                       >
                         <option value="">General Work</option>
                         {milestones.map(m => (
@@ -148,8 +148,8 @@ export const DPRModal: React.FC<DPRModalProps> = ({
 
                   <div className="space-y-2">
                     <div className="flex justify-between items-center ml-1">
-                      <label className="text-sm font-medium text-slate-300">Work Description</label>
-                      <span className="text-[10px] font-bold text-slate-500">{formData.description.length}/200</span>
+                      <label className="text-sm font-medium text-slate-600">Work Description</label>
+                      <span className="text-[10px] font-bold text-slate-400">{formData.description.length}/200</span>
                     </div>
                     <textarea
                       required
@@ -157,37 +157,36 @@ export const DPRModal: React.FC<DPRModalProps> = ({
                       rows={3}
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm resize-none"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all resize-none"
                       placeholder="What work was completed today?"
                     />
                   </div>
 
                   <div className="space-y-2">
                     <div className="flex justify-between items-center ml-1">
-                      <label className="text-sm font-medium text-slate-300">Progress achieved</label>
-                      <span className="text-lg font-black text-blue-400">{formData.progressPercent}%</span>
+                      <label className="text-sm font-medium text-slate-600">Progress achieved</label>
+                      <span className="text-lg font-black text-blue-600">{formData.progressPercent}%</span>
                     </div>
-                    <input 
+                    <input
                       type="range"
                       min="1"
                       max="100"
                       step="1"
                       value={formData.progressPercent}
                       onChange={(e) => setFormData({ ...formData, progressPercent: Number(e.target.value) })}
-                      className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
                     />
                   </div>
 
-                  {/* Photo Upload Section */}
                   <div className="space-y-3">
-                    <label className="text-sm font-medium text-slate-300 ml-1">Site Photos</label>
+                    <label className="text-sm font-medium text-slate-600 ml-1">Site Photos</label>
                     <div className="flex flex-wrap gap-3">
                       {formData.photos.map((photo, i) => (
-                        <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-white/10">
+                        <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
                           <img src={photo} alt="Upload" className="w-full h-full object-cover" />
                         </div>
                       ))}
-                      <label className="w-16 h-16 rounded-lg border-2 border-dashed border-white/10 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all cursor-pointer flex flex-col items-center justify-center text-slate-500 hover:text-blue-400">
+                      <label className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer flex flex-col items-center justify-center text-slate-400 hover:text-blue-500">
                         <Camera className="w-6 h-6" />
                         <input type="file" className="hidden" onChange={handlePhotoUpload} />
                       </label>
@@ -198,7 +197,7 @@ export const DPRModal: React.FC<DPRModalProps> = ({
                     <button
                       type="button"
                       onClick={onClose}
-                      className="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-all active:scale-[0.98]"
+                      className="flex-1 py-3 px-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-slate-600 font-medium transition-all active:scale-[0.98]"
                     >
                       Cancel
                     </button>

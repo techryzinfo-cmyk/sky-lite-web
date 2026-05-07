@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 
 export default function SuperAdminDashboard() {
   const [admins, setAdmins] = useState<any[]>([]);
+  const [platformStats, setPlatformStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const toast = useToast();
   const router = useRouter();
@@ -15,10 +16,20 @@ export default function SuperAdminDashboard() {
   const fetchAdmins = async () => {
     try {
       const token = localStorage.getItem('superadmin_token');
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/superadmin/admins`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setAdmins(response.data);
+      const headers = { Authorization: `Bearer ${token}` };
+      const [adminsRes, statsRes] = await Promise.allSettled([
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/superadmin/admins`, { headers }),
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/superadmin/stats`, { headers }),
+      ]);
+      if (adminsRes.status === 'fulfilled') {
+        setAdmins(adminsRes.value.data);
+      } else {
+        router.push('/superadmin/login');
+        return;
+      }
+      if (statsRes.status === 'fulfilled') {
+        setPlatformStats(statsRes.value.data);
+      }
     } catch {
       router.push('/superadmin/login');
     } finally {
@@ -44,9 +55,9 @@ export default function SuperAdminDashboard() {
 
   const stats = [
     { label: 'Platform Admins', value: admins.length, icon: ShieldCheck, color: 'text-red-600', bg: 'bg-red-50' },
-    { label: 'Active Tenants', value: '12', icon: Building2, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Global Users', value: '1,420', icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { label: 'API Uptime', value: '99.9%', icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'Active Tenants', value: platformStats?.activeTenants ?? '—', icon: Building2, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Global Users', value: platformStats?.totalUsers != null ? platformStats.totalUsers.toLocaleString() : '—', icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { label: 'API Uptime', value: platformStats?.apiUptime != null ? `${platformStats.apiUptime}%` : '—', icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50' },
   ];
 
   return (
