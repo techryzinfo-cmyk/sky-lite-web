@@ -41,7 +41,7 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
   const fetchSurveys = async () => {
     try {
       const response = await api.get(`/projects/${projectId}/survey`);
-      setSurveys(response.data);
+      setSurveys(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching surveys:', error);
       toast.error('Failed to load site surveys');

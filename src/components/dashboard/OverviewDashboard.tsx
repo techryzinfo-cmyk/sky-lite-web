@@ -19,12 +19,16 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/context/AuthContext';
 
 export const OverviewDashboard = () => {
+  const { isAuthenticated } = useAuth();
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+    
     const fetchData = async () => {
       try {
         const res = await api.get('/projects');

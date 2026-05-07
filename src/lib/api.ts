@@ -1,4 +1,5 @@
 import axios from 'axios';
+import Cookies from 'js-cookie';
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
@@ -11,7 +12,7 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token') || Cookies.get('token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -40,6 +41,7 @@ api.interceptors.response.use(
 
         const { token } = response.data;
         localStorage.setItem('token', token);
+        Cookies.set('token', token, { expires: 7 }); // Sync cookie
 
         originalRequest.headers.Authorization = `Bearer ${token}`;
         return api(originalRequest);
@@ -49,6 +51,7 @@ api.interceptors.response.use(
           localStorage.removeItem('token');
           localStorage.removeItem('refreshToken');
           localStorage.removeItem('user');
+          Cookies.remove('token');
           window.location.href = '/login';
         }
         return Promise.reject(refreshError);
