@@ -60,6 +60,14 @@ export const DPRTab: React.FC<DPRTabProps> = ({ projectId }) => {
 
   const sortedDates = Object.keys(groupedReports).sort((a, b) => b.localeCompare(a));
 
+  const latestProgress = reports.length > 0
+    ? Math.max(...reports.map(r => r.progressPercent || 0))
+    : 0;
+  const activeDays = Object.keys(groupedReports).length;
+  const avgProgress = reports.length > 0
+    ? Math.round(reports.reduce((s, r) => s + (r.progressPercent || 0), 0) / reports.length)
+    : 0;
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
@@ -97,6 +105,25 @@ export const DPRTab: React.FC<DPRTabProps> = ({ projectId }) => {
           </button>
         </div>
       </div>
+
+      {reports.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: 'Latest Progress', value: `${latestProgress}%`, icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50' },
+            { label: 'Avg Progress', value: `${avgProgress}%`, icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50' },
+            { label: 'Active Days', value: activeDays, icon: Calendar, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+            { label: 'Total Reports', value: reports.length, icon: BarChart, color: 'text-amber-600', bg: 'bg-amber-50' },
+          ].map((s, i) => (
+            <GlassCard key={i} className="p-5 border-gray-200" gradient>
+              <div className={`inline-flex p-2.5 rounded-xl ${s.bg} mb-3`}>
+                <s.icon className={`w-4 h-4 ${s.color}`} />
+              </div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{s.label}</p>
+              <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
+            </GlassCard>
+          ))}
+        </div>
+      )}
 
       <div className="relative space-y-12">
         <div className="absolute left-8 md:left-12 top-2 bottom-0 w-px bg-gradient-to-b from-blue-400 via-gray-200 to-transparent" />

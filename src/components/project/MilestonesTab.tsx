@@ -8,13 +8,14 @@ import {
   Loader2,
   Target,
   Flag,
-  MoreVertical,
   X,
   CheckCircle2,
   Circle,
   ChevronDown,
   ChevronUp,
   Trash2,
+  LayoutGrid,
+  AlignLeft,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
@@ -32,6 +33,7 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [togglingTask, setTogglingTask] = useState<string | null>(null);
+  const [view, setView] = useState<'cards' | 'gantt'>('cards');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -141,16 +143,133 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
           <h3 className="text-xl font-bold text-gray-900">Project Milestones</h3>
           <p className="text-sm text-slate-500 mt-1">Key targets and critical path objectives.</p>
         </div>
-        <button
-          onClick={openModal}
-          className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20"
-        >
-          <Plus className="w-4 h-4" />
-          <span>New Milestone</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          <div className="flex p-1 bg-gray-100 border border-gray-200 rounded-xl">
+            <button
+              onClick={() => setView('cards')}
+              className={cn('p-1.5 rounded-lg transition-all', view === 'cards' ? 'bg-white shadow text-blue-600' : 'text-slate-400 hover:text-gray-700')}
+              title="Card view"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setView('gantt')}
+              className={cn('p-1.5 rounded-lg transition-all', view === 'gantt' ? 'bg-white shadow text-blue-600' : 'text-slate-400 hover:text-gray-700')}
+              title="Timeline view"
+            >
+              <AlignLeft className="w-4 h-4" />
+            </button>
+          </div>
+          <button
+            onClick={openModal}
+            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20"
+          >
+            <Plus className="w-4 h-4" />
+            <span>New Milestone</span>
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {view === 'gantt' && (() => {
+        const withDates = milestones.filter(m => m.dueDate || m.targetDate);
+        if (withDates.length === 0) {
+          return (
+            <div className="py-16 text-center border-2 border-dashed border-gray-200 rounded-3xl">
+              <Calendar className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+              <p className="text-slate-500 font-medium">No milestones with due dates to display on the timeline.</p>
+            </div>
+          );
+        }
+        const dates = withDates.map(m => new Date(m.dueDate || m.targetDate).getTime());
+        const starts = milestones.map(m => new Date(m.createdAt).getTime());
+        const rangeStart = Math.min(...starts);
+        const rangeEnd = Math.max(...dates);
+        const totalMs = rangeEnd - rangeStart || 1;
+
+        const months: string[] = [];
+        const cur = new Date(rangeStart);
+        cur.setDate(1);
+        while (cur.getTime() <= rangeEnd) {
+          months.push(cur.toLocaleString('default', { month: 'short', year: '2-digit' }));
+          cur.setMonth(cur.getMonth() + 1);
+        }
+
+        const statusColors: Record<string, string> = {
+          Completed: 'bg-emerald-500',
+          Delayed: 'bg-red-500',
+          'On Hold': 'bg-amber-500',
+          'In Progress': 'bg-blue-500',
+          Pending: 'bg-slate-400',
+        };
+
+        return (
+          <GlassCard className="p-6 border-gray-200 overflow-hidden" gradient>
+            <div className="overflow-x-auto">
+              <div style={{ minWidth: '600px' }}>
+                {/* Month axis */}
+                <div className="flex mb-4 pl-[200px]">
+                  {months.map((m, i) => (
+                    <div key={i} className="flex-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-l border-gray-200 pl-1">
+                      {m}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="space-y-3">
+                  {milestones.map((milestone) => {
+                    const start = new Date(milestone.createdAt).getTime();
+                    const end = milestone.dueDate || milestone.targetDate
+                      ? new Date(milestone.dueDate || milestone.targetDate).getTime()
+                      : start + totalMs * 0.1;
+                    const leftPct = ((start - rangeStart) / totalMs) * 100;
+                    const widthPct = Math.max(((end - start) / totalMs) * 100, 1.5);
+                    const color = statusColors[milestone.status] || 'bg-slate-400';
+                    const completedTasks = milestone.tasks?.filter((t: any) => t.isCompleted).length || 0;
+                    const totalTasks = milestone.tasks?.length || 0;
+
+                    return (
+                      <div key={milestone._id} className="flex items-center gap-4">
+                        <div className="w-[196px] shrink-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{milestone.name || milestone.title}</p>
+                          <p className="text-[10px] text-slate-500">
+                            {milestone.dueDate || milestone.targetDate
+                              ? new Date(milestone.dueDate || milestone.targetDate).toLocaleDateString()
+                              : 'No date'}
+                          </p>
+                        </div>
+                        <div className="flex-1 relative h-8 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                          <div
+                            className={cn('absolute h-full rounded-lg flex items-center px-2', color)}
+                            style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
+                          >
+                            {widthPct > 8 && (
+                              <span className="text-[10px] text-white font-bold truncate">
+                                {totalTasks > 0 ? `${completedTasks}/${totalTasks}` : milestone.status}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Legend */}
+                <div className="flex items-center space-x-4 mt-6 pt-4 border-t border-gray-100">
+                  {Object.entries(statusColors).map(([status, color]) => (
+                    <div key={status} className="flex items-center space-x-1.5">
+                      <div className={cn('w-3 h-3 rounded-sm', color)} />
+                      <span className="text-[10px] font-semibold text-slate-500">{status}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </GlassCard>
+        );
+      })()}
+
+      {view === 'cards' && <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {milestones.map((milestone) => {
           const completedTasks = milestone.tasks?.filter((t: any) => t.isCompleted).length || 0;
           const totalTasks = milestone.tasks?.length || 0;
@@ -274,7 +393,7 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
             </button>
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Create Milestone Modal */}
       <AnimatePresence>

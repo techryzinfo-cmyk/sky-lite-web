@@ -3,25 +3,29 @@
 import React, { useState, useEffect } from 'react';
 import {
   Briefcase,
-  CheckSquare,
-  AlertCircle,
   TrendingUp,
   DollarSign,
-  Clock,
   ArrowUpRight,
   ChevronRight,
   Activity,
   Layers,
   BarChart3,
-  PieChart
+  Target,
+  CreditCard,
+  Package,
+  AlertTriangle,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 
 export const OverviewDashboard = () => {
   const [projects, setProjects] = useState<any[]>([]);
+  const [milestones, setMilestones] = useState<any[]>([]);
+  const [issues, setIssues] = useState<any[]>([]);
+  const [materials, setMaterials] = useState<{ requested: number; received: number; pending: number }>({ requested: 0, received: 0, pending: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,6 +33,22 @@ export const OverviewDashboard = () => {
       try {
         const res = await api.get('/projects');
         setProjects(res.data);
+        const first5 = res.data.slice(0, 5);
+        const [msResults, issueResults, materialResults] = await Promise.all([
+          Promise.allSettled(first5.map((p: any) => api.get(`/projects/${p._id}/milestones`))),
+          Promise.allSettled(first5.map((p: any) => api.get(`/projects/${p._id}/issues`))),
+          Promise.allSettled(first5.map((p: any) => api.get(`/projects/${p._id}/material-requests`))),
+        ]);
+        const allMs = msResults.flatMap(r => r.status === 'fulfilled' ? r.value.data : []);
+        const allIssues = issueResults.flatMap(r => r.status === 'fulfilled' ? r.value.data : []);
+        const allMrReqs = materialResults.flatMap(r => r.status === 'fulfilled' ? r.value.data : []);
+        setMilestones(allMs);
+        setIssues(allIssues);
+        setMaterials({
+          requested: allMrReqs.length,
+          received: allMrReqs.filter((m: any) => m.status === 'Delivered' || m.status === 'Received').length,
+          pending: allMrReqs.filter((m: any) => m.status === 'Pending' || m.status === 'Approved').length,
+        });
       } catch (error) {
         console.error('Dashboard fetch error:', error);
       } finally {
@@ -38,38 +58,44 @@ export const OverviewDashboard = () => {
     fetchData();
   }, []);
 
+  const totalBudget = projects.reduce((acc, p) => acc + (p.budgetHistory?.[p.budgetHistory?.length - 1]?.amount || 0), 0);
+  const completedMs = milestones.filter(m => m.status === 'Completed').length;
+  const msCompletionPct = milestones.length > 0 ? Math.round((completedMs / milestones.length) * 100) : 0;
+
   const stats = [
     {
       name: 'Active Projects',
-      value: projects.filter(p => p.status === 'In Progress' || p.status === 'Execution').length.toString(),
+      value: projects.filter(p => p.status === 'In Progress' || p.status === 'Planning').length.toString(),
       icon: Briefcase,
       color: 'text-blue-600',
       bg: 'bg-blue-100',
-      trend: '+12% from last month'
+      trend: `${projects.length} total projects`
     },
     {
-      name: 'Total Budget Managed',
-      value: `₹${(projects.reduce((acc, p) => acc + (p.budgetHistory?.[0]?.amount || 0), 0) / 1000000).toFixed(1)}M`,
+      name: 'Total Budget',
+      value: totalBudget >= 1_000_000
+        ? `₹${(totalBudget / 1_000_000).toFixed(1)}M`
+        : `₹${(totalBudget / 1_000).toFixed(0)}K`,
       icon: DollarSign,
       color: 'text-emerald-600',
       bg: 'bg-emerald-100',
-      trend: 'Across all active sites'
+      trend: 'Across all projects'
     },
     {
-      name: 'Critical Blockers',
-      value: '14',
-      icon: AlertCircle,
-      color: 'text-red-600',
-      bg: 'bg-red-100',
-      trend: 'Requires immediate action'
-    },
-    {
-      name: 'Avg. Progress',
-      value: '68%',
-      icon: TrendingUp,
+      name: 'Milestones Done',
+      value: `${completedMs}/${milestones.length}`,
+      icon: Target,
       color: 'text-purple-600',
       bg: 'bg-purple-100',
-      trend: 'On schedule'
+      trend: `${msCompletionPct}% completion rate`
+    },
+    {
+      name: 'Completed',
+      value: projects.filter(p => p.status === 'Completed').length.toString(),
+      icon: TrendingUp,
+      color: 'text-amber-600',
+      bg: 'bg-amber-100',
+      trend: 'Projects handed over'
     },
   ];
 
@@ -192,39 +218,197 @@ export const OverviewDashboard = () => {
         </GlassCard>
       </div>
 
-      {/* Quick Access Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        <GlassCard className="p-6 border-gray-200 group hover:border-emerald-500/30 transition-all cursor-pointer" gradient>
-          <div className="flex items-center justify-between mb-6">
-            <div className="p-3 rounded-2xl bg-emerald-100 border border-emerald-200">
-              <Layers className="w-6 h-6 text-emerald-600" />
+      {/* Milestone Completion + Finance + Quick Links */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Milestone Completion Widget [13.5] */}
+        <GlassCard className="p-6 border-gray-200" gradient>
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center space-x-3">
+              <div className="p-2.5 rounded-xl bg-purple-100 border border-purple-200">
+                <Target className="w-5 h-5 text-purple-600" />
+              </div>
+              <h4 className="text-base font-bold text-gray-900">Milestones</h4>
             </div>
-            <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all" />
+            <span className="text-2xl font-black text-purple-600">{msCompletionPct}%</span>
           </div>
-          <h4 className="text-lg font-bold text-gray-900 mb-1">BOQ Compliance</h4>
-          <p className="text-sm text-slate-500">Track variance between estimated and actual quantities.</p>
+          <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-200 mb-4">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${msCompletionPct}%` }}
+              transition={{ duration: 1 }}
+              className="h-full bg-purple-500 rounded-full"
+            />
+          </div>
+          <div className="space-y-2">
+            {[
+              { label: 'Completed', count: completedMs, color: 'text-emerald-600' },
+              { label: 'In Progress', count: milestones.filter(m => m.status === 'In Progress').length, color: 'text-blue-600' },
+              { label: 'Delayed', count: milestones.filter(m => m.status === 'Delayed').length, color: 'text-red-600' },
+            ].map(row => (
+              <div key={row.label} className="flex items-center justify-between text-xs">
+                <span className="text-slate-500 font-semibold">{row.label}</span>
+                <span className={cn('font-black', row.color)}>{row.count}</span>
+              </div>
+            ))}
+          </div>
         </GlassCard>
 
-        <GlassCard className="p-6 border-gray-200 group hover:border-amber-500/30 transition-all cursor-pointer" gradient>
-          <div className="flex items-center justify-between mb-6">
-            <div className="p-3 rounded-2xl bg-amber-100 border border-amber-200">
-              <CheckSquare className="w-6 h-6 text-amber-600" />
+        {/* Financial Summary [13.3] */}
+        <GlassCard className="p-6 border-gray-200" gradient>
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center space-x-3">
+              <div className="p-2.5 rounded-xl bg-emerald-100 border border-emerald-200">
+                <CreditCard className="w-5 h-5 text-emerald-600" />
+              </div>
+              <h4 className="text-base font-bold text-gray-900">Financials</h4>
             </div>
-            <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-amber-500 group-hover:translate-x-1 transition-all" />
+            <Link href="/finance" className="text-[10px] font-black text-blue-600 hover:text-blue-500 uppercase tracking-widest transition-colors">
+              View All →
+            </Link>
           </div>
-          <h4 className="text-lg font-bold text-gray-900 mb-1">Handover Readiness</h4>
-          <p className="text-sm text-slate-500">View snagging resolution status across all completion stages.</p>
+          <div className="space-y-3">
+            {projects.slice(0, 4).map(p => {
+              const budget = p.budgetHistory?.[p.budgetHistory?.length - 1]?.amount || 0;
+              return (
+                <div key={p._id} className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-900 truncate max-w-[140px]">{p.name}</span>
+                  <span className="text-xs font-black text-emerald-600 shrink-0">
+                    ₹{budget >= 1_000_000 ? `${(budget / 1_000_000).toFixed(1)}M` : `${(budget / 1_000).toFixed(0)}K`}
+                  </span>
+                </div>
+              );
+            })}
+            {projects.length === 0 && (
+              <p className="text-xs text-slate-400 text-center py-4">No projects yet.</p>
+            )}
+          </div>
         </GlassCard>
 
-        <GlassCard className="p-6 border-gray-200 group hover:border-purple-500/30 transition-all cursor-pointer" gradient>
-          <div className="flex items-center justify-between mb-6">
-            <div className="p-3 rounded-2xl bg-purple-100 border border-purple-200">
-              <PieChart className="w-6 h-6 text-purple-600" />
+        {/* Quick Links */}
+        <GlassCard className="p-6 border-gray-200" gradient>
+          <div className="flex items-center space-x-3 mb-5">
+            <div className="p-2.5 rounded-xl bg-blue-100 border border-blue-200">
+              <Layers className="w-5 h-5 text-blue-600" />
             </div>
-            <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-purple-500 group-hover:translate-x-1 transition-all" />
+            <h4 className="text-base font-bold text-gray-900">Quick Access</h4>
           </div>
-          <h4 className="text-lg font-bold text-gray-900 mb-1">Financial Intelligence</h4>
-          <p className="text-sm text-slate-500">Consolidated cash flow and payment release cycles.</p>
+          <div className="space-y-2">
+            {[
+              { label: 'All Projects', href: '/projects', color: 'text-blue-700 bg-blue-50 border-blue-100 hover:bg-blue-100' },
+              { label: 'Finance Overview', href: '/finance', color: 'text-emerald-700 bg-emerald-50 border-emerald-100 hover:bg-emerald-100' },
+              { label: 'Templates', href: '/templates', color: 'text-purple-700 bg-purple-50 border-purple-100 hover:bg-purple-100' },
+              { label: 'User Management', href: '/users', color: 'text-amber-700 bg-amber-50 border-amber-100 hover:bg-amber-100' },
+            ].map(link => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn('flex items-center justify-between px-4 py-2.5 rounded-xl border text-xs font-bold transition-all', link.color)}
+              >
+                <span>{link.label}</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            ))}
+          </div>
+        </GlassCard>
+      </div>
+
+      {/* Material Flow + Issue Heatmap [13.2 / 13.4] */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Material Flow Widget [13.2] */}
+        <GlassCard className="p-6 border-gray-200" gradient>
+          <div className="flex items-center space-x-3 mb-5">
+            <div className="p-2.5 rounded-xl bg-amber-100 border border-amber-200">
+              <Package className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <h4 className="text-base font-bold text-gray-900">Material Flow</h4>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black mt-0.5">Across first 5 projects</p>
+            </div>
+          </div>
+          <div className="space-y-4">
+            {[
+              { label: 'Total Requested', value: materials.requested, color: 'bg-blue-500', pct: 100 },
+              { label: 'Received / Delivered', value: materials.received, color: 'bg-emerald-500', pct: materials.requested > 0 ? Math.round((materials.received / materials.requested) * 100) : 0 },
+              { label: 'Pending Delivery', value: materials.pending, color: 'bg-amber-500', pct: materials.requested > 0 ? Math.round((materials.pending / materials.requested) * 100) : 0 },
+            ].map(row => (
+              <div key={row.label} className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-600 font-semibold">{row.label}</span>
+                  <span className="font-black text-gray-900">{row.value}</span>
+                </div>
+                <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-200">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${row.pct}%` }}
+                    transition={{ duration: 0.8 }}
+                    className={cn('h-full rounded-full', row.color)}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+
+        {/* Issue & Snag Heatmap [13.4] */}
+        <GlassCard className="p-6 border-gray-200" gradient>
+          <div className="flex items-center space-x-3 mb-5">
+            <div className="p-2.5 rounded-xl bg-red-100 border border-red-200">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+            </div>
+            <div>
+              <h4 className="text-base font-bold text-gray-900">Issue Heatmap</h4>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black mt-0.5">By priority × status</p>
+            </div>
+          </div>
+          {issues.length === 0 ? (
+            <div className="py-8 text-center">
+              <p className="text-sm text-slate-400">No issues tracked yet.</p>
+            </div>
+          ) : (() => {
+            const priorities = ['Critical', 'High', 'Medium', 'Low'];
+            const statuses = ['Open', 'In Progress', 'Escalated', 'Resolved'];
+            const heatIntensity = (count: number, max: number) => {
+              if (count === 0) return 'bg-gray-100 text-gray-300';
+              const pct = count / max;
+              if (pct > 0.6) return 'bg-red-500 text-white';
+              if (pct > 0.3) return 'bg-orange-400 text-white';
+              if (pct > 0) return 'bg-amber-200 text-amber-800';
+              return 'bg-gray-100 text-gray-300';
+            };
+            const matrix = priorities.map(p => statuses.map(s => issues.filter(i => i.priority === p && i.status === s).length));
+            const maxVal = Math.max(1, ...matrix.flat());
+            return (
+              <div>
+                <div className="grid gap-1" style={{ gridTemplateColumns: `80px repeat(${statuses.length}, 1fr)` }}>
+                  <div />
+                  {statuses.map(s => (
+                    <div key={s} className="text-[9px] font-bold text-slate-500 text-center pb-1 truncate">{s}</div>
+                  ))}
+                  {priorities.map((p, pi) => (
+                    <React.Fragment key={p}>
+                      <div className="text-[10px] font-bold text-gray-700 flex items-center pr-1">{p}</div>
+                      {statuses.map((s, si) => {
+                        const count = matrix[pi][si];
+                        return (
+                          <div key={s} className={cn('rounded-lg h-9 flex items-center justify-center text-xs font-black transition-all', heatIntensity(count, maxVal))}>
+                            {count || '–'}
+                          </div>
+                        );
+                      })}
+                    </React.Fragment>
+                  ))}
+                </div>
+                <div className="flex items-center space-x-3 mt-4 pt-3 border-t border-gray-100">
+                  {[['bg-gray-100', 'None'], ['bg-amber-200', 'Low'], ['bg-orange-400', 'Med'], ['bg-red-500', 'High']].map(([c, l]) => (
+                    <div key={l} className="flex items-center space-x-1">
+                      <div className={cn('w-3 h-3 rounded-sm', c)} />
+                      <span className="text-[10px] text-slate-500 font-semibold">{l}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </GlassCard>
       </div>
     </div>

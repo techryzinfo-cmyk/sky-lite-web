@@ -20,12 +20,15 @@ import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { TemplateModal } from './TemplateModal';
+import { TemplateDetailModal } from './TemplateDetailModal';
+import { Pagination, usePagination } from '@/components/ui/Pagination';
 
 export const TemplateList = () => {
   const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [detailTemplateId, setDetailTemplateId] = useState<string | null>(null);
 
   const toast = useToast();
 
@@ -48,6 +51,8 @@ export const TemplateList = () => {
   const filteredTemplates = templates.filter(t =>
     t.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const { currentPage, totalPages, paginated: pagedTemplates, setCurrentPage } = usePagination(filteredTemplates, 9);
 
   if (loading) {
     return (
@@ -82,8 +87,8 @@ export const TemplateList = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredTemplates.map((template) => (
-          <GlassCard key={template._id} className="p-0 border-gray-200 group hover:border-blue-500/50 transition-all cursor-pointer overflow-hidden" gradient>
+        {pagedTemplates.map((template) => (
+          <GlassCard key={template._id} onClick={() => setDetailTemplateId(template._id)} className="p-0 border-gray-200 group hover:border-blue-500/50 transition-all cursor-pointer overflow-hidden" gradient>
             <div className="h-32 bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center relative">
               <Layers className="w-12 h-12 text-blue-400 group-hover:scale-110 transition-transform duration-500" />
               <div className="absolute top-4 right-4">
@@ -123,10 +128,16 @@ export const TemplateList = () => {
               </div>
 
               <div className="mt-6 flex space-x-3">
-                <button className="flex-1 py-3 px-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-xs font-bold hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all">
-                  Use Template
+                <button
+                  onClick={(e) => { e.stopPropagation(); setDetailTemplateId(template._id); }}
+                  className="flex-1 py-3 px-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-xs font-bold hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all"
+                >
+                  View Details
                 </button>
-                <button className="p-3 rounded-xl bg-gray-50 border border-gray-200 text-slate-400 hover:text-gray-900 transition-all">
+                <button
+                  onClick={(e) => e.stopPropagation()}
+                  className="p-3 rounded-xl bg-gray-50 border border-gray-200 text-slate-400 hover:text-gray-900 transition-all"
+                >
                   <Copy className="w-4 h-4" />
                 </button>
               </div>
@@ -143,10 +154,18 @@ export const TemplateList = () => {
         )}
       </div>
 
+      <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+
       <TemplateModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSuccess={fetchTemplates}
+      />
+
+      <TemplateDetailModal
+        isOpen={!!detailTemplateId}
+        onClose={() => setDetailTemplateId(null)}
+        templateId={detailTemplateId}
       />
     </div>
   );

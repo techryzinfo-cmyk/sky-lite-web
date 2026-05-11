@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, Calendar, Layout, Info, UserPlus, Shield } from 'lucide-react';
+import { X, Loader2, Calendar, Layout, Info, UserPlus, Layers, Check } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { useToast } from '@/context/ToastContext';
 import api from '@/lib/api';
@@ -30,6 +30,8 @@ const emptyForm = {
 
 export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose, onSuccess, initialData, projectId }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const toast = useToast();
   const isEditing = !!initialData && !!projectId;
 
@@ -37,6 +39,10 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
 
   React.useEffect(() => {
     if (isOpen) {
+      if (!isEditing) {
+        api.get('/templates').then(r => setTemplates(r.data)).catch(() => {});
+      }
+      setSelectedTemplateId(null);
       if (initialData) {
         setFormData({
           name: initialData.name || '',
@@ -66,7 +72,9 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
         await api.patch(`/projects/${projectId}`, editPayload);
         toast.success('Project updated successfully!');
       } else {
-        await api.post('/projects', formData);
+        const payload: any = { ...formData };
+        if (selectedTemplateId) payload.templateId = selectedTemplateId;
+        await api.post('/projects', payload);
         toast.success('Project created successfully!');
       }
       onSuccess();
@@ -109,6 +117,44 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-8">
+                  {/* Template Picker (create mode only) */}
+                  {!isEditing && templates.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="text-xs font-bold text-purple-600 uppercase tracking-wider flex items-center space-x-2">
+                        <Layers className="w-3 h-3" />
+                        <span>Start from Template (Optional)</span>
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {templates.slice(0, 6).map(t => (
+                          <button
+                            key={t._id}
+                            type="button"
+                            onClick={() => {
+                              const next = selectedTemplateId === t._id ? null : t._id;
+                              setSelectedTemplateId(next);
+                              if (next && !formData.name) {
+                                setFormData(f => ({ ...f, name: t.name, description: t.description || '' }));
+                              }
+                            }}
+                            className={`flex items-center space-x-2 px-3 py-2 rounded-xl border text-xs font-bold transition-all ${
+                              selectedTemplateId === t._id
+                                ? 'bg-purple-600 border-purple-600 text-white'
+                                : 'bg-gray-50 border-gray-200 text-slate-600 hover:border-purple-400 hover:text-purple-700'
+                            }`}
+                          >
+                            {selectedTemplateId === t._id && <Check className="w-3 h-3" />}
+                            <span>{t.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                      {selectedTemplateId && (
+                        <p className="text-[11px] text-purple-600 font-semibold">
+                          Template BOQ will be applied after project creation.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {/* Basic Info */}
                   <div className="space-y-4">
                     <h3 className="text-xs font-bold text-blue-600 uppercase tracking-wider flex items-center space-x-2">

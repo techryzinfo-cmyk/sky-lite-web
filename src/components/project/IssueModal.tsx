@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, AlertTriangle, User, Flag, Tag, MessageSquare, Info } from 'lucide-react';
+import { X, Loader2, AlertTriangle, Bell } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useToast } from '@/context/ToastContext';
 import api from '@/lib/api';
@@ -24,6 +24,7 @@ export const IssueModal: React.FC<IssueModalProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
+  const [notifyTeam, setNotifyTeam] = useState(true);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -56,7 +57,8 @@ export const IssueModal: React.FC<IssueModalProps> = ({
     try {
       await api.post(`/projects/${projectId}/issues`, {
         ...formData,
-        category: type === 'Snag' ? 'Site' : formData.category
+        category: type === 'Snag' ? 'Site' : formData.category,
+        notifyTeam,
       });
       toast.success(`${type} reported successfully!`);
       onSuccess();
@@ -181,7 +183,18 @@ export const IssueModal: React.FC<IssueModalProps> = ({
                     />
                   </div>
 
-                  <div className="pt-4 flex space-x-4">
+                  <label className="flex items-center space-x-3 p-3 rounded-xl bg-amber-50 border border-amber-200 cursor-pointer group">
+                    <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${notifyTeam ? 'bg-amber-500 border-amber-500' : 'border-gray-300'}`}>
+                      {notifyTeam && <Bell className="w-3 h-3 text-white" />}
+                      <input type="checkbox" className="hidden" checked={notifyTeam} onChange={e => setNotifyTeam(e.target.checked)} />
+                    </div>
+                    <div>
+                      <span className="text-sm font-semibold text-amber-800">Notify project team</span>
+                      <p className="text-[10px] text-amber-600">Send in-app alert to all project members when this {type.toLowerCase()} is reported.</p>
+                    </div>
+                  </label>
+
+                  <div className="pt-2 flex space-x-4">
                     <button
                       type="button"
                       onClick={onClose}
