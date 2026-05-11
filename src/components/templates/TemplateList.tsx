@@ -54,6 +54,17 @@ export const TemplateList = () => {
 
   const { currentPage, totalPages, paginated: pagedTemplates, setCurrentPage } = usePagination(filteredTemplates, 9);
 
+  const handleDuplicate = async (e: React.MouseEvent, templateId: string) => {
+    e.stopPropagation();
+    try {
+      await api.post(`/templates/${templateId}/duplicate`);
+      toast.success('Template duplicated');
+      fetchTemplates();
+    } catch {
+      toast.error('Failed to duplicate template');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-40">
@@ -135,8 +146,9 @@ export const TemplateList = () => {
                   View Details
                 </button>
                 <button
-                  onClick={(e) => e.stopPropagation()}
-                  className="p-3 rounded-xl bg-gray-50 border border-gray-200 text-slate-400 hover:text-gray-900 transition-all"
+                  onClick={(e) => handleDuplicate(e, template._id)}
+                  title="Duplicate template"
+                  className="p-3 rounded-xl bg-gray-50 border border-gray-200 text-slate-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-all"
                 >
                   <Copy className="w-4 h-4" />
                 </button>

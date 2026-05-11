@@ -194,6 +194,62 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
         </GlassCard>
       </div>
 
+      {/* Budget Trend Spark Chart */}
+      {project.budgetHistory && project.budgetHistory.length >= 2 && (() => {
+        const history = [...project.budgetHistory].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        const W = 560, H = 80, PAD = 8;
+        const maxV = Math.max(...history.map(h => h.amount));
+        const minV = Math.min(...history.map(h => h.amount));
+        const range = maxV - minV || 1;
+        const n = history.length;
+        const xOf = (i: number) => PAD + (i / (n - 1)) * (W - PAD * 2);
+        const yOf = (v: number) => PAD + ((maxV - v) / range) * (H - PAD * 2);
+        const points = history.map((h, i) => `${xOf(i)},${yOf(h.amount)}`).join(' ');
+        const areaPath = `M${xOf(0)},${yOf(history[0].amount)} ` +
+          history.slice(1).map((h, i) => `L${xOf(i + 1)},${yOf(h.amount)}`).join(' ') +
+          ` L${xOf(n - 1)},${H - PAD} L${xOf(0)},${H - PAD} Z`;
+        const fmt = (v: number) => v >= 1_000_000 ? `₹${(v / 1_000_000).toFixed(1)}M` : `₹${(v / 1_000).toFixed(0)}K`;
+        return (
+          <GlassCard className="p-6 border-gray-200" gradient>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 rounded-xl bg-blue-50 border border-blue-200">
+                  <TrendingUp className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-gray-900">Budget Trend</h4>
+                  <p className="text-[10px] text-slate-500">{history.length} revisions recorded</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-slate-400 uppercase tracking-wider">Current</p>
+                <p className="text-sm font-black text-emerald-600">{fmt(currentBudget)}</p>
+              </div>
+            </div>
+            <div className="w-full">
+              <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 80 }}>
+                <defs>
+                  <linearGradient id="budgetGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.2" />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <path d={areaPath} fill="url(#budgetGrad)" />
+                <polyline points={points} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                {history.map((h, i) => (
+                  <g key={i}>
+                    <circle cx={xOf(i)} cy={yOf(h.amount)} r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
+                    {(i === 0 || i === n - 1) && (
+                      <text x={xOf(i)} y={yOf(h.amount) - 8} textAnchor={i === 0 ? 'start' : 'end'} fontSize="9" fill="#64748b" fontWeight="700">{fmt(h.amount)}</text>
+                    )}
+                  </g>
+                ))}
+              </svg>
+            </div>
+          </GlassCard>
+        );
+      })()}
+
       {/* Budget History */}
       <GlassCard className="p-8 border-gray-200" gradient>
         <div className="flex items-center space-x-3 mb-8">

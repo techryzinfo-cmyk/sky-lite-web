@@ -189,7 +189,13 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
             </GlassCard>
             <GlassCard className="p-4 border-gray-200">
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Low Stock Items</p>
-              <p className="text-2xl font-black text-red-600 mt-1">0</p>
+              <p className="text-2xl font-black text-red-600 mt-1">
+                {materials.filter(m => {
+                  const stock = m.currentStock ?? ((m.totalReceived || 0) - (m.totalConsumed || 0));
+                  const min = m.minimumStock ?? m.minStock ?? 0;
+                  return stock <= min && stock >= 0;
+                }).length}
+              </p>
             </GlassCard>
             <GlassCard className="p-4 border-gray-200">
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Total Received</p>
@@ -287,10 +293,21 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex flex-col items-end">
-                          <span className="text-lg font-black text-gray-900">{(material.totalReceived || 0) - (material.totalConsumed || 0)}</span>
-                          <div className="h-1 w-16 bg-gray-200 rounded-full overflow-hidden mt-1">
-                            <div className="h-full bg-blue-500 w-full" />
-                          </div>
+                          {(() => {
+                            const received = material.totalReceived || 0;
+                            const consumed = material.totalConsumed || 0;
+                            const stock = received - consumed;
+                            const pct = received > 0 ? Math.max(0, Math.min(100, (stock / received) * 100)) : 0;
+                            const isLow = stock <= (material.minimumStock ?? material.minStock ?? 0) && stock >= 0;
+                            return (
+                              <>
+                                <span className={cn('text-lg font-black', isLow ? 'text-red-600' : 'text-gray-900')}>{stock}</span>
+                                <div className="h-1 w-16 bg-gray-200 rounded-full overflow-hidden mt-1">
+                                  <div className={cn('h-full rounded-full', isLow ? 'bg-red-400' : 'bg-blue-500')} style={{ width: `${pct}%` }} />
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right">

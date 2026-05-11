@@ -121,6 +121,41 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
     });
   };
 
+  const handleExportCSV = () => {
+    const headers = ['Group', 'Item #', 'Description', 'Unit', 'Quantity', 'Unit Cost (₹)', 'Total Cost (₹)', 'Status'];
+    const rows = items.map(item => [
+      item.groupName,
+      item.itemNumber || '',
+      item.itemDescription,
+      item.unit || '',
+      item.quantity,
+      item.unitCost,
+      item.totalCost,
+      item.status,
+    ]);
+    const csv = [headers, ...rows]
+      .map(row => row.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = window.document.createElement('a');
+    a.href = url;
+    a.download = `BOQ_Export_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDeleteItem = async (item: BOQItem) => {
+    if (!window.confirm(`Delete "${item.itemDescription}"?`)) return;
+    try {
+      await api.delete(`/projects/${projectId}/boq/${item._id}`);
+      toast.success('Item deleted');
+      fetchBOQ();
+    } catch {
+      toast.error('Failed to delete item');
+    }
+  };
+
   const bulkUpdateStatus = async (status: 'Approved' | 'Rejected') => {
     setIsBulkUpdating(true);
     try {
@@ -182,9 +217,12 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
           </div>
 
           <div className="flex items-center space-x-3">
-            <button className="flex items-center space-x-2 px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-slate-500 hover:text-gray-900 transition-all">
+            <button
+              onClick={handleExportCSV}
+              className="flex items-center space-x-2 px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-slate-500 hover:text-gray-900 transition-all"
+            >
               <Download className="w-4 h-4" />
-              <span>Export</span>
+              <span>Export CSV</span>
             </button>
             <button
               onClick={() => setIsImportModalOpen(true)}
@@ -327,7 +365,11 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
-                            <button className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-100 rounded-lg transition-all">
+                            <button
+                              onClick={() => handleDeleteItem(item)}
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-100 rounded-lg transition-all"
+                              title="Delete item"
+                            >
                               <Trash2 className="w-4 h-4" />
                             </button>
                             <button
