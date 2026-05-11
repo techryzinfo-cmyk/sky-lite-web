@@ -30,7 +30,10 @@ export const UserList = () => {
   const [deletingUser, setDeletingUser] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [roleFilter, setRoleFilter] = useState<string | null>(null);
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const filterRef = useRef<HTMLDivElement>(null);
 
   const toast = useToast();
 
@@ -54,6 +57,9 @@ export const UserList = () => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setOpenMenuId(null);
+      }
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setShowFilterMenu(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -86,10 +92,15 @@ export const UserList = () => {
     setOpenMenuId(null);
   };
 
-  const filteredUsers = users.filter(u =>
-    u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const uniqueRoles = Array.from(new Set(users.map(u => typeof u.role === 'object' ? u.role?.name : u.role).filter(Boolean))) as string[];
+
+  const filteredUsers = users.filter(u => {
+    const nameMatch = u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const userRole = typeof u.role === 'object' ? u.role?.name : u.role;
+    const roleMatch = !roleFilter || userRole === roleFilter;
+    return nameMatch && roleMatch;
+  });
 
   const { currentPage, totalPages, paginated: pagedUsers, setCurrentPage } = usePagination(filteredUsers, 9);
 
@@ -117,9 +128,38 @@ export const UserList = () => {
         </div>
 
         <div className="flex items-center space-x-3">
-          <button className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-slate-400 hover:text-gray-900 transition-all">
-            <Filter className="w-5 h-5" />
-          </button>
+          <div className="relative" ref={filterRef}>
+            <button
+              onClick={() => setShowFilterMenu(v => !v)}
+              className={`p-3 border rounded-xl transition-all relative ${roleFilter ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-gray-50 border-gray-200 text-slate-400 hover:text-gray-900'}`}
+              title="Filter by role"
+            >
+              <Filter className="w-5 h-5" />
+              {roleFilter && <span className="absolute top-1 right-1 w-2 h-2 bg-blue-600 rounded-full" />}
+            </button>
+            {showFilterMenu && (
+              <div className="absolute right-0 top-full mt-2 w-44 bg-white border border-gray-200 rounded-xl shadow-lg z-30 overflow-hidden">
+                <div className="px-3 py-2 border-b border-gray-100">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Filter by Role</p>
+                </div>
+                <button
+                  onClick={() => { setRoleFilter(null); setShowFilterMenu(false); }}
+                  className={`w-full px-4 py-2.5 text-left text-sm font-semibold transition-colors ${!roleFilter ? 'text-blue-600 bg-blue-50' : 'text-slate-600 hover:bg-gray-50'}`}
+                >
+                  All Roles
+                </button>
+                {uniqueRoles.map(role => (
+                  <button
+                    key={role}
+                    onClick={() => { setRoleFilter(role); setShowFilterMenu(false); }}
+                    className={`w-full px-4 py-2.5 text-left text-sm font-semibold transition-colors ${roleFilter === role ? 'text-blue-600 bg-blue-50' : 'text-slate-600 hover:bg-gray-50'}`}
+                  >
+                    {role}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button
             onClick={() => { setEditingUser(null); setIsModalOpen(true); }}
             className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-2xl text-sm font-bold transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20"

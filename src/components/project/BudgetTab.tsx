@@ -28,6 +28,7 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [isApproverPickerOpen, setIsApproverPickerOpen] = useState(false);
+  const [expandedAuditIndex, setExpandedAuditIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     newBudget: '',
     budgetReason: '',
@@ -262,7 +263,9 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
         <div className="space-y-8 relative">
           <div className="absolute left-[21px] top-2 bottom-2 w-px bg-gray-200"></div>
 
-          {project.budgetHistory?.slice().reverse().map((entry, index) => (
+          {project.budgetHistory?.slice().reverse().map((entry, index) => {
+            const isExpanded = expandedAuditIndex === index;
+            return (
             <div key={index} className="relative pl-12">
               <div className={cn(
                 "absolute left-0 top-0 w-11 h-11 rounded-2xl border flex items-center justify-center bg-white z-10 shadow-sm",
@@ -289,18 +292,46 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
                     </div>
                     <p className="text-xs text-slate-500">Updated by <span className="text-blue-600 font-bold">{entry.updatedByName}</span> on {new Date(entry.timestamp).toLocaleDateString()} at {new Date(entry.timestamp).toLocaleTimeString()}</p>
                   </div>
-                  <button className="flex items-center space-x-1 text-xs font-bold text-slate-500 hover:text-gray-900 transition-colors">
-                    <span>View Audit</span>
-                    <ArrowUpRight className="w-3 h-3" />
+                  <button
+                    onClick={() => setExpandedAuditIndex(isExpanded ? null : index)}
+                    className="flex items-center space-x-1 text-xs font-bold text-slate-500 hover:text-gray-900 transition-colors"
+                  >
+                    <span>{isExpanded ? 'Hide Audit' : 'View Audit'}</span>
+                    <ArrowUpRight className={cn("w-3 h-3 transition-transform", isExpanded && "rotate-180")} />
                   </button>
                 </div>
 
                 <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">
                   <p className="text-sm text-slate-500 italic">"{entry.reason}"</p>
                 </div>
+
+                {isExpanded && (
+                  <div className="mt-4 p-4 rounded-xl bg-blue-50 border border-blue-100 space-y-3">
+                    <p className="text-[10px] font-black text-blue-700 uppercase tracking-widest mb-2">Audit Trail</p>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Revision Amount</p>
+                        <p className="font-black text-gray-900 mt-0.5">₹{entry.amount.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Status</p>
+                        <p className={cn("font-black mt-0.5", entry.approvalStatus === 'Approved' ? 'text-emerald-600' : 'text-amber-600')}>{entry.approvalStatus}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Requested By</p>
+                        <p className="font-bold text-blue-600 mt-0.5">{entry.updatedByName}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Timestamp</p>
+                        <p className="font-semibold text-gray-700 mt-0.5">{new Date(entry.timestamp).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </GlassCard>
       <UserPickerModal

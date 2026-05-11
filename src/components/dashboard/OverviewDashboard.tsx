@@ -148,9 +148,10 @@ export const OverviewDashboard = () => {
                 <p className="text-xs text-slate-500 uppercase tracking-widest font-black mt-0.5">Status Distribution</p>
               </div>
             </div>
-            <button className="text-[10px] font-black text-blue-600 hover:text-blue-500 uppercase tracking-[0.2em] transition-colors">
-              View Analytics
-            </button>
+            <Link href="/projects" className="text-[10px] font-black text-blue-600 hover:text-blue-500 uppercase tracking-[0.2em] transition-colors flex items-center space-x-1">
+              <span>View All</span>
+              <ArrowUpRight className="w-3 h-3" />
+            </Link>
           </div>
 
           <div className="space-y-6">

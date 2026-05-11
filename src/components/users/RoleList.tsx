@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Shield,
   ShieldPlus,
@@ -11,7 +11,9 @@ import {
   ChevronRight,
   Loader2,
   AlertTriangle,
-  Info
+  Info,
+  Pencil,
+  Trash2
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
@@ -23,6 +25,9 @@ export const RoleList = () => {
   const [roles, setRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingRole, setEditingRole] = useState<any>(null);
+  const [roleMenuId, setRoleMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const toast = useToast();
 
@@ -41,6 +46,35 @@ export const RoleList = () => {
   useEffect(() => {
     fetchRoles();
   }, []);
+
+  useEffect(() => {
+    if (!roleMenuId) return;
+    const close = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setRoleMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [roleMenuId]);
+
+  const handleDeleteRole = async (role: any) => {
+    setRoleMenuId(null);
+    if (!window.confirm(`Delete role "${role.name}"? Users with this role will be unassigned.`)) return;
+    try {
+      await api.delete(`/roles/${role._id}`);
+      toast.success(`Role "${role.name}" deleted`);
+      fetchRoles();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to delete role');
+    }
+  };
+
+  const openEdit = (role: any) => {
+    setEditingRole(role);
+    setRoleMenuId(null);
+    setIsModalOpen(true);
+  };
 
   if (loading) {
     return (
@@ -74,9 +108,32 @@ export const RoleList = () => {
               <div className="p-4 rounded-2xl bg-blue-100 border border-blue-200 group-hover:bg-blue-600 group-hover:border-blue-600 transition-all duration-500">
                 <Shield className="w-8 h-8 text-blue-600 group-hover:text-white transition-colors" />
               </div>
-              <button className="p-2 text-slate-400 hover:text-gray-900 transition-colors">
-                <MoreVertical className="w-5 h-5" />
-              </button>
+              <div className="relative" ref={roleMenuId === role._id ? menuRef : null}>
+                <button
+                  onClick={() => setRoleMenuId(roleMenuId === role._id ? null : role._id)}
+                  className="p-2 text-slate-400 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100"
+                >
+                  <MoreVertical className="w-5 h-5" />
+                </button>
+                {roleMenuId === role._id && (
+                  <div className="absolute right-0 top-9 w-40 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
+                    <button
+                      onClick={() => openEdit(role)}
+                      className="w-full flex items-center space-x-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <Pencil className="w-4 h-4 text-slate-400" />
+                      <span>Edit Role</span>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteRole(role)}
+                      className="w-full flex items-center space-x-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>Delete Role</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             <h4 className="text-2xl font-black text-gray-900 mb-2">{role.name}</h4>
@@ -105,7 +162,10 @@ export const RoleList = () => {
               )}
             </div>
 
-            <button className="w-full py-4 px-6 rounded-2xl bg-gray-50 border border-gray-200 text-sm font-bold text-slate-600 hover:bg-blue-600 hover:text-white hover:border-blue-500 transition-all active:scale-[0.98] group/btn">
+            <button
+              onClick={() => openEdit(role)}
+              className="w-full py-4 px-6 rounded-2xl bg-gray-50 border border-gray-200 text-sm font-bold text-slate-600 hover:bg-blue-600 hover:text-white hover:border-blue-500 transition-all active:scale-[0.98] group/btn"
+            >
               <span className="flex items-center justify-center space-x-2">
                 <span>Manage Permissions</span>
                 <ChevronRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-1" />
@@ -125,8 +185,9 @@ export const RoleList = () => {
 
       <RoleModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => { setIsModalOpen(false); setEditingRole(null); }}
         onSuccess={fetchRoles}
+        initialData={editingRole}
       />
     </div>
   );

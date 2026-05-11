@@ -37,6 +37,8 @@ export const PlansTab: React.FC<PlansTabProps> = ({ projectId }) => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [folderMenuId, setFolderMenuId] = useState<string | null>(null);
+  const [renamingFolder, setRenamingFolder] = useState<{ _id: string; name: string } | null>(null);
 
   const toast = useToast();
 
@@ -55,6 +57,38 @@ export const PlansTab: React.FC<PlansTabProps> = ({ projectId }) => {
   useEffect(() => {
     fetchFolders();
   }, [projectId]);
+
+  useEffect(() => {
+    if (!folderMenuId) return;
+    const close = () => setFolderMenuId(null);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [folderMenuId]);
+
+  const handleDeleteFolder = async (id: string) => {
+    setFolderMenuId(null);
+    if (!window.confirm('Delete this folder and all its documents? This cannot be undone.')) return;
+    try {
+      await api.delete(`/projects/${projectId}/folders/${id}`);
+      toast.success('Folder deleted');
+      fetchFolders();
+    } catch {
+      toast.error('Failed to delete folder');
+    }
+  };
+
+  const handleRenameFolder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!renamingFolder) return;
+    try {
+      await api.patch(`/projects/${projectId}/folders/${renamingFolder._id}`, { name: renamingFolder.name });
+      toast.success('Folder renamed');
+      setRenamingFolder(null);
+      fetchFolders();
+    } catch {
+      toast.error('Failed to rename folder');
+    }
+  };
 
   const handleCreateFolder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,9 +167,30 @@ export const PlansTab: React.FC<PlansTabProps> = ({ projectId }) => {
               <div className="p-3 rounded-2xl bg-blue-100 border border-blue-200">
                 <Folder className="w-6 h-6 text-blue-600" />
               </div>
-              <button className="p-2 text-slate-400 hover:text-gray-900 transition-colors">
-                <MoreVertical className="w-5 h-5" />
-              </button>
+              <div className="relative">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setFolderMenuId(folderMenuId === folder._id ? null : folder._id); }}
+                  className="p-2 text-slate-400 hover:text-gray-900 transition-colors"
+                >
+                  <MoreVertical className="w-5 h-5" />
+                </button>
+                {folderMenuId === folder._id && (
+                  <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setRenamingFolder({ _id: folder._id, name: folder.name }); setFolderMenuId(null); }}
+                      className="w-full px-4 py-2.5 text-left text-sm font-semibold text-slate-600 hover:bg-gray-50 transition-colors"
+                    >
+                      Rename
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder._id); }}
+                      className="w-full px-4 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             <h4 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">{folder.name}</h4>
@@ -165,6 +220,46 @@ export const PlansTab: React.FC<PlansTabProps> = ({ projectId }) => {
           </div>
         )}
       </div>
+
+      {renamingFolder && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setRenamingFolder(null)} />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-md relative z-10"
+          >
+            <GlassCard className="p-8 border-gray-200" gradient>
+              <h3 className="text-xl font-bold text-gray-900 mb-6">Rename Folder</h3>
+              <form onSubmit={handleRenameFolder} className="space-y-4">
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  value={renamingFolder.name}
+                  onChange={(e) => setRenamingFolder(f => f ? { ...f, name: e.target.value } : f)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                />
+                <div className="flex space-x-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setRenamingFolder(null)}
+                    className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-slate-600 font-bold transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 px-6 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all"
+                  >
+                    Rename
+                  </button>
+                </div>
+              </form>
+            </GlassCard>
+          </motion.div>
+        </div>
+      )}
 
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">

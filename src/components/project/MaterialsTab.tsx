@@ -18,8 +18,11 @@ import {
   PlusCircle,
   Truck,
   CreditCard,
-  Zap
+  Zap,
+  X,
+  CheckCircle2
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
@@ -61,6 +64,12 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
   const [checkedRequestIds, setCheckedRequestIds] = useState<Set<string>>(new Set());
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [historyMaterial, setHistoryMaterial] = useState<any>(null);
+  const [historyLogs, setHistoryLogs] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+  const [updatingRequestId, setUpdatingRequestId] = useState<string | null>(null);
+  const [selectedPO, setSelectedPO] = useState<any>(null);
 
   const toast = useToast();
 
@@ -111,6 +120,48 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
     } catch (error) {
       console.error('Error fetching usage:', error);
       toast.error('Failed to load usage logs');
+    }
+  };
+
+  const openHistory = async (material: any) => {
+    setHistoryMaterial(material);
+    setHistoryLoading(true);
+    try {
+      const res = await api.get(`/projects/${projectId}/material-usage`);
+      const filtered = (res.data as any[]).filter((log: any) =>
+        log.items?.some((item: any) => (item.materialId?._id || item.materialId) === material._id)
+      );
+      setHistoryLogs(filtered);
+    } catch {
+      setHistoryLogs([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const handleUpdateRequestStatus = async (requestId: string, status: 'Approved' | 'Rejected') => {
+    setUpdatingRequestId(requestId);
+    try {
+      await api.patch(`/projects/${projectId}/material-requests/${requestId}`, { status });
+      toast.success(`Request ${status.toLowerCase()}`);
+      if (selectedRequest?._id === requestId) {
+        setSelectedRequest((r: any) => r ? { ...r, status } : r);
+      }
+      fetchRequests();
+    } catch {
+      toast.error(`Failed to ${status.toLowerCase()} request`);
+    } finally {
+      setUpdatingRequestId(null);
+    }
+  };
+
+  const handleVerifyReceipt = async (receiptId: string) => {
+    try {
+      await api.patch(`/projects/${projectId}/material-receipts/${receiptId}`, { status: 'Verified' });
+      toast.success('Receipt marked as verified');
+      fetchReceipts();
+    } catch {
+      toast.error('Failed to verify receipt');
     }
   };
 
@@ -334,7 +385,11 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                           >
                             <MinusCircle className="w-4 h-4" />
                           </button>
-                          <button className="p-2 text-slate-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all">
+                          <button
+                            onClick={() => openHistory(material)}
+                            title="Usage History"
+                            className="p-2 text-slate-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                          >
                             <History className="w-4 h-4" />
                           </button>
                         </div>
@@ -462,7 +517,10 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                       </div>
                       <span className="text-[10px] font-bold text-slate-500">{request.requestedByName}</span>
                     </div>
-                    <button className="text-xs font-bold text-blue-600 hover:text-blue-500 transition-colors">Details &rarr;</button>
+                    <button
+                      onClick={() => setSelectedRequest(request)}
+                      className="text-xs font-bold text-blue-600 hover:text-blue-500 transition-colors"
+                    >Details &rarr;</button>
                   </div>
                 </GlassCard>
               ))}
@@ -553,7 +611,20 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button className="text-xs font-bold text-blue-600 hover:text-blue-500 transition-colors">Verify &rarr;</button>
+                        {receipt.status !== 'Verified' ? (
+                          <button
+                            onClick={() => handleVerifyReceipt(receipt._id)}
+                            className="flex items-center space-x-1 text-xs font-bold text-emerald-600 hover:text-emerald-500 transition-colors"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Verify</span>
+                          </button>
+                        ) : (
+                          <span className="text-xs font-bold text-emerald-600 flex items-center space-x-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Verified</span>
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -619,7 +690,10 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                       <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Total Amount</span>
                       <span className="text-sm font-bold text-emerald-600">₹{po.totalAmount?.toLocaleString()}</span>
                     </div>
-                    <button className="text-xs font-bold text-blue-600 hover:text-blue-500">View PO &rarr;</button>
+                    <button
+                      onClick={() => setSelectedPO(po)}
+                      className="text-xs font-bold text-blue-600 hover:text-blue-500 transition-colors"
+                    >View PO &rarr;</button>
                   </div>
                 </GlassCard>
               ))}
@@ -697,6 +771,222 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
               <p className="text-slate-500">No usage logs found.</p>
             </div>
           )}
+        </div>
+      )}
+
+      {selectedRequest && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setSelectedRequest(null)} />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="w-full max-w-lg relative z-10 flex flex-col max-h-[85vh]"
+          >
+            <GlassCard className="flex flex-col overflow-hidden border-gray-200 max-h-[85vh]" gradient>
+              <div className="flex items-center justify-between p-6 border-b border-gray-100 shrink-0">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 border border-blue-200 flex items-center justify-center">
+                    <ClipboardList className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">REQ-{selectedRequest._id.slice(-6).toUpperCase()}</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">{new Date(selectedRequest.createdAt).toLocaleDateString()} · by {selectedRequest.requestedByName}</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className={cn(
+                    "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border",
+                    selectedRequest.status === 'Approved' ? 'text-emerald-700 bg-emerald-100 border-emerald-200' :
+                    selectedRequest.status === 'Rejected' ? 'text-red-700 bg-red-100 border-red-200' :
+                    'text-amber-700 bg-amber-100 border-amber-200'
+                  )}>{selectedRequest.status}</span>
+                  <button onClick={() => setSelectedRequest(null)} className="p-2 rounded-xl hover:bg-gray-100 text-slate-400 hover:text-gray-900 transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Requested Items</p>
+                  <div className="space-y-2">
+                    {selectedRequest.items?.map((item: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-xl">
+                        <span className="text-sm font-semibold text-gray-900">{item.materialId?.name || 'Material'}</span>
+                        <span className="text-sm font-black text-blue-600">{item.quantity} {item.unit}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {selectedRequest.commonNote && (
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Note</p>
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                      <p className="text-sm text-slate-600 italic">"{selectedRequest.commonNote}"</p>
+                    </div>
+                  </div>
+                )}
+                {selectedRequest.status === 'Pending' && (
+                  <div className="flex space-x-3 pt-2">
+                    <button
+                      onClick={() => handleUpdateRequestStatus(selectedRequest._id, 'Rejected')}
+                      disabled={updatingRequestId === selectedRequest._id}
+                      className="flex-1 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-bold hover:bg-red-600 hover:text-white hover:border-red-600 transition-all disabled:opacity-50"
+                    >
+                      Reject
+                    </button>
+                    <button
+                      onClick={() => handleUpdateRequestStatus(selectedRequest._id, 'Approved')}
+                      disabled={updatingRequestId === selectedRequest._id}
+                      className="flex-1 py-3 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-500 transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
+                    >
+                      {updatingRequestId === selectedRequest._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                      <span>Approve</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </GlassCard>
+          </motion.div>
+        </div>
+      )}
+
+      {selectedPO && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setSelectedPO(null)} />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="w-full max-w-lg relative z-10 flex flex-col max-h-[85vh]"
+          >
+            <GlassCard className="flex flex-col overflow-hidden border-gray-200 max-h-[85vh]" gradient>
+              <div className="flex items-center justify-between p-6 border-b border-gray-100 shrink-0">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 border border-blue-200 flex items-center justify-center">
+                    <ShoppingCart className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">{selectedPO.poNumber}</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">{selectedPO.vendorName}</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-100 text-blue-700 border border-blue-200">
+                    {selectedPO.status || 'Active'}
+                  </span>
+                  <button onClick={() => setSelectedPO(null)} className="p-2 rounded-xl hover:bg-gray-100 text-slate-400 hover:text-gray-900 transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Order Items</p>
+                  <div className="overflow-hidden rounded-xl border border-gray-200">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-200">
+                          <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-wider">Material</th>
+                          <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-wider text-right">Qty</th>
+                          <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-wider text-right">Unit Cost</th>
+                          <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-wider text-right">Subtotal</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedPO.items?.map((item: any, i: number) => (
+                          <tr key={i} className="border-b border-gray-100">
+                            <td className="px-4 py-3 text-sm font-semibold text-gray-900">{item.materialId?.name || 'Material'}</td>
+                            <td className="px-4 py-3 text-sm text-right text-slate-600">{item.quantity} {item.unit}</td>
+                            <td className="px-4 py-3 text-sm text-right text-slate-600">₹{item.unitCost?.toLocaleString() || '—'}</td>
+                            <td className="px-4 py-3 text-sm text-right font-bold text-gray-900">
+                              ₹{(item.quantity * (item.unitCost || 0)).toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+                  <span className="text-sm font-black text-slate-600 uppercase tracking-wider">Total Amount</span>
+                  <span className="text-xl font-black text-emerald-600">₹{selectedPO.totalAmount?.toLocaleString() || '—'}</span>
+                </div>
+                {selectedPO.expectedDelivery && (
+                  <div className="flex items-center space-x-3 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                    <Truck className="w-4 h-4 text-slate-400" />
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Expected Delivery</p>
+                      <p className="text-sm font-bold text-gray-900">{new Date(selectedPO.expectedDelivery).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </GlassCard>
+          </motion.div>
+        </div>
+      )}
+
+      {historyMaterial && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setHistoryMaterial(null)} />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="w-full max-w-lg relative z-10 flex flex-col max-h-[85vh]"
+          >
+            <GlassCard className="flex flex-col overflow-hidden border-gray-200 max-h-[85vh]" gradient>
+              <div className="flex items-center justify-between p-6 border-b border-gray-100 shrink-0">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2.5 rounded-xl bg-purple-50 border border-purple-200">
+                    <History className="w-4 h-4 text-purple-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">{historyMaterial.name}</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">Usage history</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setHistoryMaterial(null)}
+                  className="p-2 rounded-xl hover:bg-gray-100 text-slate-400 hover:text-gray-900 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-6">
+                {historyLoading ? (
+                  <div className="flex justify-center py-10">
+                    <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                  </div>
+                ) : historyLogs.length > 0 ? (
+                  <div className="space-y-3">
+                    {historyLogs.map((log: any) => {
+                      const item = log.items?.find((it: any) =>
+                        (it.materialId?._id || it.materialId) === historyMaterial._id
+                      );
+                      return (
+                        <div key={log._id} className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                          <div>
+                            <p className="text-sm font-bold text-gray-900">{log.location || '—'}</p>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider">
+                              {log.workType} · {new Date(log.createdAt).toLocaleDateString()} · {log.userName}
+                            </p>
+                          </div>
+                          <span className="text-sm font-black text-purple-600">
+                            -{item?.quantity} {item?.unit}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <History className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                    <p className="text-slate-500 font-medium">No usage history</p>
+                    <p className="text-xs text-slate-400 mt-1">This material has not been consumed yet.</p>
+                  </div>
+                )}
+              </div>
+            </GlassCard>
+          </motion.div>
         </div>
       )}
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus,
   MoreVertical,
@@ -8,7 +8,8 @@ import {
   Loader2,
   AlertTriangle,
   ChevronRight,
-  Layers
+  Layers,
+  Trash2
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import api from '@/lib/api';
@@ -19,6 +20,8 @@ export const CategoryList = () => {
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [catMenuId, setCatMenuId] = useState<string | null>(null);
+  const catMenuRef = useRef<HTMLDivElement>(null);
 
   const toast = useToast();
 
@@ -37,6 +40,29 @@ export const CategoryList = () => {
   useEffect(() => {
     fetchCategories();
   }, []);
+
+  useEffect(() => {
+    if (!catMenuId) return;
+    const close = (e: MouseEvent) => {
+      if (catMenuRef.current && !catMenuRef.current.contains(e.target as Node)) {
+        setCatMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [catMenuId]);
+
+  const handleDeleteCategory = async (cat: any) => {
+    setCatMenuId(null);
+    if (!window.confirm(`Delete category "${cat.name}"? Templates in this category will be uncategorized.`)) return;
+    try {
+      await api.delete(`/template-categories/${cat._id}`);
+      toast.success(`Category "${cat.name}" deleted`);
+      fetchCategories();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to delete category');
+    }
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();

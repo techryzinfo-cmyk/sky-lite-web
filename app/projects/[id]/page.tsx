@@ -46,7 +46,7 @@ const tabs = [
   { id: 'transactions', name: 'Finance',       icon: CreditCard },
 ];
 
-const IMPLEMENTED = new Set(['details','boq','budget','materials','plans','issues','snags','risks','milestones','survey','progress','transactions','timeline']);
+const IMPLEMENTED = new Set(['details','boq','budget','materials','plans','documents','issues','snags','risks','milestones','survey','progress','transactions','timeline']);
 
 export default function ProjectWorkspacePage() {
   const { id } = useParams();
