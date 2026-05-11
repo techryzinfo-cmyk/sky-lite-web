@@ -107,22 +107,101 @@ export const DPRTab: React.FC<DPRTabProps> = ({ projectId }) => {
       </div>
 
       {reports.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: 'Latest Progress', value: `${latestProgress}%`, icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: 'Avg Progress', value: `${avgProgress}%`, icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50' },
-            { label: 'Active Days', value: activeDays, icon: Calendar, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-            { label: 'Total Reports', value: reports.length, icon: BarChart, color: 'text-amber-600', bg: 'bg-amber-50' },
-          ].map((s, i) => (
-            <GlassCard key={i} className="p-5 border-gray-200" gradient>
-              <div className={`inline-flex p-2.5 rounded-xl ${s.bg} mb-3`}>
-                <s.icon className={`w-4 h-4 ${s.color}`} />
-              </div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{s.label}</p>
-              <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
-            </GlassCard>
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Latest Progress', value: `${latestProgress}%`, icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50' },
+              { label: 'Avg Progress', value: `${avgProgress}%`, icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50' },
+              { label: 'Active Days', value: activeDays, icon: Calendar, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+              { label: 'Total Reports', value: reports.length, icon: BarChart, color: 'text-amber-600', bg: 'bg-amber-50' },
+            ].map((s, i) => (
+              <GlassCard key={i} className="p-5 border-gray-200" gradient>
+                <div className={`inline-flex p-2.5 rounded-xl ${s.bg} mb-3`}>
+                  <s.icon className={`w-4 h-4 ${s.color}`} />
+                </div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{s.label}</p>
+                <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
+              </GlassCard>
+            ))}
+          </div>
+
+          {/* Progress Over Time Chart */}
+          {(() => {
+            const chartData = [...reports]
+              .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+              .map(r => ({ pct: r.progressPercent || 0, label: new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) }));
+
+            const W = 600, H = 160, PAD_L = 36, PAD_R = 16, PAD_T = 12, PAD_B = 28;
+            const innerW = W - PAD_L - PAD_R;
+            const innerH = H - PAD_T - PAD_B;
+            const n = chartData.length;
+
+            const xOf = (i: number) => PAD_L + (n === 1 ? innerW / 2 : (i / (n - 1)) * innerW);
+            const yOf = (pct: number) => PAD_T + innerH - (pct / 100) * innerH;
+
+            const polyline = chartData.map((d, i) => `${xOf(i)},${yOf(d.pct)}`).join(' ');
+            const areaPath = n > 0
+              ? `M${xOf(0)},${yOf(chartData[0].pct)} ` +
+                chartData.slice(1).map((d, i) => `L${xOf(i + 1)},${yOf(d.pct)}`).join(' ') +
+                ` L${xOf(n - 1)},${PAD_T + innerH} L${xOf(0)},${PAD_T + innerH} Z`
+              : '';
+
+            const yTicks = [0, 25, 50, 75, 100];
+
+            return (
+              <GlassCard className="p-6 border-gray-200" gradient>
+                <div className="flex items-center space-x-3 mb-5">
+                  <div className="p-2 rounded-xl bg-blue-50 border border-blue-200">
+                    <TrendingUp className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-900">Progress Over Time</h4>
+                    <p className="text-[10px] text-slate-500">Completion % across all reports</p>
+                  </div>
+                </div>
+                <div className="w-full overflow-x-auto">
+                  <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: 280 }}>
+                    <defs>
+                      <linearGradient id="progressGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.2" />
+                        <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+
+                    {/* Y grid lines + labels */}
+                    {yTicks.map(tick => {
+                      const y = yOf(tick);
+                      return (
+                        <g key={tick}>
+                          <line x1={PAD_L} y1={y} x2={W - PAD_R} y2={y} stroke="#e5e7eb" strokeWidth="1" strokeDasharray={tick === 0 ? '0' : '3 3'} />
+                          <text x={PAD_L - 4} y={y + 4} textAnchor="end" fontSize="9" fill="#94a3b8" fontWeight="700">{tick}</text>
+                        </g>
+                      );
+                    })}
+
+                    {/* Area fill */}
+                    {n > 1 && <path d={areaPath} fill="url(#progressGrad)" />}
+
+                    {/* Line */}
+                    {n > 1 && (
+                      <polyline points={polyline} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                    )}
+
+                    {/* Data points + x-labels */}
+                    {chartData.map((d, i) => (
+                      <g key={i}>
+                        <circle cx={xOf(i)} cy={yOf(d.pct)} r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
+                        {(n <= 8 || i % Math.ceil(n / 8) === 0) && (
+                          <text x={xOf(i)} y={H - 4} textAnchor="middle" fontSize="8" fill="#94a3b8" fontWeight="600">{d.label}</text>
+                        )}
+                      </g>
+                    ))}
+                  </svg>
+                </div>
+              </GlassCard>
+            );
+          })()}
+        </>
       )}
 
       <div className="relative space-y-12">

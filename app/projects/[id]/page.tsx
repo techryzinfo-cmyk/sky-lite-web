@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Shell } from '@/components/layout/Shell';
 import { CreateProjectModal } from '@/components/ui/CreateProjectModal';
+import { TeamManagementModal } from '@/components/project/TeamManagementModal';
 import { BOQTab } from '@/components/project/BOQTab';
 import { BudgetTab } from '@/components/project/BudgetTab';
 import { MaterialsTab } from '@/components/project/MaterialsTab';
@@ -14,6 +15,7 @@ import { SurveyTab } from '@/components/project/SurveyTab';
 import { DPRTab } from '@/components/project/DPRTab';
 import { MilestonesTab } from '@/components/project/MilestonesTab';
 import { TransactionsTab } from '@/components/project/TransactionsTab';
+import { TimelineTab } from '@/components/project/TimelineTab';
 import { useProjectSocket } from '@/hooks/useProjectSocket';
 import {
   Info, FileText, IndianRupee, Package, Files, Map,
@@ -44,7 +46,7 @@ const tabs = [
   { id: 'transactions', name: 'Finance',       icon: CreditCard },
 ];
 
-const IMPLEMENTED = new Set(['details','boq','budget','materials','plans','issues','snags','risks','milestones','survey','progress','transactions']);
+const IMPLEMENTED = new Set(['details','boq','budget','materials','plans','issues','snags','risks','milestones','survey','progress','transactions','timeline']);
 
 export default function ProjectWorkspacePage() {
   const { id } = useParams();
@@ -54,6 +56,7 @@ export default function ProjectWorkspacePage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('details');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const toast = useToast();
 
   useProjectSocket(id as string);
@@ -147,7 +150,25 @@ export default function ProjectWorkspacePage() {
               <Pencil className="w-4 h-4" />
               <span>Edit Project</span>
             </button>
-            <button className="px-4 py-2 bg-blue-600 rounded-xl text-sm font-bold text-white hover:bg-blue-500 shadow-sm shadow-blue-600/20 transition-all">
+            <button
+              onClick={() => {
+                const data = {
+                  project: { name: project.name, status: project.status, description: project.description, clientName: project.clientName, startDate: project.startDate, endDate: project.endDate },
+                  budget: project.budgetHistory?.at(-1)?.amount,
+                  members: project.members?.length,
+                  exportedAt: new Date().toISOString(),
+                };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = window.document.createElement('a');
+                a.href = url;
+                a.download = `${project.name.replace(/\s+/g, '_')}_report.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                toast.success('Report exported');
+              }}
+              className="px-4 py-2 bg-blue-600 rounded-xl text-sm font-bold text-white hover:bg-blue-500 shadow-sm shadow-blue-600/20 transition-all"
+            >
               Export Report
             </button>
           </div>
@@ -222,20 +243,30 @@ export default function ProjectWorkspacePage() {
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
                   <div className="flex items-center justify-between mb-5">
                     <h3 className="text-base font-bold text-gray-900">Project Members</h3>
-                    <button className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors">+ Add</button>
+                    <button
+                      onClick={() => setIsTeamModalOpen(true)}
+                      className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors"
+                    >
+                      + Add
+                    </button>
                   </div>
                   <div className="space-y-3">
-                    {project.members?.map((member: any) => (
-                      <div key={member._id || member} className="flex items-center space-x-3">
-                        <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-700 shrink-0">
-                          {member.name?.charAt(0) || '?'}
+                    {project.members?.map((member: any) => {
+                      const u = member.user || member;
+                      const name = u.name || member.name || 'Member';
+                      const role = typeof member.role === 'string' ? member.role : member.role?.name || 'Member';
+                      return (
+                        <div key={member._id || u._id || member} className="flex items-center space-x-3">
+                          <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-700 shrink-0">
+                            {name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">{name}</p>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider">{role}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900">{member.name || 'Member'}</p>
-                          <p className="text-[10px] text-slate-500 uppercase tracking-wider">{member.role?.name || 'Member'}</p>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     {(!project.members || project.members.length === 0) && (
                       <p className="text-sm text-slate-400 text-center py-4">No members assigned.</p>
                     )}
@@ -274,6 +305,7 @@ export default function ProjectWorkspacePage() {
           {activeTab === 'survey' && <SurveyTab projectId={id as string} />}
           {activeTab === 'progress' && <DPRTab projectId={id as string} />}
           {activeTab === 'milestones' && <MilestonesTab projectId={id as string} />}
+          {activeTab === 'timeline' && <TimelineTab projectId={id as string} />}
           {activeTab === 'transactions' && <TransactionsTab projectId={id as string} />}
 
           {!IMPLEMENTED.has(activeTab) && (
@@ -294,6 +326,14 @@ export default function ProjectWorkspacePage() {
         onSuccess={fetchProject}
         initialData={project}
         projectId={id as string}
+      />
+
+      <TeamManagementModal
+        isOpen={isTeamModalOpen}
+        onClose={() => setIsTeamModalOpen(false)}
+        onSuccess={fetchProject}
+        projectId={id as string}
+        currentMembers={project.members || []}
       />
     </Shell>
   );

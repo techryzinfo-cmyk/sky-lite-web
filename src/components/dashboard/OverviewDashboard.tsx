@@ -180,41 +180,79 @@ export const OverviewDashboard = () => {
           </div>
         </GlassCard>
 
-        {/* Global Activity Feed */}
+        {/* Global Activity Feed [C7] */}
         <GlassCard className="p-8 border-gray-200" gradient>
-          <div className="flex items-center space-x-3 mb-8">
+          <div className="flex items-center space-x-3 mb-6">
             <div className="p-2.5 rounded-xl bg-purple-100 border border-purple-200">
               <Activity className="w-5 h-5 text-purple-600" />
             </div>
             <div>
               <h3 className="text-xl font-bold text-gray-900">Live Feed</h3>
-              <p className="text-xs text-slate-500 uppercase tracking-widest font-black mt-0.5">Global Audit</p>
+              <p className="text-xs text-slate-500 uppercase tracking-widest font-black mt-0.5">Global Audit Trail</p>
             </div>
           </div>
 
-          <div className="space-y-6 relative">
-            <div className="absolute left-1.5 top-2 bottom-0 w-px bg-gray-200" />
+          {(() => {
+            const actionDot: Record<string, string> = {
+              created: 'bg-emerald-500',
+              updated: 'bg-blue-500',
+              deleted: 'bg-red-500',
+              approved: 'bg-emerald-500',
+              rejected: 'bg-red-500',
+              status_changed: 'bg-amber-500',
+            };
 
-            {projects.slice(0, 5).map((project, i) => (
-              <div key={i} className="flex items-start space-x-4 relative">
-                <div className="w-3 h-3 rounded-full bg-blue-500 border-4 border-white z-10 mt-1" />
-                <div>
-                  <p className="text-sm text-gray-900 font-medium line-clamp-1">
-                    {project.auditTrail?.[0]?.details || `Project ${project.name} was updated`}
-                  </p>
-                  <div className="flex items-center space-x-2 mt-1">
-                    <span className="text-[10px] font-bold text-blue-600 uppercase">{project.name}</span>
-                    <span className="w-1 h-1 rounded-full bg-gray-300" />
-                    <span className="text-[10px] text-slate-500">{new Date(project.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                  </div>
-                </div>
+            const allEntries = projects.flatMap(p =>
+              (p.auditTrail || []).map((entry: any) => ({
+                ...entry,
+                projectName: p.name,
+                projectId: p._id,
+              }))
+            ).sort((a: any, b: any) => new Date(b.timestamp || b.createdAt || 0).getTime() - new Date(a.timestamp || a.createdAt || 0).getTime()).slice(0, 8);
+
+            const fallbackEntries = projects.slice(0, 5).map(p => ({
+              details: `Project "${p.name}" was last modified`,
+              projectName: p.name,
+              updatedByName: p.members?.[0]?.user?.name || 'Team',
+              timestamp: p.updatedAt,
+              action: 'updated',
+            }));
+
+            const feed = allEntries.length > 0 ? allEntries : fallbackEntries;
+
+            return (
+              <div className="space-y-4 relative">
+                <div className="absolute left-1.5 top-2 bottom-0 w-px bg-gray-200" />
+                {feed.map((entry: any, i: number) => {
+                  const dot = actionDot[entry.action?.toLowerCase()] || 'bg-blue-500';
+                  const ts = entry.timestamp || entry.createdAt;
+                  const dateStr = ts ? new Date(ts).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+                  return (
+                    <div key={i} className="flex items-start space-x-3 relative">
+                      <div className={cn('w-3 h-3 rounded-full border-2 border-white z-10 mt-1.5 shrink-0', dot)} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-gray-900 font-medium line-clamp-2">{entry.details || entry.description || `${entry.projectName} updated`}</p>
+                        <div className="flex items-center flex-wrap gap-x-2 mt-1">
+                          <span className="text-[10px] font-bold text-purple-600 uppercase truncate">{entry.projectName}</span>
+                          {entry.updatedByName && (
+                            <>
+                              <span className="w-1 h-1 rounded-full bg-gray-300 shrink-0" />
+                              <span className="text-[10px] text-slate-500 truncate">{entry.updatedByName}</span>
+                            </>
+                          )}
+                          <span className="w-1 h-1 rounded-full bg-gray-300 shrink-0" />
+                          <span className="text-[10px] text-slate-400">{dateStr}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {feed.length === 0 && (
+                  <p className="text-xs text-slate-400 text-center py-6 pl-4">No activity recorded yet.</p>
+                )}
               </div>
-            ))}
-          </div>
-
-          <button className="w-full mt-8 py-3 rounded-2xl bg-gray-50 border border-gray-200 text-xs font-bold text-slate-500 hover:bg-gray-100 hover:text-gray-900 transition-all">
-            View All Activity
-          </button>
+            );
+          })()}
         </GlassCard>
       </div>
 

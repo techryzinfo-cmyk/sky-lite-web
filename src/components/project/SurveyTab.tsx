@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { SurveyModal } from './SurveyModal';
+import { SurveyDetailModal } from './SurveyDetailModal';
 
 interface SurveyTabProps {
   projectId: string;
@@ -35,6 +36,7 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
   const [surveys, setSurveys] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedSurvey, setSelectedSurvey] = useState<any>(null);
   
   const toast = useToast();
 
@@ -151,7 +153,10 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
                     {survey.surveyor?.name?.charAt(0) || 'S'}
                   </div>
                 </div>
-                <button className="flex items-center space-x-2 text-xs font-bold text-blue-600 hover:text-blue-500 transition-colors">
+                <button
+                  onClick={() => setSelectedSurvey(survey)}
+                  className="flex items-center space-x-2 text-xs font-bold text-blue-600 hover:text-blue-500 transition-colors"
+                >
                   <span>View Full Audit</span>
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -171,11 +176,17 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
         )}
       </div>
 
-      <SurveyModal 
+      <SurveyModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSuccess={fetchSurveys}
         projectId={projectId}
+      />
+
+      <SurveyDetailModal
+        isOpen={!!selectedSurvey}
+        onClose={() => setSelectedSurvey(null)}
+        survey={selectedSurvey}
       />
     </div>
   );

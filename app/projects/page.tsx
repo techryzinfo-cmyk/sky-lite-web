@@ -4,9 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { Shell } from '@/components/layout/Shell';
 import { ProjectCard } from '@/components/ui/ProjectCard';
 import { CreateProjectModal } from '@/components/ui/CreateProjectModal';
-import { Plus, Search, Filter, LayoutGrid, List, Loader2, FolderOpen } from 'lucide-react';
+import { Plus, Search, Filter, LayoutGrid, List, Loader2, FolderOpen, ArrowRight, Calendar, Users, Clock, Construction } from 'lucide-react';
+import Link from 'next/link';
 import api from '@/lib/api';
 import { Project } from '@/types';
+import { cn } from '@/lib/utils';
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<(Project & { hasPendingPlans?: boolean })[]>([]);
@@ -14,6 +16,7 @@ export default function ProjectsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const fetchProjects = async () => {
     try {
@@ -83,10 +86,16 @@ export default function ProjectsPage() {
               </div>
 
               <div className="flex bg-gray-100 border border-gray-200 rounded-xl p-1">
-                <button className="p-1.5 rounded-lg bg-white text-blue-600 shadow-sm">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={cn('p-1.5 rounded-lg transition-all', viewMode === 'grid' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-gray-700')}
+                >
                   <LayoutGrid className="w-4 h-4" />
                 </button>
-                <button className="p-1.5 rounded-lg text-slate-400 hover:text-gray-700">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={cn('p-1.5 rounded-lg transition-all', viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-gray-700')}
+                >
                   <List className="w-4 h-4" />
                 </button>
               </div>
@@ -94,18 +103,69 @@ export default function ProjectsPage() {
           </div>
         </div>
 
-        {/* Projects Grid */}
+        {/* Projects Grid / List */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
             <p className="text-slate-500 font-medium">Loading projects...</p>
           </div>
         ) : filteredProjects.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredProjects.map((project) => (
-              <ProjectCard key={project._id} project={project} />
-            ))}
-          </div>
+          viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {filteredProjects.map((project) => (
+                <ProjectCard key={project._id} project={project} />
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="grid grid-cols-[1fr_120px_100px_90px_80px] gap-4 px-6 py-3 border-b border-gray-100 bg-gray-50">
+                {['Project', 'Client', 'Timeline', 'Status', ''].map(h => (
+                  <span key={h} className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{h}</span>
+                ))}
+              </div>
+              {filteredProjects.map((project, i) => {
+                const budget = project.budgetHistory?.[project.budgetHistory.length - 1]?.amount || 0;
+                const statusColorMap: Record<string, string> = {
+                  'In Progress': 'text-emerald-700 bg-emerald-100 border-emerald-200',
+                  'Completed': 'text-green-700 bg-green-100 border-green-200',
+                  'Planning': 'text-purple-700 bg-purple-100 border-purple-200',
+                  'On Hold': 'text-slate-600 bg-gray-100 border-gray-200',
+                  'Cancelled': 'text-red-700 bg-red-100 border-red-200',
+                };
+                const statusColor = statusColorMap[project.status] || 'text-blue-700 bg-blue-100 border-blue-200';
+                return (
+                  <div
+                    key={project._id}
+                    className={cn('grid grid-cols-[1fr_120px_100px_90px_80px] gap-4 px-6 py-4 border-b border-gray-100 last:border-0 items-center hover:bg-gray-50 transition-colors', i % 2 === 0 ? '' : 'bg-gray-50/40')}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-gray-900 truncate">{project.name}</p>
+                      <p className="text-[10px] text-slate-500 truncate mt-0.5">{project.description || 'No description'}</p>
+                    </div>
+                    <p className="text-xs text-slate-600 truncate">{project.clientName || '—'}</p>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-500">
+                        {project.startDate ? new Date(project.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'TBD'}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        → {project.endDate ? new Date(project.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' }) : 'TBD'}
+                      </p>
+                    </div>
+                    <span className={cn('px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border w-fit', statusColor)}>
+                      {project.status}
+                    </span>
+                    <Link
+                      href={`/projects/${project._id}`}
+                      className="flex items-center space-x-1 text-xs font-bold text-blue-600 hover:text-blue-500 transition-colors"
+                    >
+                      <span>Open</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+          )
         ) : (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <div className="p-6 rounded-full bg-gray-100 mb-6">
