@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   Upload,
   FileText,
-  MoreVertical,
   Trash2,
   CheckCircle2,
   XCircle,
@@ -13,8 +12,7 @@ import {
   Eye,
   Send,
   Loader2,
-  ShieldCheck,
-  UserCheck
+  UserCheck,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
@@ -22,6 +20,7 @@ import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
 import { DocumentViewer } from './DocumentViewer';
+import { UserPickerModal } from '@/components/ui/UserPickerModal';
 
 interface PlanRoomProps {
   folder: any;
@@ -34,6 +33,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
   const [isUploading, setIsUploading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [viewingDoc, setViewingDoc] = useState<any>(null);
+  const [approverDocId, setApproverDocId] = useState<string | null>(null);
   const toast = useToast();
   const { user } = useAuth();
   const isAdmin = user?.role?.name === 'Admin';
@@ -149,7 +149,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
                 <div className="flex items-center space-x-2">
                   {doc.approvalStatus === 'Draft' && isAdmin && (
                     <button
-                      onClick={() => handleAction(doc._id, 'sendForApproval', { approverIds: [user?.id] })}
+                      onClick={() => setApproverDocId(doc._id)}
                       className="p-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 transition-all"
                       title="Send for Approval"
                     >
@@ -230,6 +230,21 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
         isOpen={!!viewingDoc}
         onClose={() => setViewingDoc(null)}
         document={viewingDoc}
+      />
+
+      <UserPickerModal
+        isOpen={!!approverDocId}
+        onClose={() => setApproverDocId(null)}
+        onSelect={(userIds) => {
+          if (approverDocId) {
+            handleAction(approverDocId, 'sendForApproval', { approverIds: userIds });
+          }
+          setApproverDocId(null);
+        }}
+        title="Select Approvers"
+        description="Choose who must review and approve this plan."
+        confirmLabel="Send for Approval"
+        accentColor="blue"
       />
     </div>
   );

@@ -22,6 +22,7 @@ interface SidebarProps {
 const navItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Projects', href: '/projects', icon: Briefcase },
+  { name: 'Finance', href: '/finance', icon: CreditCard },
   { name: 'Templates', href: '/templates', icon: Layers },
   { name: 'Users & Roles', href: '/users', icon: Users },
   { name: 'Settings', href: '/settings', icon: Settings },

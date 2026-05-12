@@ -3,7 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   Plus,
-  MoreVertical,
+  Edit2,
+  Trash2,
+  Check,
+  X,
   Folder,
   Loader2,
   AlertTriangle,
@@ -19,6 +22,9 @@ export const CategoryList = () => {
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const toast = useToast();
 
@@ -53,6 +59,37 @@ export const CategoryList = () => {
     } finally {
       setIsCreating(false);
     }
+  };
+
+  const handleUpdate = async (id: string) => {
+    if (!editingName.trim()) return;
+    setIsUpdating(true);
+    try {
+      await api.patch(`/template-categories/${id}`, { name: editingName });
+      toast.success('Category updated!');
+      setEditingId(null);
+      fetchCategories();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure? This will delete all templates in this category.')) return;
+    try {
+      await api.delete(`/template-categories/${id}`);
+      toast.success('Category deleted');
+      fetchCategories();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to delete');
+    }
+  };
+
+  const startEditing = (cat: any) => {
+    setEditingId(cat._id);
+    setEditingName(cat.name);
   };
 
   if (loading) {
@@ -96,11 +133,53 @@ export const CategoryList = () => {
               <div className="p-3 rounded-2xl bg-blue-100 border border-blue-200">
                 <Folder className="w-6 h-6 text-blue-600" />
               </div>
-              <button className="p-2 text-slate-400 hover:text-gray-900 transition-colors">
-                <MoreVertical className="w-4 h-4" />
-              </button>
+              <div className="flex items-center space-x-1">
+                {editingId === cat._id ? (
+                  <>
+                    <button
+                      onClick={() => handleUpdate(cat._id)}
+                      disabled={isUpdating}
+                      className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-xl transition-all"
+                    >
+                      <Check className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => startEditing(cat)}
+                      className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(cat._id)}
+                      className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-            <h4 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{cat.name}</h4>
+
+            {editingId === cat._id ? (
+              <input
+                autoFocus
+                className="w-full bg-white border border-blue-200 rounded-lg py-1 px-2 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                value={editingName}
+                onChange={(e) => setEditingName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleUpdate(cat._id)}
+              />
+            ) : (
+              <h4 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{cat.name}</h4>
+            )}
             <div className="mt-4 flex items-center justify-between">
               <div className="flex items-center space-x-1.5">
                 <Layers className="w-3 h-3 text-slate-400" />

@@ -59,6 +59,8 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
   const [isUsageModalOpen, setIsUsageModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'stock-in' | 'stock-out'>('create');
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
+  const [checkedRequestIds, setCheckedRequestIds] = useState<Set<string>>(new Set());
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
 
   const toast = useToast();
 
@@ -110,6 +112,31 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
       console.error('Error fetching usage:', error);
       toast.error('Failed to load usage logs');
     }
+  };
+
+  const bulkUpdateRequests = async (status: 'Approved' | 'Rejected') => {
+    setIsBulkUpdating(true);
+    try {
+      await api.patch(`/projects/${projectId}/material-requests/bulk-status`, {
+        ids: Array.from(checkedRequestIds),
+        status,
+      });
+      toast.success(`${checkedRequestIds.size} request(s) ${status.toLowerCase()}`);
+      setCheckedRequestIds(new Set());
+      fetchRequests();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Bulk update failed');
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
+  const toggleRequestCheck = (id: string) => {
+    setCheckedRequestIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -331,6 +358,35 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
             </div>
           </GlassCard>
 
+          {checkedRequestIds.size > 0 && (
+            <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-2xl">
+              <span className="text-sm font-bold text-blue-700">{checkedRequestIds.size} request{checkedRequestIds.size > 1 ? 's' : ''} selected</span>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => bulkUpdateRequests('Approved')}
+                  disabled={isBulkUpdating}
+                  className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+                >
+                  {isBulkUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
+                  <span>Approve</span>
+                </button>
+                <button
+                  onClick={() => bulkUpdateRequests('Rejected')}
+                  disabled={isBulkUpdating}
+                  className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+                >
+                  <span>Reject</span>
+                </button>
+                <button
+                  onClick={() => setCheckedRequestIds(new Set())}
+                  className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-slate-500 hover:text-gray-900 transition-all"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          )}
+
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
@@ -342,6 +398,12 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                 <GlassCard key={request._id} className="p-6 border-gray-200 hover:border-blue-500/30 transition-all" gradient>
                   <div className="flex justify-between items-start mb-6">
                     <div className="flex items-center space-x-3">
+                      <input
+                        type="checkbox"
+                        checked={checkedRequestIds.has(request._id)}
+                        onChange={() => toggleRequestCheck(request._id)}
+                        className="w-4 h-4 accent-blue-600 cursor-pointer mt-1"
+                      />
                       <div className="w-10 h-10 rounded-xl bg-blue-100 border border-blue-200 flex items-center justify-center">
                         <ClipboardList className="w-5 h-5 text-blue-600" />
                       </div>

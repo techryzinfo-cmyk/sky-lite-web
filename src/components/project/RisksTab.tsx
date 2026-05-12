@@ -17,6 +17,8 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
+import { RiskModal } from './RiskModal';
+import { RiskDetailModal } from './RiskDetailModal';
 
 interface RisksTabProps {
   projectId: string;
@@ -25,6 +27,8 @@ interface RisksTabProps {
 export const RisksTab: React.FC<RisksTabProps> = ({ projectId }) => {
   const [risks, setRisks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [selectedRisk, setSelectedRisk] = useState<any>(null);
 
   const toast = useToast();
 
@@ -127,7 +131,10 @@ export const RisksTab: React.FC<RisksTabProps> = ({ projectId }) => {
           <h3 className="text-xl font-bold text-gray-900">Risk Matrix</h3>
           <p className="text-sm text-slate-500 mt-1">Strategic risk assessment and mitigation tracking.</p>
         </div>
-        <button className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20">
+        <button
+          onClick={() => setIsCreateOpen(true)}
+          className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20"
+        >
           <Plus className="w-4 h-4" />
           <span>Identify Risk</span>
         </button>
@@ -235,7 +242,10 @@ export const RisksTab: React.FC<RisksTabProps> = ({ projectId }) => {
                   </span>
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <button className="p-2 text-slate-400 hover:text-gray-900 transition-all">
+                  <button
+                    onClick={() => setSelectedRisk(risk)}
+                    className="p-2 text-slate-400 hover:text-gray-900 transition-all"
+                  >
                     <ChevronRight className="w-5 h-5" />
                   </button>
                 </td>
@@ -244,6 +254,21 @@ export const RisksTab: React.FC<RisksTabProps> = ({ projectId }) => {
           </tbody>
         </table>
       </div>
+
+      <RiskModal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onSuccess={fetchRisks}
+        projectId={projectId}
+      />
+
+      <RiskDetailModal
+        isOpen={!!selectedRisk}
+        onClose={() => setSelectedRisk(null)}
+        onSuccess={fetchRisks}
+        risk={selectedRisk}
+        projectId={projectId}
+      />
     </div>
   );
 };

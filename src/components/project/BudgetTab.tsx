@@ -6,17 +6,18 @@ import {
   History,
   TrendingUp,
   TrendingDown,
-  AlertCircle,
   CheckCircle2,
   Clock,
   ArrowUpRight,
-  Plus
+  Plus,
+  UserCheck,
 } from 'lucide-react';
 import { Project } from '@/types';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
+import { UserPickerModal } from '@/components/ui/UserPickerModal';
 
 interface BudgetTabProps {
   project: Project;
@@ -26,12 +27,26 @@ interface BudgetTabProps {
 export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [isApproverPickerOpen, setIsApproverPickerOpen] = useState(false);
   const [formData, setFormData] = useState({
     newBudget: '',
     budgetReason: '',
   });
 
   const toast = useToast();
+
+  const currentApprovers: any[] = (project as any).budgetApprovers || [];
+
+  const handleSaveApprovers = async (userIds: string[]) => {
+    try {
+      await api.patch(`/projects/${project._id}`, { budgetApprovers: userIds });
+      toast.success('Budget approvers updated');
+      onUpdate();
+    } catch {
+      toast.error('Failed to update budget approvers');
+    }
+    setIsApproverPickerOpen(false);
+  };
 
   const handleUpdateBudget = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,6 +107,37 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
           <p className="text-sm text-slate-500 font-medium uppercase tracking-wider">Total Variations</p>
           <p className="text-3xl font-black text-gray-900 mt-1">{project.budgetHistory?.length || 0}</p>
           <p className="text-xs text-slate-400 mt-4 italic">Approved variations in project lifecycle.</p>
+        </GlassCard>
+
+        <GlassCard className="p-6 border-gray-200 col-span-full md:col-span-1">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              <div className="p-2 rounded-xl bg-purple-50 border border-purple-200">
+                <UserCheck className="w-4 h-4 text-purple-600" />
+              </div>
+              <p className="text-sm text-slate-500 font-medium uppercase tracking-wider">Budget Approvers</p>
+            </div>
+            <button
+              onClick={() => setIsApproverPickerOpen(true)}
+              className="text-xs font-bold text-purple-600 hover:text-purple-500 transition-colors"
+            >
+              Configure
+            </button>
+          </div>
+          {currentApprovers.length > 0 ? (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {currentApprovers.map((a: any) => (
+                <div key={a._id || a} className="flex items-center space-x-1.5 px-2 py-1 bg-purple-50 border border-purple-200 rounded-lg">
+                  <div className="w-5 h-5 rounded-full bg-purple-600 flex items-center justify-center text-white text-[9px] font-bold">
+                    {(a.name || 'U')[0].toUpperCase()}
+                  </div>
+                  <span className="text-xs font-semibold text-purple-700 truncate max-w-[80px]">{a.name || a}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400 italic mt-2">No approvers configured. Any revision will auto-approve.</p>
+          )}
         </GlassCard>
 
         <GlassCard className="p-6 border-gray-200 flex flex-col justify-center items-center text-center">
@@ -201,6 +247,16 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
           ))}
         </div>
       </GlassCard>
+      <UserPickerModal
+        isOpen={isApproverPickerOpen}
+        onClose={() => setIsApproverPickerOpen(false)}
+        onSelect={(ids) => handleSaveApprovers(ids)}
+        title="Budget Approvers"
+        description="Select users who must approve budget revision requests."
+        initialSelected={currentApprovers.map((a: any) => a._id || a)}
+        confirmLabel="Save Approvers"
+        accentColor="purple"
+      />
     </div>
   );
 };

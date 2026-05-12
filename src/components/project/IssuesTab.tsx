@@ -2,29 +2,24 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  AlertTriangle, 
-  Plus, 
-  Search, 
-  Filter, 
-  Clock, 
-  User, 
-  CheckCircle2, 
-  AlertCircle,
-  MoreVertical,
+import {
+  AlertTriangle,
+  Plus,
+  Search,
+  Clock,
+  User,
+  CheckCircle2,
   ChevronRight,
   Loader2,
-  Calendar,
-  Flag,
-  MessageSquare,
-  Tag,
-  ArrowUpRight
+  GitBranch,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { IssueModal } from './IssueModal';
+import { IssueDetailModal } from './IssueDetailModal';
+import { EscalationMatrixModal } from './EscalationMatrixModal';
 
 interface IssuesTabProps {
   projectId: string;
@@ -35,6 +30,8 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId }) => {
   const [loading, setLoading] = useState(true);
   const [activeType, setActiveType] = useState<'Issue' | 'Snag'>('Issue');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedIssue, setSelectedIssue] = useState<any>(null);
+  const [isEscalationOpen, setIsEscalationOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
   const toast = useToast();
@@ -108,7 +105,14 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId }) => {
               Snags
             </button>
           </div>
-          <button 
+          <button
+            onClick={() => setIsEscalationOpen(true)}
+            className="flex items-center space-x-2 px-4 py-2 bg-orange-50 border border-orange-200 rounded-xl text-sm font-bold text-orange-700 hover:bg-orange-100 transition-all"
+          >
+            <GitBranch className="w-4 h-4" />
+            <span>Escalation Matrix</span>
+          </button>
+          <button
             onClick={() => setIsModalOpen(true)}
             className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20"
           >
@@ -154,7 +158,7 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId }) => {
         ) : (
           <div className="space-y-3">
             {filteredIssues.map((issue) => (
-              <GlassCard key={issue._id} className="p-5 border-gray-200 group hover:border-blue-500/50 transition-all cursor-pointer" gradient>
+              <GlassCard key={issue._id} onClick={() => setSelectedIssue(issue)} className="p-5 border-gray-200 group hover:border-blue-500/50 transition-all cursor-pointer" gradient>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex items-start space-x-4">
                     <div className={cn(
@@ -215,12 +219,26 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId }) => {
         )}
       </div>
 
-      <IssueModal 
+      <IssueModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSuccess={fetchIssues}
         projectId={projectId}
         type={activeType}
+      />
+
+      <IssueDetailModal
+        isOpen={!!selectedIssue}
+        onClose={() => setSelectedIssue(null)}
+        onSuccess={fetchIssues}
+        issue={selectedIssue}
+        projectId={projectId}
+      />
+
+      <EscalationMatrixModal
+        isOpen={isEscalationOpen}
+        onClose={() => setIsEscalationOpen(false)}
+        projectId={projectId}
       />
     </div>
   );

@@ -4,19 +4,17 @@ import React, { useState, useEffect } from 'react';
 import {
   Plus,
   Search,
-  Filter,
-  MoreVertical,
   Edit2,
   Trash2,
   History,
   Download,
   Upload,
   CheckCircle2,
-  Clock,
   AlertCircle,
   ChevronDown,
   ChevronRight,
-  Loader2
+  Loader2,
+  Users,
 } from 'lucide-react';
 import { BOQItem } from '@/types';
 import api from '@/lib/api';
@@ -25,6 +23,8 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
 import { BOQModal } from './BOQModal';
 import { BOQImportModal } from './BOQImportModal';
+import { BOQHistoryModal } from './BOQHistoryModal';
+import { BOQApproversModal } from './BOQApproversModal';
 
 interface BOQTabProps {
   projectId: string;
@@ -36,8 +36,12 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<BOQItem | null>(null);
+  const [historyItem, setHistoryItem] = useState<BOQItem | null>(null);
+  const [approversItem, setApproversItem] = useState<BOQItem | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState('');
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
 
   const toast = useToast();
 
@@ -95,6 +99,42 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
       case 'Pending': return 'text-amber-700 bg-amber-100 border-amber-200';
       case 'Rejected': return 'text-red-700 bg-red-100 border-red-200';
       default: return 'text-slate-600 bg-gray-100 border-gray-200';
+    }
+  };
+
+  const toggleCheck = (id: string) => {
+    setCheckedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleGroupCheck = (groupItems: BOQItem[]) => {
+    const ids = groupItems.map(i => i._id!);
+    const allChecked = ids.every(id => checkedIds.has(id));
+    setCheckedIds(prev => {
+      const next = new Set(prev);
+      if (allChecked) ids.forEach(id => next.delete(id));
+      else ids.forEach(id => next.add(id));
+      return next;
+    });
+  };
+
+  const bulkUpdateStatus = async (status: 'Approved' | 'Rejected') => {
+    setIsBulkUpdating(true);
+    try {
+      await api.patch(`/projects/${projectId}/boq/bulk-status`, {
+        ids: Array.from(checkedIds),
+        status,
+      });
+      toast.success(`${checkedIds.size} item(s) ${status.toLowerCase()}`);
+      setCheckedIds(new Set());
+      fetchBOQ();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Bulk update failed');
+    } finally {
+      setIsBulkUpdating(false);
     }
   };
 
@@ -167,29 +207,73 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
         </div>
       </GlassCard>
 
+      {checkedIds.size > 0 && (
+        <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-2xl">
+          <span className="text-sm font-bold text-blue-700">{checkedIds.size} item{checkedIds.size > 1 ? 's' : ''} selected</span>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => bulkUpdateStatus('Approved')}
+              disabled={isBulkUpdating}
+              className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50 shadow-sm shadow-emerald-600/20"
+            >
+              {isBulkUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+              <span>Approve</span>
+            </button>
+            <button
+              onClick={() => bulkUpdateStatus('Rejected')}
+              disabled={isBulkUpdating}
+              className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50 shadow-sm shadow-red-600/20"
+            >
+              <AlertCircle className="w-4 h-4" />
+              <span>Reject</span>
+            </button>
+            <button
+              onClick={() => setCheckedIds(new Set())}
+              className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-slate-500 hover:text-gray-900 transition-all"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-4">
         {Object.entries(filteredGroups).map(([groupName, groupItems]) => (
           <div key={groupName} className="space-y-1">
-            <button
-              onClick={() => toggleGroup(groupName)}
-              className="w-full flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors group"
-            >
-              <div className="flex items-center space-x-3">
-                {expandedGroups[groupName] ? <ChevronDown className="w-5 h-5 text-blue-500" /> : <ChevronRight className="w-5 h-5 text-slate-400" />}
-                <h4 className="font-bold text-gray-900">{groupName}</h4>
-                <span className="px-2 py-0.5 rounded-md bg-white border border-gray-200 text-[10px] text-slate-500">{groupItems.length} items</span>
+            <div className="flex items-center">
+              <div
+                className="p-4 cursor-pointer"
+                onClick={(e) => { e.stopPropagation(); toggleGroupCheck(groupItems as BOQItem[]); }}
+              >
+                <input
+                  type="checkbox"
+                  readOnly
+                  checked={groupItems.every(i => checkedIds.has(i._id!))}
+                  className="w-4 h-4 accent-blue-600 cursor-pointer"
+                />
               </div>
-              <div className="text-right">
-                <p className="text-xs text-slate-500 uppercase tracking-wider font-bold">Group Total</p>
-                <p className="text-sm font-bold text-blue-600">₹{groupItems.reduce((sum, i) => sum + (i.totalCost || 0), 0).toLocaleString()}</p>
-              </div>
-            </button>
+              <button
+                onClick={() => toggleGroup(groupName)}
+                className="flex-1 flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors group"
+              >
+                <div className="flex items-center space-x-3">
+                  {expandedGroups[groupName] ? <ChevronDown className="w-5 h-5 text-blue-500" /> : <ChevronRight className="w-5 h-5 text-slate-400" />}
+                  <h4 className="font-bold text-gray-900">{groupName}</h4>
+                  <span className="px-2 py-0.5 rounded-md bg-white border border-gray-200 text-[10px] text-slate-500">{groupItems.length} items</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-slate-500 uppercase tracking-wider font-bold">Group Total</p>
+                  <p className="text-sm font-bold text-blue-600">₹{groupItems.reduce((sum, i) => sum + (i.totalCost || 0), 0).toLocaleString()}</p>
+                </div>
+              </button>
+            </div>
 
             {expandedGroups[groupName] && (
               <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
                 <table className="w-full text-left border-collapse min-w-[1000px]">
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50">
+                      <th className="px-4 py-3 w-10"></th>
                       <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Item #</th>
                       <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Description</th>
                       <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Unit</th>
@@ -203,6 +287,14 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
                   <tbody>
                     {groupItems.map((item) => (
                       <tr key={item._id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors group/row">
+                        <td className="px-4 py-4 w-10">
+                          <input
+                            type="checkbox"
+                            checked={checkedIds.has(item._id!)}
+                            onChange={() => toggleCheck(item._id!)}
+                            className="w-4 h-4 accent-blue-600 cursor-pointer"
+                          />
+                        </td>
                         <td className="px-4 py-4 text-xs font-mono text-slate-500">{item.itemNumber || '-'}</td>
                         <td className="px-4 py-4">
                           <p className="text-sm font-medium text-gray-900">{item.itemDescription}</p>
@@ -238,6 +330,20 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
                             <button className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-100 rounded-lg transition-all">
                               <Trash2 className="w-4 h-4" />
                             </button>
+                            <button
+                              onClick={() => setHistoryItem(item)}
+                              className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-100 rounded-lg transition-all"
+                              title="View History"
+                            >
+                              <History className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setApproversItem(item)}
+                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-all"
+                              title="Assign Approvers"
+                            >
+                              <Users className="w-4 h-4" />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -262,6 +368,21 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onSuccess={fetchBOQ}
+        projectId={projectId}
+      />
+
+      <BOQHistoryModal
+        isOpen={!!historyItem}
+        onClose={() => setHistoryItem(null)}
+        item={historyItem}
+        projectId={projectId}
+      />
+
+      <BOQApproversModal
+        isOpen={!!approversItem}
+        onClose={() => setApproversItem(null)}
+        onSuccess={fetchBOQ}
+        item={approversItem}
         projectId={projectId}
       />
     </div>

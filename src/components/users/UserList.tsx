@@ -19,6 +19,7 @@ import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { UserModal } from './UserModal';
+import { Pagination, usePagination } from '@/components/ui/Pagination';
 
 export const UserList = () => {
   const [users, setUsers] = useState<any[]>([]);
@@ -90,6 +91,8 @@ export const UserList = () => {
     u.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const { currentPage, totalPages, paginated: pagedUsers, setCurrentPage } = usePagination(filteredUsers, 9);
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-40">
@@ -128,7 +131,7 @@ export const UserList = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredUsers.map((user) => (
+        {pagedUsers.map((user) => (
           <GlassCard key={user._id} className="p-6 border-gray-200 group hover:border-blue-500/50 transition-all" gradient>
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-center space-x-4">
@@ -208,6 +211,8 @@ export const UserList = () => {
           </div>
         )}
       </div>
+
+      <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
 
       <UserModal
         isOpen={isModalOpen}
