@@ -1,7 +1,7 @@
 # Phase 09 — Super Admin
 
 **Status:** ⬜ Not Started  
-**Depends on:** Phase 01–08 (need orgs/users created to verify admin views)
+**Depends on:** Nothing — separate auth from org-level admin
 
 ---
 
@@ -9,87 +9,82 @@
 
 | Area | Detail |
 |------|--------|
-| Frontend pages | `http://localhost:3000/superadmin/login`, `http://localhost:3000/superadmin/dashboard` |
-| API routes | `/api/superadmin/auth/login`, `/api/superadmin/auth/logout`, `/api/superadmin/admins` |
-| Models | `SuperAdmin`, `Organization`, `User` |
-| Components | Super admin dashboard page components |
+| Frontend pages | `http://localhost:3001/superadmin/login`, `http://localhost:3001/superadmin/dashboard` |
+| API routes | `POST /api/superadmin/auth/login`, `POST /api/superadmin/auth/logout`, `GET /api/superadmin/admins` |
+| Auth | Separate JWT — cookie `superadmin_token`; middleware `withSuperAdmin` validates it |
+
+---
+
+## Super Admin vs Org Admin
+
+| | Org Admin | Super Admin |
+|--|-----------|-------------|
+| Auth route | `POST /api/auth/login` | `POST /api/superadmin/auth/login` |
+| Scope | One org | All orgs on platform |
+| Data access | Own org's projects/users | All orgs, all users (read-only aggregates) |
+| Cookie | `token` | `superadmin_token` |
 
 ---
 
 ## API Endpoints
 
-### Super Admin Auth
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/superadmin/auth/login` | Super admin login (separate from org login) |
-| POST | `/api/superadmin/auth/logout` | Super admin logout |
-
-**Super admin login payload:**
+### `POST /api/superadmin/auth/login`
 ```json
-{ "email": "superadmin@skylite.com", "password": "<superadmin-password>" }
+{ "email": "superadmin@platform.com", "password": "SuperSecretPwd" }
 ```
+**Response `200`:** `{ "token": "<jwt>" }` — stored in `superadmin_token` cookie.
 
-> Super admin credentials are seeded separately — they are NOT created via the regular `/api/auth/register` flow. Check the API's seed script or `.env` for initial super admin credentials.
+### `POST /api/superadmin/auth/logout`
+Clears `superadmin_token` cookie.
 
----
-
-### Admin Management
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/superadmin/admins` | List all organization admins / orgs |
-| POST | `/api/superadmin/admins` | Create a new org admin |
+### `GET /api/superadmin/admins`
+Returns all orgs with their admin details and stats:
+```json
+[
+  {
+    "orgId": "...",
+    "orgName": "Test Admin's Workspace",
+    "createdAt": "...",
+    "admin": { "name": "Test Admin", "email": "...", "status": "active" },
+    "stats": { "userCount": 3, "projectCount": 5, "templateCount": 2 }
+  }
+]
+```
 
 ---
 
 ## Test Scenarios
 
-### 09-A — Super admin login
-1. Open `http://localhost:3000/superadmin/login`
+### 09-A — Super Admin Login
+1. Navigate to `http://localhost:3001/superadmin/login`
 2. Enter super admin credentials
 3. **Assert:** Redirected to `/superadmin/dashboard`
-4. **Assert:** Regular org cookie NOT present (separate auth context)
+4. **Assert:** `superadmin_token` cookie set
 
-### 09-B — Super admin dashboard
-1. Open `http://localhost:3000/superadmin/dashboard`
-2. **Assert:** Platform statistics visible:
-   - Total organizations
-   - Total users
-   - Total projects
-   - Active subscriptions (if applicable)
-3. **Assert:** List of all organizations with admin names
+### 09-B — Dashboard — Platform Stats
+1. On dashboard, **Assert:** Total orgs, users, and projects shown
+2. **Assert:** Each org row shows admin name, user count, project count
 
-### 09-C — Super admin cannot access regular routes
-1. While logged in as super admin, navigate to `http://localhost:3000/projects`
-2. **Assert:** Redirected (super admin is not an org user)
+### 09-C — Org Detail View
+1. Click on an org row (if detail view exists)
+2. **Assert:** Org's users and projects listed
 
-### 09-D — Regular admin cannot access super admin routes
-1. While logged in as a regular org admin, navigate to `http://localhost:3000/superadmin/dashboard`
-2. **Assert:** Redirected to `/superadmin/login` or shows 403
+### 09-D — Super Admin Logout
+1. Click logout
+2. **Assert:** `superadmin_token` cookie cleared
+3. **Assert:** Redirected to `/superadmin/login`
 
-### 09-E — Org admin list
-1. On super admin dashboard, view the list of all orgs
-2. **Assert:** Each org shows: organization name, admin name, admin email, project count, user count
-3. **Assert:** Org created in Phase 01 is visible
-
-### 09-F — Create a new org admin (optional)
-1. Click "Add Organization Admin"
-2. Fill in name, email, password
-3. **Assert:** `POST /api/superadmin/admins` returns `201`
-4. **Assert:** New org + admin role + user created (same as register flow)
-5. **Assert:** New org visible in the admin list
-
-### 09-G — Super admin logout
-1. Click logout from super admin dashboard
-2. **Assert:** Redirected to `/superadmin/login`
-3. **Assert:** Super admin cookie cleared
+### 09-E — Protected route guard
+1. Clear `superadmin_token` cookie
+2. Navigate to `/superadmin/dashboard`
+3. **Assert:** Redirected to `/superadmin/login`
 
 ---
 
-## Notes
-- Super admin is a completely separate auth system from regular org users
-- The `SuperAdmin` model is independent of `User` and `Organization`
-- Super admin JWT has a different payload/secret (check API `.env` for `SUPERADMIN_JWT_SECRET` or similar)
-- Super admin cannot perform project-level operations — it's a platform management role only
-- If the super admin feature is not yet implemented in the web frontend, document that here and skip to a direct API test using curl/Postman
+## Known Observations
+
+| Item | Notes |
+|------|-------|
+| Super admin credentials | Seeded separately — check `.env` or seed script |
+| `withSuperAdmin` middleware | Separate from `withAuth` — uses different JWT secret |
+| No org-level actions | Super admin is read-only dashboard, no CRUD on orgs |

@@ -41,7 +41,7 @@ export const IssueModal: React.FC<IssueModalProps> = ({
       const fetchMembers = async () => {
         try {
           const response = await api.get(`/projects/${projectId}`);
-          setUsers(response.data.members?.map((m: any) => m.user) || []);
+          setUsers(response.data.members?.map((m: any) => m.user || m) || []);
         } catch (error) {
           console.error('Error fetching members:', error);
         }

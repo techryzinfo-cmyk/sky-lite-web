@@ -70,8 +70,12 @@ export const DPRModal: React.FC<DPRModalProps> = ({
     try {
       const selectedMilestone = milestones.find(m => m._id === formData.milestone);
       await api.post(`/projects/${projectId}/work-progress`, {
-        ...formData,
-        milestoneName: selectedMilestone?.title || 'General'
+        milestoneId: formData.milestone || null,
+        milestoneName: selectedMilestone?.name || 'General',
+        description: formData.description,
+        progressPercent: formData.progressPercent,
+        photos: formData.photos,
+        date: formData.date,
       });
       toast.success('Progress report posted successfully!');
       onSuccess();
@@ -149,7 +153,7 @@ export const DPRModal: React.FC<DPRModalProps> = ({
                       >
                         <option value="">General Work</option>
                         {milestones.map(m => (
-                          <option key={m._id} value={m._id}>{m.title}</option>
+                          <option key={m._id} value={m._id}>{m.name}</option>
                         ))}
                       </select>
                     </div>

@@ -224,10 +224,10 @@ export const UserList = () => {
                 <Mail className="w-4 h-4 shrink-0" />
                 <span className="text-sm truncate">{user.email}</span>
               </div>
-              {(user.mobile || user.phone) && (
+              {(user.phoneNumber || user.mobile || user.phone) && (
                 <div className="flex items-center space-x-3 text-slate-500">
                   <Phone className="w-4 h-4 shrink-0" />
-                  <span className="text-sm">{user.mobile || user.phone}</span>
+                  <span className="text-sm">{user.phoneNumber || user.mobile || user.phone}</span>
                 </div>
               )}
               <div className="flex items-center space-x-3 text-slate-500">

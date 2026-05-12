@@ -1,7 +1,7 @@
 # Phase 03 — Project Core CRUD
 
 **Status:** ⬜ Not Started  
-**Depends on:** Phase 01 (auth), Phase 02 (at least one role exists)
+**Depends on:** Phase 01 (auth token), Phase 02 (have at least one role created)
 
 ---
 
@@ -9,156 +9,182 @@
 
 | Area | Detail |
 |------|--------|
-| Frontend pages | `http://localhost:3000/projects`, `http://localhost:3000/projects/[id]` |
-| API routes | `/api/projects`, `/api/projects/[id]` |
-| Models | `Project`, `PlanFolder` |
+| Frontend pages | `http://localhost:3001/projects`, `http://localhost:3001/projects/[id]` |
+| API routes | `GET/POST /api/projects`, `GET/PUT/PATCH/DELETE /api/projects/[id]` |
 | Components | `src/components/ui/CreateProjectModal.tsx`, `src/components/ui/ProjectCard.tsx`, `app/projects/page.tsx`, `app/projects/[id]/page.tsx` |
+| Models | `Project` |
 
 ---
 
 ## API Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/projects` | List all projects for org + `hasPendingPlans` flag |
-| POST | `/api/projects` | Create a new project |
-| GET | `/api/projects/[id]` | Get single project details |
-| PATCH | `/api/projects/[id]` | Update project (status, priority, members, dates, budget) |
-| DELETE | `/api/projects/[id]` | Delete project |
-
----
-
-## POST `/api/projects` — Payload Reference
-
+### `GET /api/projects`
+Returns all projects for the current user's organization.  
+**Response:** Array of project objects, each with extra computed field:
 ```json
-{
-  "name": "Villa Renovation",
-  "description": "Location: Koregaon Park\n3BHK villa renovation",
-  "clientName": "Ramesh Patil",
-  "clientEmail": "ramesh@example.com",
-  "clientPhone": "9876543210",
-  "status": "Initialized",
-  "priority": "High",
-  "startDate": "2026-05-15",
-  "endDate": "2026-11-15",
-  "budget": 5000000,
-  "needSiteSurvey": true,
-  "members": ["<userId1>", "<userId2>"],
-  "documents": []
-}
+[
+  {
+    "_id": "...",
+    "name": "Skyline Residency",
+    "status": "Initialized",
+    "priority": "Medium",
+    "startDate": "2026-01-01T00:00:00.000Z",
+    "endDate": "2026-12-31T00:00:00.000Z",
+    "needSiteSurvey": false,
+    "members": [],
+    "createdBy": { "name": "...", "email": "..." },
+    "budgetHistory": [{ "amount": 5000000, "reason": "Estimated Budget" }],
+    "hasPendingPlans": false
+  }
+]
 ```
 
-**Key rules:**
-- `createdBy` is always set from `req.user.id` on the server — never send it from the client
-- `status` defaults to `"Initialized"` if omitted
-- `priority` defaults to `"Medium"` if omitted
-- Empty `startDate`/`endDate` must be sent as `undefined` (omit the key), not empty string
-- `budget` initializes a `budgetHistory` entry with `reason: "Estimated Budget"`
+---
 
-**Valid status values:** `Initialized`, `Planning`, `In Progress`, `On Hold`, `Completed`, `Cancelled`  
-**Valid priority values:** `Low`, `Medium`, `High`, `Critical`
+### `POST /api/projects`
+**Request body:**
+```json
+{
+  "name": "Test Project",
+  "description": "Optional description",
+  "clientName": "Raj Kumar",
+  "clientEmail": "raj@client.com",
+  "clientPhone": "9876543210",
+  "priority": "High",
+  "startDate": "2026-06-01",
+  "endDate": "2026-12-31",
+  "needSiteSurvey": false,
+  "budget": "5000000"
+}
+```
+**Response `201`:** Full project object.  
+> `budget` creates a `budgetHistory` entry with `reason: "Estimated Budget"`.  
+> `status` defaults to `"Initialized"` if omitted.
 
 ---
 
-## Project Workspace Tabs
+### `GET /api/projects/[id]`
+Returns single project deeply populated (createdBy, members, siteSurveyor, snaggedBy all with role objects).
 
-When viewing `http://localhost:3000/projects/[id]`, the following tabs should be present:
+---
 
-| Tab | Component | Phase tested |
-|-----|-----------|-------------|
-| Overview | inline in page | Phase 03 |
-| Milestones | `MilestonesTab` | Phase 04 |
-| Timeline | `TimelineTab` | Phase 04 |
-| Plans | `PlansTab` | Phase 04 |
-| DPR | `DPRTab` | Phase 04 |
-| BOQ | `BOQTab` | Phase 05 |
-| Budget | `BudgetTab` | Phase 05 |
-| Materials | `MaterialsTab` | Phase 06 |
-| Issues | `IssuesTab` | Phase 07 |
-| Risks | `RisksTab` | Phase 07 |
-| Survey | `SurveyTab` | Phase 07 |
-| Documents | `DocumentsTab` | Phase 04 |
+### `PUT /api/projects/[id]` — Full update
+Used for budget versioning in addition to field updates:
+```json
+{
+  "name": "Updated Name",
+  "status": "In Progress",
+  "newBudget": "6000000",
+  "budgetReason": "Scope change"
+}
+```
+> If `newBudget` + `budgetReason` are present, a new `budgetHistory` entry is pushed.
+
+---
+
+### `PATCH /api/projects/[id]` — Partial update
+Used by the frontend edit modal. Budget and area excluded.
+```json
+{ "name": "New Name", "status": "Planning" }
+```
+
+---
+
+### `DELETE /api/projects/[id]`
+**Response `200`:** `{ "message": "Project deleted successfully" }`
+
+---
+
+## Status Values (valid enum)
+
+`Initialized` | `Planning` | `Site Survey` | `In Progress` | `Under Snagging` | `Snagging Completed` | `Completed` | `On Hold` | `Cancelled`
+
+## Priority Values
+
+`Low` | `Medium` | `High` | `Urgent`
+
+---
+
+## Frontend Behaviour Notes
+
+- **Create flow** (3 steps): Category → Template → Configure. Template pre-fills `name` and `budget`. Custom skips template.
+- **Edit flow**: Modal skips to Configure step, sends `PATCH` (budget and area excluded).
+- **Budget edit** is separate — done from the Budget tab using `PUT` with `newBudget` + `budgetReason`.
+- **Progress bar** on `ProjectCard` is derived from `status`, not stored in DB.
+- The `hasPendingPlans` flag comes from the list API and shows a red badge on the card.
+- Socket event `project:updated` triggers a re-fetch via `useProjectSocket` hook.
 
 ---
 
 ## Test Scenarios
 
-### 03-A — Create a project (no template)
-1. Open `http://localhost:3000/projects`
-2. Click "New Project"
-3. Fill in: Name, Client Name, Priority = High, Status = Initialized
-4. Set Start Date and End Date
-5. Set Budget = 50,00,000
-6. Toggle "Site Survey Required" ON
-7. Submit
-8. **Assert:** `POST /api/projects` returns `201`
-9. **Assert:** Project card appears on the list
-10. **Assert:** In MongoDB, `createdBy` = authenticated user's `_id`, `budgetHistory` has 1 entry
+### 03-A — View Projects List
+1. Navigate to `http://localhost:3001/projects`
+2. **Assert:** All org projects listed as cards (grid view)
+3. **Assert:** Status badge, priority, member count, budget display correctly
+4. **Assert:** List view toggle works
 
-### 03-B — Create project with documents attached
-1. Create a new project
-2. Attach a PDF in the Documents section of the modal
-3. **Assert:** Cloudinary upload succeeds (no 400 error in console)
-4. **Assert:** `documents[0].status = "Approved"`, `uploadedBy.user` is set
+### 03-B — Create Project (custom, no template)
+1. Click "New Project"
+2. Select any category → "Custom Requirement"
+3. Fill: Name, Location, Budget, Priority, Start/End dates, Client details
+4. Click "Finalize & Create"
+5. **Assert:** `POST /api/projects` returns `201`
+6. **Assert:** New card appears in list
+7. **Assert:** Budget shows in card (reads from `budgetHistory[last].amount`)
 
-### 03-C — Project list page
-1. Open `http://localhost:3000/projects`
-2. **Assert:** All projects for the org are listed
-3. **Assert:** Status badge shows correct color (Initialized = gray, In Progress = blue, etc.)
-4. **Assert:** `hasPendingPlans` badge shows if applicable
-5. **Assert:** Search/filter by status works
+### 03-C — Create Project (from template)
+1. Click "New Project"
+2. Select a category with templates → select a template
+3. **Assert:** Form pre-fills name and budget from template
+4. Submit
+5. **Assert:** `POST /api/projects` returns `201`
 
-### 03-D — Project list API response shape
-Using browser DevTools Network tab or curl:
-```
-GET /api/projects
-```
-**Assert each project object has:**
-- `_id`, `name`, `status`, `priority`
-- `createdBy` = `{ _id, name, email }` (populated)
-- `members` = array of `{ _id, name, email }` (populated)
-- `hasPendingPlans` boolean
-
-### 03-E — Edit a project
-1. On the project card, open the 3-dot menu → Edit Project
-2. Change status to "In Progress", change priority to "Critical"
+### 03-D — Edit Project (basic fields)
+1. Open project context menu → Edit Project
+2. Change name, description, priority
 3. Save
-4. **Assert:** `PATCH /api/projects/[id]` returns `200`
-5. **Assert:** Card updates without page reload
+4. **Assert:** `PATCH /api/projects/[id]` called
+5. **Assert:** Card reflects updated values after list refresh
 
-### 03-F — Delete a project
-1. Open 3-dot menu → Delete Project
-2. Confirm in dialog
+### 03-E — Delete Project
+1. Open project context menu → Delete Project
+2. Confirm
 3. **Assert:** `DELETE /api/projects/[id]` returns `200`
-4. **Assert:** Project removed from list
+4. **Assert:** Card removed from list
 
-### 03-G — Open project workspace
-1. Click on a project card
-2. **Assert:** Navigated to `/projects/[id]`
-3. **Assert:** Header shows project name, client, status, priority in compact form
-4. **Assert:** Tab bar is visible with underline-style active indicator
-5. **Assert:** Header section is compact (not occupying excessive vertical space)
+### 03-F — Open Project Workspace
+1. Click "Workspace" on a project card
+2. **Assert:** Navigates to `/projects/[id]`
+3. **Assert:** Project name in header, all 13 tabs visible
+4. **Assert:** Details tab shows client info, dates, description, status/priority
 
-### 03-H — Project workspace header
-1. Open any project
-2. **Assert:** Project name is `text-base` (not oversized)
-3. **Assert:** Meta row (client, dates) uses `text-[10px]`
-4. **Assert:** Action buttons are `text-xs px-3 py-1.5`
-5. **Assert:** Active tab shows `border-b-2 border-blue-600` (underline style, no background)
+### 03-G — Status Change
+1. On workspace details tab, change status
+2. **Assert:** `PATCH /api/projects/[id]` called with updated status
+3. **Assert:** Status badge in workspace header updates
 
----
-
-## Known Fixes Applied
-- `createdBy` now set from `req.user.id` in POST handler (was causing 500 — field required but never sent by old frontend code)
-- `priority` field added to POST handler
-- Empty date strings sent as `undefined` to avoid Mongoose cast errors
-- `budget` initializes `budgetHistory` array with first entry
-- Project workspace header/subheader compacted to avoid excessive vertical space
-- 3-dot menu on `ProjectCard` now shows Edit and Delete options
+### 03-H — Search & Filter
+1. On projects list, type a project name
+2. **Assert:** Cards filter in real time (client-side)
+3. Select a status from the dropdown filter
+4. **Assert:** Only matching-status cards shown
 
 ---
 
-## Notes
-- `siteSurveyor` field on the project is populated from `needSiteSurvey: true` + a later survey assignment, not at creation time
-- `auditTrail` is automatically seeded with a `"Create"` action at project creation
-- The `hasPendingPlans` flag is computed server-side by joining against `PlanFolder` — not stored on the project itself
+## Known Observations
+
+| Item | Notes |
+|------|-------|
+| `area` field in create form | Collected in form but excluded from PATCH payload — Project model may not persist it |
+| Budget edit in main modal | Budget stripped from edit PATCH; budget changes require Budget tab flow |
+| `console.log` in API routes | Present in GET handlers (cosmetic, harmless) |
+| Socket optional | `project:updated` works only if socket-server is running; absence doesn't break CRUD |
+
+---
+
+## Shared Test Data (fill in)
+
+```
+Test Project ID: 
+```

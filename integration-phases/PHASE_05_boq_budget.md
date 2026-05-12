@@ -1,7 +1,7 @@
 # Phase 05 — BOQ & Budget
 
 **Status:** ⬜ Not Started  
-**Depends on:** Phase 03 (need a project)
+**Depends on:** Phase 03 (need project ID)
 
 ---
 
@@ -9,156 +9,105 @@
 
 | Area | Detail |
 |------|--------|
-| Frontend pages | `http://localhost:3000/projects/[id]` — tabs: BOQ, Budget |
-| API routes | `/api/projects/[id]/boq`, `/api/projects/[id]/boq/[itemId]`, `/api/projects/[id]/boq/[itemId]/status`, `/api/projects/[id]/boq/bulk-status`, `/api/projects/[id]/boq/import`, `/api/projects/[id]/boq/history/[historyId]`, `/api/projects/[id]/boq-approvers`, `/api/projects/[id]/budget-approvers`, `/api/projects/[id]/budget-request`, `/api/projects/[id]/budget-action`, `/api/projects/[id]/transactions` |
-| Models | `BOQ`, `Transaction` |
-| Components | `src/components/project/BOQTab.tsx`, `BOQModal.tsx`, `BOQImportModal.tsx`, `BOQHistoryModal.tsx`, `BOQApproversModal.tsx`, `BudgetTab.tsx` |
+| Frontend | Project workspace → BOQ tab, Budget tab |
+| API routes | `/api/projects/[id]/boq`, `/api/projects/[id]/boq/[itemId]`, `/api/projects/[id]/boq/[itemId]/status`, `/api/projects/[id]/boq/bulk-status`, `/api/projects/[id]/boq/import`, `/api/projects/[id]/boq-approvers`, `/api/projects/[id]/budget-request`, `/api/projects/[id]/budget-action` |
+| Components | `BOQTab.tsx`, `BOQModal.tsx`, `BOQImportModal.tsx`, `BOQHistoryModal.tsx`, `BOQApproversModal.tsx`, `BudgetTab.tsx` |
 
 ---
 
-## API Endpoints
-
-### BOQ
+## BOQ API
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/projects/[id]/boq` | List all BOQ items |
-| POST | `/api/projects/[id]/boq` | Create BOQ item |
-| GET | `/api/projects/[id]/boq/[itemId]` | Get single BOQ item |
-| PATCH | `/api/projects/[id]/boq/[itemId]` | Update BOQ item |
-| DELETE | `/api/projects/[id]/boq/[itemId]` | Delete BOQ item |
-| PATCH | `/api/projects/[id]/boq/[itemId]/status` | Update item status |
-| PATCH | `/api/projects/[id]/boq/bulk-status` | Bulk status update |
-| POST | `/api/projects/[id]/boq/import` | Import BOQ from CSV/JSON |
-| GET | `/api/projects/[id]/boq/history/[historyId]` | BOQ change history |
-| GET | `/api/projects/[id]/boq-approvers` | List BOQ approvers |
-| POST | `/api/projects/[id]/boq-approvers` | Set BOQ approvers |
+| GET | `/api/projects/[id]/boq` | List BOQ items (`isLatest: true`) |
+| POST | `/api/projects/[id]/boq` | Add item(s) — body: `{ items: [{...}] }` |
+| PATCH | `/api/projects/[id]/boq/[itemId]` | Update item (creates new version, marks old as not latest) |
+| DELETE | `/api/projects/[id]/boq/[itemId]` | Delete item |
+| PATCH | `/api/projects/[id]/boq/[itemId]/status` | Change approval status |
+| POST | `/api/projects/[id]/boq/bulk-status` | Bulk status change |
+| POST | `/api/projects/[id]/boq/import` | CSV/Excel import |
 
-**BOQ item payload:**
+**BOQ item create payload:**
 ```json
 {
-  "category": "Civil",
-  "description": "Excavation for foundation",
-  "unit": "cum",
-  "quantity": 150,
-  "rate": 450,
-  "milestoneId": "<optional>"
+  "items": [{
+    "groupName": "Civil Works",
+    "itemNumber": "CW-01",
+    "itemDescription": "Excavation",
+    "unit": "Cu.m",
+    "quantity": 100,
+    "unitCost": 500,
+    "remark": ""
+  }]
 }
 ```
-`amount` = `quantity × rate` (computed on backend)
-
-**BOQ status values:** `Pending`, `In Progress`, `Completed`, `Approved`, `Rejected`
+`totalCost` is auto-computed as `quantity * unitCost`.  
+BOQ uses version history — PATCH creates a new version with `isLatest: true`, old version gets `isLatest: false`.
 
 ---
 
-### Budget & Transactions
+## Budget API
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/projects/[id]/budget-approvers` | List budget approvers |
-| POST | `/api/projects/[id]/budget-approvers` | Set budget approvers |
-| POST | `/api/projects/[id]/budget-request` | Request budget revision |
-| POST | `/api/projects/[id]/budget-action` | Approve/Reject budget request |
-| GET | `/api/projects/[id]/transactions` | List project transactions |
-| POST | `/api/projects/[id]/transactions` | Add a transaction (payment in/out) |
+Budget changes go through `PUT /api/projects/[id]` with `{ newBudget, budgetReason }`.  
+Budget is stored as an array `project.budgetHistory[]` — latest entry is the current budget.
 
-**Transaction payload:**
+**Budget update payload:**
 ```json
-{
-  "type": "Expense",
-  "category": "Labour",
-  "amount": 85000,
-  "description": "Labour payment — Week 1",
-  "date": "2026-05-12",
-  "paymentMethod": "Bank Transfer",
-  "referenceNumber": "TXN-001"
-}
+{ "newBudget": "6000000", "budgetReason": "Client-requested scope change" }
 ```
-
-**Transaction types:** `Income`, `Expense`
 
 ---
 
 ## Test Scenarios
 
-### 05-A — BOQ tab loads
-1. Open project → BOQ tab
-2. **Assert:** Empty state shown (no items yet)
-3. **Assert:** Summary bar shows ₹0 total, 0 items
-
-### 05-B — Create a BOQ item
-1. Click "Add Item"
-2. Fill: Category = "Civil", Description, Unit = "cum", Quantity = 150, Rate = 450
+### 05-A — Add BOQ Item
+1. Open project workspace → BOQ tab → "Add Item"
+2. Fill group name, description, qty, unit cost
 3. Save
-4. **Assert:** `POST /api/projects/[id]/boq` returns `201`
-5. **Assert:** Item appears with Amount = ₹67,500 (150 × 450)
-6. **Assert:** Summary updates total
+4. **Assert:** `POST /api/projects/[id]/boq` called with `{ items: [item] }`
+5. **Assert:** Item appears in BOQ grouped by `groupName`
+6. **Assert:** Total cost auto-calculated and shown
 
-### 05-C — Edit a BOQ item
-1. Click edit on the item
-2. Change quantity to 200
-3. **Assert:** Amount recalculates to ₹90,000
+### 05-B — Edit BOQ Item (creates new version)
+1. Click edit on a BOQ item
+2. Change quantity or unit cost
+3. Save
+4. **Assert:** `PATCH /api/projects/[id]/boq/[itemId]` called
+5. **Assert:** Item updated; old version stored in history
 
-### 05-D — BOQ item status update
-1. Select an item → change status to "In Progress"
-2. **Assert:** `PATCH /api/projects/[id]/boq/[itemId]/status` returns `200`
-3. **Assert:** Status badge updates
+### 05-C — BOQ Version History
+1. Click history icon on an item
+2. **Assert:** Previous versions listed with timestamps and values
 
-### 05-E — Bulk status update
-1. Select multiple BOQ items (checkboxes)
-2. Set all to "Completed"
-3. **Assert:** `PATCH /api/projects/[id]/boq/bulk-status` called with array of IDs
-4. **Assert:** All selected items update
+### 05-D — Delete BOQ Item
+1. Delete a BOQ item
+2. **Assert:** `DELETE /api/projects/[id]/boq/[itemId]` called
+3. **Assert:** Item removed from list
 
-### 05-F — BOQ import
-1. Click "Import BOQ"
-2. Upload a CSV with BOQ items
-3. **Assert:** Items parsed and previewed
-4. Confirm import
-5. **Assert:** `POST /api/projects/[id]/boq/import` returns `201`
-6. **Assert:** Imported items appear in list
+### 05-E — Update Project Budget
+1. Open Budget tab → "Update Budget"
+2. Enter new budget amount and reason
+3. Save
+4. **Assert:** `PUT /api/projects/[id]` called with `{ newBudget, budgetReason }`
+5. **Assert:** Budget history table shows new entry
+6. **Assert:** Current budget amount updated in summary cards
+
+### 05-F — BOQ Import
+1. Download template (if available), prepare CSV/Excel
+2. Upload via BOQ Import modal
+3. **Assert:** Items appear in BOQ list after import
 
 ### 05-G — BOQ Approvers
-1. Click "Set Approvers" on BOQ tab
-2. Select users as approvers
-3. **Assert:** `POST /api/projects/[id]/boq-approvers` succeeds
-4. **Assert:** Approvers listed in the approver section
-
-### 05-H — Budget tab — Initial budget
-1. Open project → Budget tab
-2. **Assert:** Initial estimated budget shows from project creation (`budgetHistory[0]`)
-3. **Assert:** Current approved budget displayed
-
-### 05-I — Budget revision request
-1. Click "Request Budget Revision"
-2. New amount = ₹60,00,000, Reason = "Material cost increase"
-3. Submit
-4. **Assert:** `POST /api/projects/[id]/budget-request` returns `201`
-5. **Assert:** Revision shows as "Pending Approval"
-
-### 05-J — Approve budget revision
-1. As an approver, open the budget request
-2. Click Approve
-3. **Assert:** `POST /api/projects/[id]/budget-action` with `{ action: "Approve" }`
-4. **Assert:** Budget history shows new entry with "Approved" status
-
-### 05-K — Add a transaction
-1. Budget tab → Transactions section
-2. Click "Add Transaction"
-3. Fill: Type = Expense, Category = Labour, Amount = 85000, Date, Description
-4. **Assert:** `POST /api/projects/[id]/transactions` returns `201`
-5. **Assert:** Transaction listed with correct type color (Expense = red, Income = green)
-6. **Assert:** Running balance / total expense updates
-
-### 05-L — Finance page (global view)
-1. Open `http://localhost:3000/finance`
-2. **Assert:** Transactions across all projects visible
-3. **Assert:** Summary totals (total income, total expense, net balance)
+1. Open BOQ Approvers modal
+2. Select team members as approvers
+3. **Assert:** Approvers saved to project
 
 ---
 
-## Notes
-- BOQ `amount` = `quantity × rate` — ensure backend computes this, not frontend
-- Budget revisions go through an approval workflow. The `budgetHistory` array on Project tracks all changes
-- Transactions are scoped to both project and organization
-- `api/transactions` (global) vs `api/projects/[id]/transactions` (project-scoped) — both should return consistent data
+## Known Observations
+
+| Item | Notes |
+|------|-------|
+| BOQ versioning | PATCH creates a new document with `isLatest: true`; old doc set to `isLatest: false` |
+| Budget request email | `POST /api/projects/[id]/budget-request` sends email to approver if survey affects budget |
+| Budget action | `POST /api/projects/[id]/budget-action` — approver approves/rejects the budget change |

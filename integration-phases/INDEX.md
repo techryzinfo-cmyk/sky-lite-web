@@ -5,14 +5,14 @@ Test each phase in order. Later phases depend on earlier ones (you need users & 
 | Phase | Name | Status |
 |-------|------|--------|
 | [01](./PHASE_01_auth.md) | Authentication & Organization | ✅ API Passed — UI manual pending |
-| [02](./PHASE_02_users_roles.md) | Users & Roles / Permissions | ⬜ Not Started |
-| [03](./PHASE_03_projects_core.md) | Project Core CRUD | ⬜ Not Started |
-| [04](./PHASE_04_project_workspace.md) | Project Workspace — Plans, Milestones, DPR | ⬜ Not Started |
-| [05](./PHASE_05_boq_budget.md) | BOQ & Budget | ⬜ Not Started |
-| [06](./PHASE_06_materials.md) | Materials & Supply Chain | ⬜ Not Started |
-| [07](./PHASE_07_quality.md) | Quality Control — Issues, Risks, Snags, Survey | ⬜ Not Started |
-| [08](./PHASE_08_templates.md) | Templates & Categories | ⬜ Not Started |
-| [09](./PHASE_09_superadmin.md) | Super Admin | ⬜ Not Started |
+| [02](./PHASE_02_users_roles.md) | Users & Roles / Permissions | ✅ API Passed — UI manual pending |
+| [03](./PHASE_03_projects_core.md) | Project Core CRUD | 🔄 MD Ready — API test pending |
+| [04](./PHASE_04_project_workspace.md) | Project Workspace — Plans, Milestones, DPR | 🔄 MD Ready — API test pending |
+| [05](./PHASE_05_boq_budget.md) | BOQ & Budget | 🔄 MD Ready — API test pending |
+| [06](./PHASE_06_materials.md) | Materials & Supply Chain | 🔄 MD Ready — API test pending |
+| [07](./PHASE_07_quality.md) | Quality Control — Issues, Risks, Snags, Survey | 🔄 MD Ready — API test pending |
+| [08](./PHASE_08_templates.md) | Templates & Categories | 🔄 MD Ready — API test pending |
+| [09](./PHASE_09_superadmin.md) | Super Admin | 🔄 MD Ready — API test pending |
 
 ## Status Legend
 - ⬜ Not Started
