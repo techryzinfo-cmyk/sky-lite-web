@@ -154,20 +154,22 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
         await api.patch(`/projects/${projectId}`, { ...rest });
         toast.success('Project updated successfully!');
       } else {
+        const descParts: string[] = [];
+        if (form.siteLocation) descParts.push(`Location: ${form.siteLocation}`);
+        if (form.description) descParts.push(form.description);
+
         const payload: any = {
           name: form.name,
-          description: form.siteLocation ? `Location: ${form.siteLocation}` : form.description,
-          siteLocation: form.siteLocation,
-          area: Number(form.area) || undefined,
-          budget: form.budget,
+          description: descParts.join('\n') || undefined,
+          clientName: form.clientName || undefined,
+          clientEmail: form.clientEmail || undefined,
+          clientPhone: form.clientPhone || undefined,
           priority: form.priority,
           startDate: form.startDate || undefined,
           endDate: form.endDate || undefined,
           needSiteSurvey: form.needSiteSurvey,
-          clientName: form.clientName,
-          clientEmail: form.clientEmail,
-          clientPhone: form.clientPhone,
-          documents,
+          budget: form.budget ? form.budget : undefined,
+          documents: documents.length > 0 ? documents : undefined,
         };
         if (selectedTemplate) payload.templateId = selectedTemplate._id;
         await api.post('/projects', payload);
