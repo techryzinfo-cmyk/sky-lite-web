@@ -4,24 +4,33 @@ import React, { useState, useEffect } from 'react';
 import { Shell } from '@/components/layout/Shell';
 import { ProjectCard } from '@/components/ui/ProjectCard';
 import { CreateProjectModal } from '@/components/ui/CreateProjectModal';
-import { Plus, Search, Filter, LayoutGrid, List, Loader2, FolderOpen, ArrowRight, Calendar, Users, Clock, Construction } from 'lucide-react';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { Plus, Search, Filter, LayoutGrid, List, Loader2, FolderOpen, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/lib/api';
 import { Project } from '@/types';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/context/ToastContext';
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<(Project & { hasPendingPlans?: boolean })[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [deletingProject, setDeletingProject] = useState<Project | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const toast = useToast();
 
   const fetchProjects = async () => {
     try {
       const response = await api.get('/projects');
-      setProjects(response.data);
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data?.projects ?? response.data?.data ?? [];
+      setProjects(data);
     } catch (error) {
       console.error('Error fetching projects:', error);
     } finally {
@@ -31,15 +40,42 @@ export default function ProjectsPage() {
 
   useEffect(() => { fetchProjects(); }, []);
 
+  const handleDelete = async () => {
+    if (!deletingProject) return;
+    setIsDeleting(true);
+    try {
+      await api.delete(`/projects/${deletingProject._id}`);
+      toast.success(`"${deletingProject.name}" deleted`);
+      setDeletingProject(null);
+      fetchProjects();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to delete project');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const filteredProjects = projects.filter(project => {
     const matchesSearch =
-      project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      project.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.clientName?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'All' || project.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const statuses = ['All', 'Initialized', 'Planning', 'Site Survey', 'In Progress', 'Under Snagging', 'Snagging Completed', 'Completed', 'On Hold', 'Cancelled'];
+
+  const statusColorMap: Record<string, string> = {
+    'In Progress': 'text-emerald-700 bg-emerald-100 border-emerald-200',
+    'Completed': 'text-green-700 bg-green-100 border-green-200',
+    'Planning': 'text-purple-700 bg-purple-100 border-purple-200',
+    'On Hold': 'text-slate-600 bg-gray-100 border-gray-200',
+    'Cancelled': 'text-red-700 bg-red-100 border-red-200',
+    'Initialized': 'text-blue-700 bg-blue-100 border-blue-200',
+    'Site Survey': 'text-cyan-700 bg-cyan-100 border-cyan-200',
+    'Under Snagging': 'text-amber-700 bg-amber-100 border-amber-200',
+    'Snagging Completed': 'text-orange-700 bg-orange-100 border-orange-200',
+  };
 
   return (
     <Shell>
@@ -51,7 +87,7 @@ export default function ProjectsPage() {
             <p className="text-slate-500 mt-1">Manage and track your construction projects.</p>
           </div>
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => { setEditingProject(null); setIsModalOpen(true); }}
             className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-bold transition-all active:scale-[0.98] shadow-sm shadow-blue-600/20"
           >
             <Plus className="w-5 h-5" />
@@ -113,30 +149,27 @@ export default function ProjectsPage() {
           viewMode === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {filteredProjects.map((project) => (
-                <ProjectCard key={project._id} project={project} />
+                <ProjectCard
+                  key={project._id}
+                  project={project}
+                  onEdit={(p) => { setEditingProject(p); setIsModalOpen(true); }}
+                  onDelete={(p) => setDeletingProject(p)}
+                />
               ))}
             </div>
           ) : (
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="grid grid-cols-[1fr_120px_100px_90px_80px] gap-4 px-6 py-3 border-b border-gray-100 bg-gray-50">
+              <div className="grid grid-cols-[1fr_120px_100px_110px_100px] gap-4 px-6 py-3 border-b border-gray-100 bg-gray-50">
                 {['Project', 'Client', 'Timeline', 'Status', ''].map(h => (
                   <span key={h} className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{h}</span>
                 ))}
               </div>
               {filteredProjects.map((project, i) => {
-                const budget = project.budgetHistory?.[project.budgetHistory.length - 1]?.amount || 0;
-                const statusColorMap: Record<string, string> = {
-                  'In Progress': 'text-emerald-700 bg-emerald-100 border-emerald-200',
-                  'Completed': 'text-green-700 bg-green-100 border-green-200',
-                  'Planning': 'text-purple-700 bg-purple-100 border-purple-200',
-                  'On Hold': 'text-slate-600 bg-gray-100 border-gray-200',
-                  'Cancelled': 'text-red-700 bg-red-100 border-red-200',
-                };
                 const statusColor = statusColorMap[project.status] || 'text-blue-700 bg-blue-100 border-blue-200';
                 return (
                   <div
                     key={project._id}
-                    className={cn('grid grid-cols-[1fr_120px_100px_90px_80px] gap-4 px-6 py-4 border-b border-gray-100 last:border-0 items-center hover:bg-gray-50 transition-colors', i % 2 === 0 ? '' : 'bg-gray-50/40')}
+                    className={cn('grid grid-cols-[1fr_120px_100px_110px_100px] gap-4 px-6 py-4 border-b border-gray-100 last:border-0 items-center hover:bg-gray-50 transition-colors', i % 2 === 0 ? '' : 'bg-gray-50/40')}
                   >
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-gray-900 truncate">{project.name}</p>
@@ -154,13 +187,27 @@ export default function ProjectsPage() {
                     <span className={cn('px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border w-fit', statusColor)}>
                       {project.status}
                     </span>
-                    <Link
-                      href={`/projects/${project._id}`}
-                      className="flex items-center space-x-1 text-xs font-bold text-blue-600 hover:text-blue-500 transition-colors"
-                    >
-                      <span>Open</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/projects/${project._id}`}
+                        className="text-xs font-bold text-blue-600 hover:text-blue-500 transition-colors flex items-center gap-1"
+                      >
+                        <span>Open</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                      <button
+                        onClick={() => { setEditingProject(project); setIsModalOpen(true); }}
+                        className="text-xs font-bold text-slate-500 hover:text-gray-900 transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => setDeletingProject(project)}
+                        className="text-xs font-bold text-red-400 hover:text-red-600 transition-colors"
+                      >
+                        Del
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -191,8 +238,21 @@ export default function ProjectsPage() {
 
       <CreateProjectModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => { setIsModalOpen(false); setEditingProject(null); }}
         onSuccess={fetchProjects}
+        initialData={editingProject || undefined}
+        projectId={editingProject?._id}
+      />
+
+      <ConfirmModal
+        isOpen={!!deletingProject}
+        onClose={() => setDeletingProject(null)}
+        onConfirm={handleDelete}
+        title="Delete Project"
+        message={`Are you sure you want to delete "${deletingProject?.name}"? This cannot be undone and will remove all associated data.`}
+        confirmText="Delete"
+        type="danger"
+        isLoading={isDeleting}
       />
     </Shell>
   );

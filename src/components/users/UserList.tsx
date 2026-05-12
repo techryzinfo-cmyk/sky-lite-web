@@ -173,8 +173,8 @@ export const UserList = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {pagedUsers.map((user) => (
-          <GlassCard key={user._id} className="p-6 border-gray-200 group hover:border-blue-500/50 transition-all" gradient>
+        {pagedUsers.map((user, idx) => (
+          <GlassCard key={user._id || `user-${idx}`} className="p-6 border-gray-200 group hover:border-blue-500/50 transition-all" gradient>
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-center space-x-4">
                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-xl font-black text-white shadow-lg shadow-blue-600/20">

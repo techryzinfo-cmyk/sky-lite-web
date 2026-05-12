@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Shield, Loader2, Check, Lock, Globe, Briefcase, FileText, Settings } from 'lucide-react';
+import { X, Shield, Loader2, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useToast } from '@/context/ToastContext';
 import api from '@/lib/api';
@@ -15,85 +15,132 @@ interface RoleModalProps {
   initialData?: any;
 }
 
-const permissionGroups = [
-  {
-    id: 'projects',
-    name: 'Projects',
-    icon: Briefcase,
-    permissions: [
-      { id: 'projects:create', name: 'Create Projects' },
-      { id: 'projects:edit', name: 'Edit Projects' },
-      { id: 'projects:delete', name: 'Delete Projects' },
-      { id: 'projects:view', name: 'View All Projects' },
-    ]
-  },
-  {
-    id: 'boq',
-    name: 'BOQ & Budget',
-    icon: FileText,
-    permissions: [
-      { id: 'boq:manage', name: 'Manage BOQ Items' },
-      { id: 'boq:approve', name: 'Approve BOQ' },
-      { id: 'budget:manage', name: 'Manage Budgets' },
-      { id: 'budget:approve', name: 'Approve Budget Requests' },
-    ]
-  },
-  {
-    id: 'materials',
-    name: 'Supply Chain',
-    icon: Globe,
-    permissions: [
-      { id: 'materials:manage', name: 'Inventory Management' },
-      { id: 'materials:purchase', name: 'Create Purchase Orders' },
-      { id: 'materials:approve_request', name: 'Approve Material Requests' },
-      { id: 'materials:verify_receipt', name: 'Verify GRNs' },
-    ]
-  },
-  {
-    id: 'system',
-    name: 'System Admin',
-    icon: Settings,
-    permissions: [
-      { id: 'users:manage', name: 'Manage Users' },
-      { id: 'roles:manage', name: 'Manage Roles' },
-      { id: 'templates:manage', name: 'Manage Templates' },
-      { id: 'organization:edit', name: 'Organization Settings' },
-    ]
-  }
+const MODULES = [
+  { id: 'projects',    title: 'Project Management',       icon: '🏗️' },
+  { id: 'financials',  title: 'Financials & Payments',    icon: '💰' },
+  { id: 'inventory',   title: 'Inventory & Assets',       icon: '📦' },
+  { id: 'team',        title: 'User & Team Mgmt',         icon: '👥' },
+  { id: 'site',        title: 'Site Operations',          icon: '🔧' },
+  { id: 'plans',       title: 'Plan Management',          icon: '📐' },
+  { id: 'annotations', title: 'Plan Annotations',         icon: '✏️' },
+  { id: 'sitesurvey',  title: 'Site Survey Management',   icon: '📋' },
+  { id: 'budget',      title: 'Budget Management',        icon: '📊' },
+  { id: 'land',        title: 'Land Documents Mgmt',      icon: '📄' },
+  { id: 'boq',         title: 'BOQ Management',           icon: '🗂️' },
+  { id: 'tasks',       title: 'Task Management',          icon: '✅' },
+  { id: 'workprogress',title: 'Work Progress',            icon: '📈' },
+  { id: 'snag',        title: 'Snag Management',          icon: '🔍' },
+  { id: 'escalation',  title: 'Escalation Matrix',        icon: '🚨' },
 ];
+
+const ACTIONS = [
+  { id: 'view',     label: 'View',     color: 'blue' },
+  { id: 'create',   label: 'Create',   color: 'sky' },
+  { id: 'update',   label: 'Update',   color: 'amber' },
+  { id: 'delete',   label: 'Delete',   color: 'red' },
+  { id: 'approve',  label: 'Approve',  color: 'purple' },
+  { id: 'complete', label: 'Complete', color: 'emerald' },
+];
+
+const ACTION_STYLES: Record<string, { active: string; dot: string }> = {
+  view:     { active: 'bg-blue-50 border-blue-200 text-blue-700',       dot: 'bg-blue-500' },
+  create:   { active: 'bg-sky-50 border-sky-200 text-sky-700',          dot: 'bg-sky-400' },
+  update:   { active: 'bg-amber-50 border-amber-200 text-amber-700',    dot: 'bg-amber-500' },
+  delete:   { active: 'bg-red-50 border-red-200 text-red-700',          dot: 'bg-red-500' },
+  approve:  { active: 'bg-purple-50 border-purple-200 text-purple-700', dot: 'bg-purple-500' },
+  complete: { active: 'bg-emerald-50 border-emerald-200 text-emerald-700', dot: 'bg-emerald-500' },
+};
+
+type PermMap = Record<string, Record<string, boolean>>;
+
+const DEFAULT_ACTIONS = { view: false, create: false, update: false, delete: false, approve: false, complete: false };
+const FULL_ACCESS      = { view: true,  create: true,  update: true,  delete: true,  approve: true,  complete: true };
+const READ_ONLY        = { view: true,  create: false, update: false, delete: false, approve: false, complete: false };
+
+function emptyPerms(): PermMap {
+  return Object.fromEntries(MODULES.map(m => [m.id, { ...DEFAULT_ACTIONS }]));
+}
+
+function fromBackend(flat: string[]): PermMap {
+  const nested = emptyPerms();
+  if (flat.includes('*')) {
+    MODULES.forEach(m => { nested[m.id] = { ...FULL_ACCESS }; });
+    return nested;
+  }
+  flat.forEach(p => {
+    const [mod, action] = p.split(':');
+    if (mod && action && nested[mod]) nested[mod][action] = true;
+  });
+  return nested;
+}
+
+function toBackend(nested: PermMap): string[] {
+  const flat: string[] = [];
+  Object.entries(nested).forEach(([mod, actions]) => {
+    Object.entries(actions).forEach(([action, enabled]) => {
+      if (enabled) flat.push(`${mod}:${action}`);
+    });
+  });
+  return flat;
+}
 
 export const RoleModal: React.FC<RoleModalProps> = ({ isOpen, onClose, onSuccess, initialData }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    name: initialData?.name || '',
-    description: initialData?.description || '',
-    permissions: initialData?.permissions || []
-  });
-
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [permissions, setPermissions] = useState<PermMap>(emptyPerms());
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const toast = useToast();
 
-  const togglePermission = (id: string) => {
-    setFormData(prev => {
-      const isSelected = prev.permissions.includes(id);
-      if (isSelected) {
-        return { ...prev, permissions: prev.permissions.filter((p: string) => p !== id) };
-      } else {
-        return { ...prev, permissions: [...prev.permissions, id] };
-      }
+  const isAdmin = initialData?.name?.toLowerCase().includes('admin');
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setName(initialData?.name || '');
+    setDescription(initialData?.description || '');
+    setPermissions(fromBackend(initialData?.permissions || []));
+    setExpandedIds(new Set());
+  }, [isOpen, initialData]);
+
+  const toggle = (moduleId: string, actionId: string) => {
+    if (isAdmin) return;
+    setPermissions(prev => ({
+      ...prev,
+      [moduleId]: { ...prev[moduleId], [actionId]: !prev[moduleId][actionId] },
+    }));
+  };
+
+  const applyPreset = (preset: 'full' | 'readonly') => {
+    if (isAdmin) return;
+    const val = preset === 'full' ? FULL_ACCESS : READ_ONLY;
+    setPermissions(Object.fromEntries(MODULES.map(m => [m.id, { ...val }])));
+  };
+
+  const clearAll = () => {
+    if (isAdmin) return;
+    setPermissions(emptyPerms());
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
     });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!name.trim()) { toast.error('Role name is required'); return; }
     setIsLoading(true);
-
     try {
+      const payload = { name, description, permissions: toBackend(permissions) };
       if (initialData) {
-        await api.patch(`/roles/${initialData._id}`, formData);
+        await api.patch(`/roles/${initialData._id}`, payload);
         toast.success('Role updated successfully');
       } else {
-        await api.post('/roles', formData);
-        toast.success('New role defined successfully');
+        await api.post('/roles', payload);
+        toast.success('Role created successfully');
       }
       onSuccess();
       onClose();
@@ -104,131 +151,189 @@ export const RoleModal: React.FC<RoleModalProps> = ({ isOpen, onClose, onSuccess
     }
   };
 
+  const totalEnabled = Object.values(permissions).reduce(
+    (sum, mod) => sum + Object.values(mod).filter(Boolean).length, 0
+  );
+
   return (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose}
             className="absolute inset-0 bg-black/30 backdrop-blur-sm"
           />
-
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="w-full max-w-4xl relative z-10"
+            className="w-full max-w-3xl relative z-10"
           >
             <GlassCard className="border-gray-200" gradient>
-              <div className="p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-3 rounded-2xl bg-blue-100 border border-blue-200">
-                      <Shield className="w-6 h-6 text-blue-600" />
+              <div className="p-6 max-h-[92vh] overflow-y-auto custom-scrollbar">
+
+                {/* Header */}
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200">
+                      <Shield className="w-5 h-5 text-blue-600" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-gray-900">{initialData ? 'Edit Role' : 'Define New Role'}</h2>
-                      <p className="text-xs text-slate-500 mt-0.5">Configure access levels and security permissions.</p>
+                      <h2 className="text-lg font-bold text-gray-900">
+                        {initialData ? 'Edit Role' : 'Create New Role'}
+                      </h2>
+                      <p className="text-xs text-slate-400 mt-0.5">Configure access levels per module</p>
                     </div>
                   </div>
                   <button onClick={onClose} className="p-2 text-slate-400 hover:text-gray-900 bg-gray-50 rounded-xl transition-colors">
-                    <X className="w-5 h-5" />
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-8">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-600 ml-1">Role Name</label>
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  {/* Name + Description */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Role Name</label>
                       <input
-                        type="text"
-                        required
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all"
+                        type="text" required value={name}
+                        onChange={e => setName(e.target.value)}
+                        disabled={isAdmin}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all disabled:opacity-60"
                         placeholder="e.g. Project Manager"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-600 ml-1">Description</label>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Description</label>
                       <input
-                        type="text"
-                        value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all"
+                        type="text" value={description}
+                        onChange={e => setDescription(e.target.value)}
+                        disabled={isAdmin}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all disabled:opacity-60"
                         placeholder="Brief purpose of this role"
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-4">
+                  {/* Permissions section */}
+                  <div className="space-y-3">
+                    {/* Section header */}
                     <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Permissions Matrix</h3>
-                      <span className="text-[10px] font-bold text-blue-600 uppercase">{formData.permissions.length} active privileges</span>
+                      <div>
+                        <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Module Permissions</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{totalEnabled} permission{totalEnabled !== 1 ? 's' : ''} enabled across {MODULES.length} modules</p>
+                      </div>
+                      {!isAdmin && (
+                        <div className="flex items-center gap-1.5">
+                          <button type="button" onClick={() => applyPreset('readonly')}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-100 border border-gray-200 text-slate-600 hover:bg-gray-200 transition-all">
+                            Read Only
+                          </button>
+                          <button type="button" onClick={() => applyPreset('full')}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 transition-all">
+                            Full Access
+                          </button>
+                          <button type="button" onClick={clearAll}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 transition-all">
+                            Clear All
+                          </button>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {permissionGroups.map((group) => (
-                        <div key={group.id} className="p-6 rounded-2xl bg-gray-50 border border-gray-200 space-y-4">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <group.icon className="w-4 h-4 text-slate-500" />
-                            <h4 className="text-sm font-bold text-gray-900">{group.name}</h4>
-                          </div>
+                    {/* Admin lock notice */}
+                    {isAdmin && (
+                      <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                        <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0" />
+                        <p className="text-sm font-semibold text-blue-700">This is a protected system role. Permissions are locked and cannot be modified.</p>
+                      </div>
+                    )}
 
-                          <div className="space-y-2">
-                            {group.permissions.map((perm) => (
-                              <button
-                                key={perm.id}
-                                type="button"
-                                onClick={() => togglePermission(perm.id)}
-                                className={cn(
-                                  "w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left",
-                                  formData.permissions.includes(perm.id)
-                                    ? "bg-blue-50 border-blue-200 text-gray-900"
-                                    : "bg-white border-gray-200 text-slate-500 hover:border-gray-300"
+                    {/* Module cards */}
+                    <div className="space-y-2">
+                      {MODULES.map(module => {
+                        const modPerms = permissions[module.id] || { ...DEFAULT_ACTIONS };
+                        const activeCount = Object.values(modPerms).filter(Boolean).length;
+                        const isExpanded = expandedIds.has(module.id);
+
+                        return (
+                          <div key={module.id} className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+                            {/* Module header — clickable */}
+                            <button
+                              type="button"
+                              onClick={() => toggleExpand(module.id)}
+                              className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+                            >
+                              <div className="flex items-center gap-3">
+                                <span className="text-base leading-none">{module.icon}</span>
+                                <div>
+                                  <p className="text-sm font-bold text-gray-900">{module.title}</p>
+                                  <p className="text-[10px] text-slate-400 mt-0.5">
+                                    {activeCount === 0 ? 'No access defined' : `${activeCount} of ${ACTIONS.length} permissions enabled`}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {/* Active count badge */}
+                                {activeCount > 0 && (
+                                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-100 text-blue-700 border border-blue-200">
+                                    {activeCount}/{ACTIONS.length}
+                                  </span>
                                 )}
-                              >
-                                <span className="text-xs font-medium">{perm.name}</span>
-                                {formData.permissions.includes(perm.id) ? (
-                                  <Check className="w-4 h-4 text-blue-600" />
-                                ) : (
-                                  <Lock className="w-3.5 h-3.5 text-gray-300" />
-                                )}
-                              </button>
-                            ))}
+                                {isExpanded
+                                  ? <ChevronUp className="w-4 h-4 text-slate-400" />
+                                  : <ChevronDown className="w-4 h-4 text-slate-400" />
+                                }
+                              </div>
+                            </button>
+
+                            {/* Action chips — expanded */}
+                            {isExpanded && (
+                              <div className="px-4 pb-4 pt-1 border-t border-gray-100 grid grid-cols-3 gap-2">
+                                {ACTIONS.map(action => {
+                                  const isActive = modPerms[action.id];
+                                  const styles = ACTION_STYLES[action.id];
+                                  return (
+                                    <button
+                                      key={action.id}
+                                      type="button"
+                                      onClick={() => toggle(module.id, action.id)}
+                                      disabled={isAdmin}
+                                      className={cn(
+                                        'flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all text-left',
+                                        isActive ? styles.active : 'bg-gray-50 border-gray-200 text-slate-500 hover:border-gray-300',
+                                        isAdmin && 'cursor-not-allowed opacity-70'
+                                      )}
+                                    >
+                                      <span className={cn('w-2 h-2 rounded-full shrink-0', isActive ? styles.dot : 'bg-gray-300')} />
+                                      {action.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
-                  <div className="pt-6 flex space-x-4">
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      className="flex-1 py-4 px-6 rounded-2xl bg-gray-100 hover:bg-gray-200 text-slate-600 font-bold transition-all active:scale-[0.98]"
-                    >
+                  {/* Footer */}
+                  <div className="pt-4 flex gap-3 border-t border-gray-200">
+                    <button type="button" onClick={onClose}
+                      className="flex-1 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-slate-600 font-bold transition-all">
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      disabled={isLoading}
-                      className="flex-2 py-4 px-12 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black transition-all active:scale-[0.98] disabled:opacity-50 shadow-xl shadow-blue-600/20 flex items-center justify-center space-x-3"
+                      disabled={isLoading || isAdmin}
+                      className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all disabled:opacity-50 shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
                     >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          <span>Saving Changes...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Lock className="w-5 h-5" />
-                          <span>{initialData ? 'Update Privileges' : 'Create Access Role'}</span>
-                        </>
-                      )}
+                      {isLoading
+                        ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Saving...</span></>
+                        : <span>{isAdmin ? 'Role Locked' : initialData ? 'Save Changes' : 'Create Role'}</span>
+                      }
                     </button>
                   </div>
                 </form>

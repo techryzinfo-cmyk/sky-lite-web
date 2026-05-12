@@ -103,99 +103,114 @@ function ProjectWorkspaceInner() {
 
   return (
     <Shell>
-      <div className="space-y-5">
-        {/* Project Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => router.push('/projects')}
-              className="p-2 bg-white border border-gray-200 rounded-xl text-slate-500 hover:text-gray-900 hover:bg-gray-50 transition-colors"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <div>
-              <div className="flex items-center space-x-3">
-                <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
-                <select
-                  value={project.status}
-                  onChange={async (e) => {
-                    try {
-                      await api.patch(`/projects/${id}`, { status: e.target.value });
-                      toast.success('Project status updated');
-                      fetchProject();
-                    } catch {
-                      toast.error('Failed to update status');
-                    }
-                  }}
-                  className="bg-blue-50 border border-blue-200 rounded-lg px-2 py-0.5 text-[10px] font-black text-blue-700 uppercase tracking-widest focus:outline-none focus:ring-1 focus:ring-blue-500/30 cursor-pointer"
-                >
-                  {['Initialized','Planning','Site Survey','In Progress','Under Snagging','Snagging Completed','Completed','On Hold','Cancelled'].map(s => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
+      <div className="space-y-0">
+        {/* Compact header card */}
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm px-5 py-3">
+          {/* Top row: back + name + status + actions */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                onClick={() => router.push('/projects')}
+                className="p-1.5 bg-gray-50 border border-gray-200 rounded-lg text-slate-400 hover:text-gray-900 hover:bg-gray-100 transition-colors shrink-0"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-base font-bold text-gray-900 truncate leading-tight">{project.name}</h1>
+                  <select
+                    value={project.status}
+                    onChange={async (e) => {
+                      try {
+                        await api.patch(`/projects/${id}`, { status: e.target.value });
+                        toast.success('Status updated');
+                        fetchProject();
+                      } catch {
+                        toast.error('Failed to update status');
+                      }
+                    }}
+                    className="bg-blue-50 border border-blue-200 rounded-md px-2 py-0.5 text-[9px] font-black text-blue-700 uppercase tracking-widest focus:outline-none cursor-pointer shrink-0 leading-tight"
+                  >
+                    {['Initialized','Planning','Site Survey','In Progress','Under Snagging','Snagging Completed','Completed','On Hold','Cancelled'].map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-[10px] font-mono text-slate-400">{(id as string).slice(-6).toUpperCase()}</span>
+                  <span className="text-slate-300">·</span>
+                  <span className="text-[10px] text-slate-400">{project.members?.length || 0} members</span>
+                  {project.clientName && (
+                    <>
+                      <span className="text-slate-300">·</span>
+                      <span className="text-[10px] text-slate-400 truncate max-w-[120px]">{project.clientName}</span>
+                    </>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center space-x-2 mt-1 text-xs">
-                <span className="text-slate-400">ID:</span>
-                <span className="text-slate-500 font-mono">{(id as string).slice(-6).toUpperCase()}</span>
-                <span className="w-1 h-1 bg-gray-300 rounded-full" />
-                <span className="text-slate-500">{project.members?.length || 0} Members</span>
-              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-slate-600 hover:bg-gray-100 hover:text-gray-900 transition-all"
+              >
+                <Pencil className="w-3 h-3" />
+                <span>Edit</span>
+              </button>
+              <button
+                onClick={() => {
+                  const data = {
+                    project: { name: project.name, status: project.status, description: project.description, clientName: project.clientName, startDate: project.startDate, endDate: project.endDate },
+                    budget: project.budgetHistory?.at(-1)?.amount,
+                    members: project.members?.length,
+                    exportedAt: new Date().toISOString(),
+                  };
+                  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = window.document.createElement('a');
+                  a.href = url;
+                  a.download = `${project.name.replace(/\s+/g, '_')}_report.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  toast.success('Report exported');
+                }}
+                className="px-3 py-1.5 bg-blue-600 rounded-lg text-xs font-bold text-white hover:bg-blue-500 shadow-sm shadow-blue-600/20 transition-all"
+              >
+                Export
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setIsEditModalOpen(true)}
-              className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all"
-            >
-              <Pencil className="w-4 h-4" />
-              <span>Edit Project</span>
-            </button>
-            <button
-              onClick={() => {
-                const data = {
-                  project: { name: project.name, status: project.status, description: project.description, clientName: project.clientName, startDate: project.startDate, endDate: project.endDate },
-                  budget: project.budgetHistory?.at(-1)?.amount,
-                  members: project.members?.length,
-                  exportedAt: new Date().toISOString(),
-                };
-                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = window.document.createElement('a');
-                a.href = url;
-                a.download = `${project.name.replace(/\s+/g, '_')}_report.json`;
-                a.click();
-                URL.revokeObjectURL(url);
-                toast.success('Report exported');
-              }}
-              className="px-4 py-2 bg-blue-600 rounded-xl text-sm font-bold text-white hover:bg-blue-500 shadow-sm shadow-blue-600/20 transition-all"
-            >
-              Export Report
-            </button>
+          {/* Divider */}
+          <div className="border-t border-gray-100 mt-3 -mx-5" />
+
+          {/* Tab bar — underline style */}
+          <div className="flex overflow-x-auto scrollbar-hide -mb-3 mt-0">
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold whitespace-nowrap transition-all relative shrink-0 border-b-2",
+                    isActive
+                      ? "text-blue-600 border-blue-600"
+                      : "text-slate-500 border-transparent hover:text-gray-700 hover:border-gray-300"
+                  )}
+                >
+                  <tab.icon className={cn("w-3.5 h-3.5", isActive ? "text-blue-600" : "text-slate-400")} />
+                  {tab.name}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Tab Pills */}
-        <div className="flex overflow-x-auto pb-1 -mx-1 px-1 space-x-1.5">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                "flex items-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all border shrink-0",
-                activeTab === tab.id
-                  ? "bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/20"
-                  : "bg-white text-slate-600 border-gray-200 hover:border-gray-300 hover:text-gray-900"
-              )}
-            >
-              <tab.icon className="w-4 h-4" />
-              <span>{tab.name}</span>
-            </button>
-          ))}
-        </div>
-
         {/* Tab Content */}
-        <div>
+        <div className="mt-4">
           {activeTab === 'details' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-5">

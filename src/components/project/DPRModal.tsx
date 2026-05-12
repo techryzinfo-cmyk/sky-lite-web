@@ -53,7 +53,7 @@ export const DPRModal: React.FC<DPRModalProps> = ({
     if (!file) return;
     setIsUploading(true);
     try {
-      const url = await uploadToCloudinary(file, 'ml_default');
+      const url = await uploadToCloudinary(file);
       setFormData(prev => ({ ...prev, photos: [...prev.photos, url] }));
     } catch {
       toast.error('Photo upload failed. Check your Cloudinary config.');
