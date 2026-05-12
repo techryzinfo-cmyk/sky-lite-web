@@ -12,15 +12,19 @@ interface TemplateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialData?: any;
+  templateId?: string;
 }
 
 const inputCls = 'w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all';
 
-export const TemplateModal: React.FC<TemplateModalProps> = ({ isOpen, onClose, onSuccess }) => {
+export const TemplateModal: React.FC<TemplateModalProps> = ({ isOpen, onClose, onSuccess, initialData, templateId }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
+
+  const isEditing = !!templateId;
 
   const [formData, setFormData] = useState({
     name: '',
@@ -43,10 +47,24 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({ isOpen, onClose, o
     api.get('/template-categories')
       .then(r => {
         setCategories(r.data);
-        if (r.data.length > 0) setFormData(f => ({ ...f, category: r.data[0]._id }));
+        if (initialData) {
+          setFormData({
+            name: initialData.name || '',
+            category: initialData.category?._id || initialData.category || r.data[0]?._id || '',
+            description: initialData.description || '',
+            minBudget: initialData.minBudget?.toString() || '',
+            maxBudget: initialData.maxBudget?.toString() || '',
+            area: initialData.area?.toString() || '',
+            estimatedDays: initialData.estimatedDays?.toString() || '',
+          });
+          setImages(Array.isArray(initialData.images) ? initialData.images : []);
+          setFiles(Array.isArray(initialData.files) ? initialData.files : []);
+        } else if (r.data.length > 0) {
+          setFormData(f => ({ ...f, category: r.data[0]._id }));
+        }
       })
       .catch(() => {});
-  }, [isOpen]);
+  }, [isOpen, initialData]);
 
   const reset = () => {
     setFormData({ name: '', category: categories[0]?._id || '', description: '', minBudget: '', maxBudget: '', area: '', estimatedDays: '' });
@@ -97,7 +115,7 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({ isOpen, onClose, o
     }
     setIsLoading(true);
     try {
-      await api.post('/templates', {
+      const payload = {
         name: formData.name,
         category: formData.category,
         description: formData.description,
@@ -107,13 +125,19 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({ isOpen, onClose, o
         estimatedDays: Number(formData.estimatedDays) || 0,
         images,
         files,
-      });
-      toast.success('Project template created successfully!');
+      };
+      if (isEditing) {
+        await api.patch(`/templates/${templateId}`, payload);
+        toast.success('Template updated successfully!');
+      } else {
+        await api.post('/templates', payload);
+        toast.success('Project template created successfully!');
+      }
       onSuccess();
       onClose();
-      reset();
+      if (!isEditing) reset();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to create template');
+      toast.error(error.response?.data?.message || (isEditing ? 'Failed to update template' : 'Failed to create template'));
     } finally {
       setIsLoading(false);
     }
@@ -139,8 +163,8 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({ isOpen, onClose, o
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                   <div>
-                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">New Project</p>
-                    <h2 className="text-xl font-black text-gray-900">Project Template</h2>
+                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">{isEditing ? 'Edit Template' : 'New Project'}</p>
+                    <h2 className="text-xl font-black text-gray-900">{isEditing ? 'Edit Project Template' : 'New Project Template'}</h2>
                   </div>
                   <button onClick={() => { onClose(); reset(); }} className="p-2 text-slate-400 hover:text-gray-900 bg-gray-50 rounded-xl transition-colors">
                     <X className="w-5 h-5" />
@@ -338,7 +362,7 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({ isOpen, onClose, o
                       type="submit" disabled={isLoading || uploadingImage || uploadingFile}
                       className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all disabled:opacity-50 shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
                     >
-                      {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Creating...</span></> : <span>Create Template</span>}
+                      {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /><span>{isEditing ? 'Saving...' : 'Creating...'}</span></> : <span>{isEditing ? 'Save Changes' : 'Create Template'}</span>}
                     </button>
                   </div>
                 </form>
