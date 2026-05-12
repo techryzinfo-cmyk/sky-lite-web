@@ -133,38 +133,23 @@ export const CategoryList = () => {
               <div className="p-3 rounded-2xl bg-blue-100 border border-blue-200">
                 <Folder className="w-6 h-6 text-blue-600" />
               </div>
-              <div className="flex items-center space-x-1">
-                {editingId === cat._id ? (
-                  <>
+              <div className="relative" ref={catMenuId === cat._id ? catMenuRef : null}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setCatMenuId(catMenuId === cat._id ? null : cat._id); }}
+                  className="p-2 text-slate-400 hover:text-gray-900 transition-colors"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+                {catMenuId === cat._id && (
+                  <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-gray-200 rounded-xl shadow-lg z-30 overflow-hidden">
                     <button
-                      onClick={() => handleUpdate(cat._id)}
-                      disabled={isUpdating}
-                      className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-xl transition-all"
+                      onClick={(e) => { e.stopPropagation(); handleDeleteCategory(cat); }}
+                      className="w-full px-4 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
                     >
-                      <Check className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete</span>
                     </button>
-                    <button
-                      onClick={() => setEditingId(null)}
-                      className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => startEditing(cat)}
-                      className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(cat._id)}
-                      className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </>
+                  </div>
                 )}
               </div>
             </div>

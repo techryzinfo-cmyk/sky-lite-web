@@ -6,6 +6,7 @@ import { X, Loader2, Camera, Calendar, Layout, Info, MessageSquare, TrendingUp, 
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useToast } from '@/context/ToastContext';
 import api from '@/lib/api';
+import { uploadToCloudinary } from '@/lib/upload';
 
 interface DPRModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export const DPRModal: React.FC<DPRModalProps> = ({
   projectId
 }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [milestones, setMilestones] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     milestone: '',
@@ -46,11 +48,18 @@ export const DPRModal: React.FC<DPRModalProps> = ({
     }
   }, [isOpen, projectId]);
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const dummyUrl = URL.createObjectURL(file);
-      setFormData({ ...formData, photos: [...formData.photos, dummyUrl] });
+    if (!file) return;
+    setIsUploading(true);
+    try {
+      const url = await uploadToCloudinary(file, 'ml_default');
+      setFormData(prev => ({ ...prev, photos: [...prev.photos, url] }));
+    } catch {
+      toast.error('Photo upload failed. Check your Cloudinary config.');
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
     }
   };
 
@@ -186,9 +195,9 @@ export const DPRModal: React.FC<DPRModalProps> = ({
                           <img src={photo} alt="Upload" className="w-full h-full object-cover" />
                         </div>
                       ))}
-                      <label className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer flex flex-col items-center justify-center text-slate-400 hover:text-blue-500">
-                        <Camera className="w-6 h-6" />
-                        <input type="file" className="hidden" onChange={handlePhotoUpload} />
+                      <label className={`w-16 h-16 rounded-lg border-2 border-dashed transition-all flex flex-col items-center justify-center ${isUploading ? 'border-blue-300 bg-blue-50 cursor-not-allowed' : 'border-gray-200 hover:border-blue-400 hover:bg-blue-50 cursor-pointer text-slate-400 hover:text-blue-500'}`}>
+                        {isUploading ? <Loader2 className="w-5 h-5 text-blue-500 animate-spin" /> : <Camera className="w-6 h-6" />}
+                        <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={isUploading} />
                       </label>
                     </div>
                   </div>

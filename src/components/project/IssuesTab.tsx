@@ -23,12 +23,13 @@ import { EscalationMatrixModal } from './EscalationMatrixModal';
 
 interface IssuesTabProps {
   projectId: string;
+  initialType?: 'Issue' | 'Snag';
 }
 
-export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId }) => {
+export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = 'Issue' }) => {
   const [issues, setIssues] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeType, setActiveType] = useState<'Issue' | 'Snag'>('Issue');
+  const [activeType, setActiveType] = useState<'Issue' | 'Snag'>(initialType);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<any>(null);
   const [isEscalationOpen, setIsEscalationOpen] = useState(false);
@@ -71,8 +72,16 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId }) => {
     }
   };
 
-  const filteredIssues = issues.filter(i => 
-    i.title.toLowerCase().includes(searchQuery.toLowerCase())
+  // type field may be stored as 'Issue'/'Snag', or inferred from category 'Snag'
+  const typeMatches = (i: any) =>
+    i.type === activeType ||
+    (activeType === 'Snag' && (!i.type || i.type === '') && i.category === 'Snag') ||
+    (activeType === 'Issue' && !i.type && i.category !== 'Snag');
+
+  const typeIssues = issues.filter(typeMatches);
+
+  const filteredIssues = typeIssues.filter(i =>
+    i.title?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -80,8 +89,8 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId }) => {
       {/* Header & Filter */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h3 className="text-xl font-bold text-gray-900">Issues & Snags</h3>
-          <p className="text-sm text-slate-500 mt-1">Report and track site issues, snags, and risks.</p>
+          <h3 className="text-xl font-bold text-gray-900">{activeType === 'Snag' ? 'Snag Tracker' : 'Issue Tracker'}</h3>
+          <p className="text-sm text-slate-500 mt-1">{activeType === 'Snag' ? 'Track defects and snagging items on site.' : 'Report and track site issues and field problems.'}</p>
         </div>
 
         <div className="flex items-center space-x-3">
@@ -125,10 +134,10 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId }) => {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Open', value: issues.filter(i => i.status === 'Open').length, color: 'text-blue-600' },
-          { label: 'Critical', value: issues.filter(i => i.priority === 'Critical').length, color: 'text-red-600' },
-          { label: 'In Progress', value: issues.filter(i => i.status === 'In Progress').length, color: 'text-amber-600' },
-          { label: 'Resolved', value: issues.filter(i => i.status === 'Resolved').length, color: 'text-emerald-600' },
+          { label: 'Open', value: typeIssues.filter(i => i.status === 'Open').length, color: 'text-blue-600' },
+          { label: 'Critical', value: typeIssues.filter(i => i.priority === 'Critical').length, color: 'text-red-600' },
+          { label: 'In Progress', value: typeIssues.filter(i => i.status === 'In Progress').length, color: 'text-amber-600' },
+          { label: 'Resolved', value: typeIssues.filter(i => i.status === 'Resolved').length, color: 'text-emerald-600' },
         ].map((stat, i) => (
           <GlassCard key={i} className="p-4 border-gray-200" gradient>
             <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">{stat.label}</p>

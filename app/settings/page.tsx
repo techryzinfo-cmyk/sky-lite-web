@@ -35,6 +35,19 @@ export default function SettingsPage() {
     weeklyDigest: false,
     riskEscalations: true,
   });
+  const [savingNotifs, setSavingNotifs] = useState(false);
+
+  const handleSaveNotifs = async () => {
+    setSavingNotifs(true);
+    try {
+      await api.patch('/organization/notifications', notifs);
+      toast.success('Notification preferences saved');
+    } catch {
+      toast.error('Failed to save notification preferences');
+    } finally {
+      setSavingNotifs(false);
+    }
+  };
 
   const [theme, setTheme] = useState<'system' | 'light' | 'dark'>('light');
   const [deleteConfirm, setDeleteConfirm] = useState('');
@@ -178,6 +191,16 @@ export default function SettingsPage() {
                 />
               </div>
             ))}
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={handleSaveNotifs}
+                disabled={savingNotifs}
+                className="flex items-center space-x-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50 shadow-lg shadow-blue-600/20"
+              >
+                {savingNotifs ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>Save Preferences</span>
+              </button>
+            </div>
           </div>
         </Section>
 

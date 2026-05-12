@@ -16,6 +16,7 @@ import {
   Trash2,
   LayoutGrid,
   AlignLeft,
+  MoreVertical,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
@@ -34,6 +35,7 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [togglingTask, setTogglingTask] = useState<string | null>(null);
   const [view, setView] = useState<'cards' | 'gantt'>('cards');
+  const [milestoneMenuId, setMilestoneMenuId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -115,6 +117,18 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
       toast.error('Failed to update task');
     } finally {
       setTogglingTask(null);
+    }
+  };
+
+  const handleDeleteMilestone = async (id: string, name: string) => {
+    setMilestoneMenuId(null);
+    if (!window.confirm(`Delete milestone "${name}"? This cannot be undone.`)) return;
+    try {
+      await api.delete(`/projects/${projectId}/milestones/${id}`);
+      toast.success('Milestone deleted');
+      fetchMilestones();
+    } catch {
+      toast.error('Failed to delete milestone');
     }
   };
 
@@ -283,12 +297,33 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
                   <div className="p-3 rounded-2xl bg-blue-100 border border-blue-200">
                     <Flag className="w-6 h-6 text-blue-600" />
                   </div>
-                  <span className={cn(
-                    "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border",
-                    getStatusStyle(milestone.status)
-                  )}>
-                    {milestone.status || 'Pending'}
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border",
+                      getStatusStyle(milestone.status)
+                    )}>
+                      {milestone.status || 'Pending'}
+                    </span>
+                    <div className="relative">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setMilestoneMenuId(milestoneMenuId === milestone._id ? null : milestone._id); }}
+                        className="p-1 text-slate-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                      {milestoneMenuId === milestone._id && (
+                        <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-gray-200 rounded-xl shadow-lg z-30 overflow-hidden">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteMilestone(milestone._id, milestone.name || milestone.title); }}
+                            className="w-full px-4 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <h4 className="text-lg font-bold text-gray-900 mb-1">{milestone.name || milestone.title}</h4>

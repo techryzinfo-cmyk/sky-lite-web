@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus,
   Search,
@@ -13,7 +13,8 @@ import {
   DollarSign,
   FileText,
   Clock,
-  Layout
+  Layout,
+  Trash2
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
@@ -29,6 +30,8 @@ export const TemplateList = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [detailTemplateId, setDetailTemplateId] = useState<string | null>(null);
+  const [templateMenuId, setTemplateMenuId] = useState<string | null>(null);
+  const templateMenuRef = useRef<HTMLDivElement>(null);
 
   const toast = useToast();
 
@@ -48,11 +51,35 @@ export const TemplateList = () => {
     fetchTemplates();
   }, []);
 
+  useEffect(() => {
+    if (!templateMenuId) return;
+    const close = (e: MouseEvent) => {
+      if (templateMenuRef.current && !templateMenuRef.current.contains(e.target as Node)) {
+        setTemplateMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [templateMenuId]);
+
   const filteredTemplates = templates.filter(t =>
     t.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const { currentPage, totalPages, paginated: pagedTemplates, setCurrentPage } = usePagination(filteredTemplates, 9);
+
+  const handleDeleteTemplate = async (e: React.MouseEvent, templateId: string, templateName: string) => {
+    e.stopPropagation();
+    setTemplateMenuId(null);
+    if (!window.confirm(`Delete template "${templateName}"? This cannot be undone.`)) return;
+    try {
+      await api.delete(`/templates/${templateId}`);
+      toast.success('Template deleted');
+      fetchTemplates();
+    } catch {
+      toast.error('Failed to delete template');
+    }
+  };
 
   const handleDuplicate = async (e: React.MouseEvent, templateId: string) => {
     e.stopPropagation();
@@ -93,7 +120,7 @@ export const TemplateList = () => {
           className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-2xl text-sm font-bold transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20"
         >
           <Plus className="w-4 h-4" />
-          <span>Create Blueprint</span>
+          <span>Create Project Template</span>
         </button>
       </div>
 
@@ -102,10 +129,31 @@ export const TemplateList = () => {
           <GlassCard key={template._id} onClick={() => setDetailTemplateId(template._id)} className="p-0 border-gray-200 group hover:border-blue-500/50 transition-all cursor-pointer overflow-hidden" gradient>
             <div className="h-32 bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center relative">
               <Layers className="w-12 h-12 text-blue-400 group-hover:scale-110 transition-transform duration-500" />
-              <div className="absolute top-4 right-4">
-                <button className="p-2 rounded-lg bg-white/80 text-slate-500 hover:text-gray-900 backdrop-blur-md border border-gray-200 transition-all">
+              <div className="absolute top-4 right-4" ref={templateMenuId === template._id ? templateMenuRef : null}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setTemplateMenuId(templateMenuId === template._id ? null : template._id); }}
+                  className="p-2 rounded-lg bg-white/80 text-slate-500 hover:text-gray-900 backdrop-blur-md border border-gray-200 transition-all"
+                >
                   <MoreVertical className="w-4 h-4" />
                 </button>
+                {templateMenuId === template._id && (
+                  <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-gray-200 rounded-xl shadow-lg z-30 overflow-hidden">
+                    <button
+                      onClick={(e) => handleDuplicate(e, template._id)}
+                      className="w-full px-4 py-2.5 text-left text-sm font-semibold text-slate-600 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+                    >
+                      <Copy className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Duplicate</span>
+                    </button>
+                    <button
+                      onClick={(e) => handleDeleteTemplate(e, template._id, template.name)}
+                      className="w-full px-4 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Layers, FileText, DollarSign, Loader2, Tag } from 'lucide-react';
+import { X, Layers, FileText, DollarSign, Loader2, Tag, Copy } from 'lucide-react';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 
@@ -19,7 +19,22 @@ export const TemplateDetailModal: React.FC<TemplateDetailModalProps> = ({
 }) => {
   const [template, setTemplate] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const toast = useToast();
+
+  const handleDuplicate = async () => {
+    if (!templateId) return;
+    setDuplicating(true);
+    try {
+      await api.post(`/templates/${templateId}/duplicate`);
+      toast.success('Template duplicated successfully');
+      onClose();
+    } catch {
+      toast.error('Failed to duplicate template');
+    } finally {
+      setDuplicating(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen && templateId) {
@@ -172,13 +187,23 @@ export const TemplateDetailModal: React.FC<TemplateDetailModalProps> = ({
               </div>
 
               {/* Footer */}
-              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end shrink-0">
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between shrink-0">
                 <button
                   onClick={onClose}
                   className="px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-gray-100 transition-all"
                 >
                   Close
                 </button>
+                {template && (
+                  <button
+                    onClick={handleDuplicate}
+                    disabled={duplicating}
+                    className="flex items-center space-x-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50 shadow-lg shadow-blue-600/20"
+                  >
+                    {duplicating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+                    <span>Duplicate Template</span>
+                  </button>
+                )}
               </div>
             </div>
           </motion.div>
