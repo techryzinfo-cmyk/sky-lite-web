@@ -13,6 +13,8 @@ import {
   ExternalLink,
   BarChart3,
   IndianRupee,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { Project } from '@/types';
 import { GlassCard } from './GlassCard';
@@ -20,18 +22,20 @@ import { cn } from '@/lib/utils';
 
 interface ProjectCardProps {
   project: Project & { hasPendingPlans?: boolean };
+  onEdit?: (project: Project) => void;
+  onDelete?: (project: Project) => void;
 }
 
-const statusColors = {
-  'Initialized': 'text-blue-700 bg-blue-100 border-blue-200',
-  'Planning': 'text-purple-700 bg-purple-100 border-purple-200',
-  'Site Survey': 'text-cyan-700 bg-cyan-100 border-cyan-200',
-  'In Progress': 'text-emerald-700 bg-emerald-100 border-emerald-200',
-  'Under Snagging': 'text-amber-700 bg-amber-100 border-amber-200',
-  'Snagging Completed': 'text-orange-700 bg-orange-100 border-orange-200',
-  'Completed': 'text-green-700 bg-green-100 border-green-200',
-  'On Hold': 'text-slate-600 bg-gray-100 border-gray-200',
-  'Cancelled': 'text-red-700 bg-red-100 border-red-200',
+const statusColors: Record<string, string> = {
+  'Initialized':          'text-blue-700 bg-blue-100 border-blue-200',
+  'Planning':             'text-purple-700 bg-purple-100 border-purple-200',
+  'Site Survey':          'text-cyan-700 bg-cyan-100 border-cyan-200',
+  'In Progress':          'text-emerald-700 bg-emerald-100 border-emerald-200',
+  'Under Snagging':       'text-amber-700 bg-amber-100 border-amber-200',
+  'Snagging Completed':   'text-orange-700 bg-orange-100 border-orange-200',
+  'Completed':            'text-green-700 bg-green-100 border-green-200',
+  'On Hold':              'text-slate-600 bg-gray-100 border-gray-200',
+  'Cancelled':            'text-red-700 bg-red-100 border-red-200',
 };
 
 const STATUS_PROGRESS: Record<string, number> = {
@@ -46,7 +50,7 @@ const STATUS_PROGRESS: Record<string, number> = {
   'Cancelled': 0,
 };
 
-export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
+export const ProjectCard: React.FC<ProjectCardProps> = ({ project, onEdit, onDelete }) => {
   const latestBudget = project.budgetHistory?.[project.budgetHistory.length - 1]?.amount || 0;
   const progress = STATUS_PROGRESS[project.status] ?? 0;
   const [showMenu, setShowMenu] = useState(false);
@@ -64,12 +68,12 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
   }, [showMenu]);
 
   return (
-    <GlassCard className="group hover:border-blue-500/50 transition-all duration-500 flex flex-col h-full shadow-sm" gradient>
+    <GlassCard className="group hover:border-blue-500/50 transition-all duration-500 flex flex-col h-full shadow-sm relative" gradient>
       <div className="p-6 flex-1">
         <div className="flex justify-between items-start mb-4">
           <div className={cn(
             "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
-            statusColors[project.status]
+            statusColors[project.status] || 'text-blue-700 bg-blue-100 border-blue-200'
           )}>
             {project.status}
           </div>
@@ -106,6 +110,24 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
                   <BarChart3 className="w-3.5 h-3.5 text-slate-400" />
                   <span>Milestones</span>
                 </Link>
+                {onEdit && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowMenu(false); onEdit(project); }}
+                    className="w-full px-4 py-2.5 text-left text-sm font-semibold text-slate-600 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+                  >
+                    <Pencil className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Edit Project</span>
+                  </button>
+                )}
+                {onDelete && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowMenu(false); onDelete(project); }}
+                    className="w-full px-4 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Project</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -168,9 +190,9 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
               </div>
             );
           })}
-          {project.members?.length > 3 && (
+          {(project.members?.length ?? 0) > 3 && (
             <div className="w-7 h-7 rounded-lg bg-blue-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-blue-600">
-              +{project.members.length - 3}
+              +{project.members!.length - 3}
             </div>
           )}
         </div>
@@ -184,7 +206,6 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
         </Link>
       </div>
 
-      {/* Notifications */}
       {project.hasPendingPlans && (
         <div className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-lg flex items-center justify-center border-2 border-white shadow-lg shadow-red-500/20 animate-pulse">
           <AlertCircle className="w-3 h-3 text-white" />
