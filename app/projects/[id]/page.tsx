@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Shell } from '@/components/layout/Shell';
 import { CreateProjectModal } from '@/components/ui/CreateProjectModal';
 import { TeamManagementModal } from '@/components/project/TeamManagementModal';
@@ -9,6 +9,7 @@ import { BOQTab } from '@/components/project/BOQTab';
 import { BudgetTab } from '@/components/project/BudgetTab';
 import { MaterialsTab } from '@/components/project/MaterialsTab';
 import { PlansTab } from '@/components/project/PlansTab';
+import { DocumentsTab } from '@/components/project/DocumentsTab';
 import { IssuesTab } from '@/components/project/IssuesTab';
 import { RisksTab } from '@/components/project/RisksTab';
 import { SurveyTab } from '@/components/project/SurveyTab';
@@ -19,7 +20,7 @@ import { TimelineTab } from '@/components/project/TimelineTab';
 import { useProjectSocket } from '@/hooks/useProjectSocket';
 import {
   Info, FileText, IndianRupee, Package, Files, Map,
-  AlertCircle, CheckSquare, ShieldAlert, Calendar,
+  AlertCircle, ShieldAlert, Calendar,
   TrendingUp, GanttChart, ClipboardList, CreditCard,
   Loader2, ChevronLeft, Pencil,
 } from 'lucide-react';
@@ -36,8 +37,7 @@ const tabs = [
   { id: 'materials',   name: 'Materials',      icon: Package },
   { id: 'documents',   name: 'Documents',      icon: Files },
   { id: 'plans',       name: 'Plans',          icon: Map },
-  { id: 'issues',      name: 'Issues',         icon: AlertCircle },
-  { id: 'snags',       name: 'Snags',          icon: CheckSquare },
+  { id: 'issues',      name: 'Issues & Snags', icon: AlertCircle },
   { id: 'risks',       name: 'Risks',          icon: ShieldAlert },
   { id: 'milestones',  name: 'Milestones',     icon: Calendar },
   { id: 'progress',    name: 'Progress',       icon: TrendingUp },
@@ -46,15 +46,16 @@ const tabs = [
   { id: 'transactions', name: 'Finance',       icon: CreditCard },
 ];
 
-const IMPLEMENTED = new Set(['details','boq','budget','materials','plans','documents','issues','snags','risks','milestones','survey','progress','transactions','timeline']);
+const IMPLEMENTED = new Set(['details','boq','budget','materials','plans','documents','issues','risks','milestones','survey','progress','transactions','timeline']);
 
-export default function ProjectWorkspacePage() {
+function ProjectWorkspaceInner() {
   const { id } = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { joinProject, leaveProject } = useSocket();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('details');
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'details');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const toast = useToast();
@@ -299,8 +300,9 @@ export default function ProjectWorkspacePage() {
           {activeTab === 'boq' && <BOQTab projectId={id as string} />}
           {activeTab === 'budget' && <BudgetTab project={project} onUpdate={fetchProject} />}
           {activeTab === 'materials' && <MaterialsTab projectId={id as string} />}
-          {(activeTab === 'documents' || activeTab === 'plans') && <PlansTab projectId={id as string} />}
-          {(activeTab === 'issues' || activeTab === 'snags') && <IssuesTab projectId={id as string} />}
+          {activeTab === 'documents' && <DocumentsTab projectId={id as string} />}
+          {activeTab === 'plans' && <PlansTab projectId={id as string} />}
+          {activeTab === 'issues' && <IssuesTab projectId={id as string} />}
           {activeTab === 'risks' && <RisksTab projectId={id as string} />}
           {activeTab === 'survey' && <SurveyTab projectId={id as string} />}
           {activeTab === 'progress' && <DPRTab projectId={id as string} />}
@@ -336,5 +338,13 @@ export default function ProjectWorkspacePage() {
         currentMembers={project.members || []}
       />
     </Shell>
+  );
+}
+
+export default function ProjectWorkspacePage() {
+  return (
+    <Suspense>
+      <ProjectWorkspaceInner />
+    </Suspense>
   );
 }

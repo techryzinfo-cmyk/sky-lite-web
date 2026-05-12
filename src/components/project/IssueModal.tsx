@@ -57,7 +57,8 @@ export const IssueModal: React.FC<IssueModalProps> = ({
     try {
       await api.post(`/projects/${projectId}/issues`, {
         ...formData,
-        category: type === 'Snag' ? 'Site' : formData.category,
+        type,
+        category: type === 'Snag' ? 'Snag' : formData.category,
         notifyTeam,
       });
       toast.success(`${type} reported successfully!`);

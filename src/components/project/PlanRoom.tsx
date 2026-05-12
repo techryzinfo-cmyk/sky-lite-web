@@ -17,6 +17,7 @@ import {
 import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
+import { uploadToCloudinary } from '@/lib/upload';
 import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
 import { DocumentViewer } from './DocumentViewer';
@@ -44,9 +45,9 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
 
     setIsUploading(true);
     try {
-      const dummyUrl = URL.createObjectURL(file);
+      const url = await uploadToCloudinary(file);
       await api.put(`/projects/${projectId}/folders/${folder._id}`, {
-        url: dummyUrl,
+        url,
         name: file.name,
         mimeType: file.type,
         size: file.size

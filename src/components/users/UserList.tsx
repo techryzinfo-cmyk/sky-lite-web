@@ -13,6 +13,8 @@ import {
   Filter,
   Pencil,
   Trash2,
+  Phone,
+  FolderOpen,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
@@ -165,7 +167,7 @@ export const UserList = () => {
             className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-2xl text-sm font-bold transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20"
           >
             <UserPlus className="w-4 h-4" />
-            <span>Onboard User</span>
+            <span>Add New Member</span>
           </button>
         </div>
       </div>
@@ -217,15 +219,27 @@ export const UserList = () => {
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex items-center space-x-3 text-slate-500">
-                <Mail className="w-4 h-4" />
+                <Mail className="w-4 h-4 shrink-0" />
                 <span className="text-sm truncate">{user.email}</span>
               </div>
+              {(user.mobile || user.phone) && (
+                <div className="flex items-center space-x-3 text-slate-500">
+                  <Phone className="w-4 h-4 shrink-0" />
+                  <span className="text-sm">{user.mobile || user.phone}</span>
+                </div>
+              )}
               <div className="flex items-center space-x-3 text-slate-500">
-                <Clock className="w-4 h-4" />
+                <Clock className="w-4 h-4 shrink-0" />
                 <span className="text-sm">Joined {new Date(user.createdAt).toLocaleDateString()}</span>
               </div>
+              {user.projects?.length > 0 && (
+                <div className="flex items-center space-x-3 text-slate-500">
+                  <FolderOpen className="w-4 h-4 shrink-0" />
+                  <span className="text-sm">{user.projects.length} project{user.projects.length !== 1 ? 's' : ''}</span>
+                </div>
+              )}
             </div>
 
             <div className="mt-6 pt-6 border-t border-gray-100 flex items-center justify-between">

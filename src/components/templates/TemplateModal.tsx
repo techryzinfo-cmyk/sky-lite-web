@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, Layers, Plus, Trash2 } from 'lucide-react';
+import { X, Loader2, FileText, Upload, Image as ImageIcon, Trash2, Plus } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useToast } from '@/context/ToastContext';
 import api from '@/lib/api';
+import { uploadToCloudinary } from '@/lib/upload';
 
 interface TemplateModalProps {
   isOpen: boolean;
@@ -13,66 +14,104 @@ interface TemplateModalProps {
   onSuccess: () => void;
 }
 
-export const TemplateModal: React.FC<TemplateModalProps> = ({
-  isOpen,
-  onClose,
-  onSuccess
-}) => {
+const inputCls = 'w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all';
+
+export const TemplateModal: React.FC<TemplateModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     category: '',
     description: '',
-    estimatedBudget: 0,
-    boqItems: [] as any[]
+    minBudget: '',
+    maxBudget: '',
+    area: '',
+    estimatedDays: '',
   });
+  const [images, setImages] = useState<string[]>([]);
+  const [files, setFiles] = useState<{ name: string; url: string; size: number }[]>([]);
 
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
 
   useEffect(() => {
-    if (isOpen) {
-      const fetchCategories = async () => {
-        try {
-          const response = await api.get('/template-categories');
-          setCategories(response.data);
-        } catch (error) {
-          console.error('Error fetching categories:', error);
-        }
-      };
-      fetchCategories();
-    }
+    if (!isOpen) return;
+    api.get('/template-categories')
+      .then(r => {
+        setCategories(r.data);
+        if (r.data.length > 0) setFormData(f => ({ ...f, category: r.data[0]._id }));
+      })
+      .catch(() => {});
   }, [isOpen]);
 
-  const addBOQItem = () => {
-    setFormData({
-      ...formData,
-      boqItems: [...formData.boqItems, { groupName: 'General', description: '', unit: 'Sq.Ft', quantity: 1, rate: 0 }]
-    });
+  const reset = () => {
+    setFormData({ name: '', category: categories[0]?._id || '', description: '', minBudget: '', maxBudget: '', area: '', estimatedDays: '' });
+    setImages([]);
+    setFiles([]);
   };
 
-  const removeBOQItem = (index: number) => {
-    const newItems = [...formData.boqItems];
-    newItems.splice(index, 1);
-    setFormData({ ...formData, boqItems: newItems });
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(e.target.files || []);
+    if (!picked.length) return;
+    setUploadingImage(true);
+    try {
+      const urls = await Promise.all(picked.map(f => uploadToCloudinary(f)));
+      setImages(prev => [...prev, ...urls]);
+    } catch {
+      toast.error('Image upload failed');
+    } finally {
+      setUploadingImage(false);
+      e.target.value = '';
+    }
   };
 
-  const updateBOQItem = (index: number, field: string, value: any) => {
-    const newItems = [...formData.boqItems];
-    newItems[index] = { ...newItems[index], [field]: value };
-    setFormData({ ...formData, boqItems: newItems });
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(e.target.files || []);
+    if (!picked.length) return;
+    setUploadingFile(true);
+    try {
+      const uploaded = await Promise.all(
+        picked.map(async f => {
+          const url = await uploadToCloudinary(f);
+          return { name: f.name, url, size: f.size };
+        })
+      );
+      setFiles(prev => [...prev, ...uploaded]);
+    } catch {
+      toast.error('File upload failed');
+    } finally {
+      setUploadingFile(false);
+      e.target.value = '';
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.name.trim() || !formData.category) {
+      toast.error('Template name and category are required');
+      return;
+    }
     setIsLoading(true);
-
     try {
-      await api.post('/templates', formData);
-      toast.success('Blueprint created successfully!');
+      await api.post('/templates', {
+        name: formData.name,
+        category: formData.category,
+        description: formData.description,
+        minBudget: Number(formData.minBudget) || 0,
+        maxBudget: Number(formData.maxBudget) || 0,
+        area: Number(formData.area) || 0,
+        estimatedDays: Number(formData.estimatedDays) || 0,
+        images,
+        files,
+      });
+      toast.success('Project template created successfully!');
       onSuccess();
       onClose();
-      setFormData({ name: '', category: '', description: '', estimatedBudget: 0, boqItems: [] });
+      reset();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to create template');
     } finally {
@@ -85,163 +124,221 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
       {isOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose}
             className="absolute inset-0 bg-black/30 backdrop-blur-sm"
           />
-
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="w-full max-w-3xl relative z-10"
+            className="w-full max-w-2xl relative z-10"
           >
             <GlassCard className="border-gray-200" gradient>
               <div className="p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
+                {/* Header */}
                 <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-3 rounded-2xl bg-blue-50 border border-blue-200">
-                      <Layers className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-gray-900">Design New Blueprint</h2>
-                      <p className="text-xs text-slate-500 mt-0.5">Create a reusable project template.</p>
-                    </div>
+                  <div>
+                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">New Project</p>
+                    <h2 className="text-xl font-black text-gray-900">Project Template</h2>
                   </div>
-                  <button onClick={onClose} className="p-2 text-slate-400 hover:text-gray-900 bg-gray-50 rounded-xl transition-colors">
+                  <button onClick={() => { onClose(); reset(); }} className="p-2 text-slate-400 hover:text-gray-900 bg-gray-50 rounded-xl transition-colors">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-600 ml-1">Template Name</label>
+                  {/* Template Name */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Template Name</label>
+                    <input
+                      type="text" required value={formData.name}
+                      onChange={e => setFormData(f => ({ ...f, name: e.target.value }))}
+                      className={inputCls} placeholder="e.g. Shopping Mall Expansion"
+                    />
+                  </div>
+
+                  {/* Category Pills */}
+                  <div className="space-y-3">
+                    <label className="text-sm font-bold text-slate-700">Category</label>
+                    <div className="flex flex-wrap gap-2">
+                      {categories.map(cat => (
+                        <button
+                          key={cat._id} type="button"
+                          onClick={() => setFormData(f => ({ ...f, category: cat._id }))}
+                          className={`px-4 py-2 rounded-xl border text-sm font-bold transition-all ${
+                            formData.category === cat._id
+                              ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                              : 'bg-gray-50 border-gray-200 text-slate-600 hover:border-blue-300 hover:text-blue-700'
+                          }`}
+                        >
+                          {cat.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Description</label>
+                    <textarea
+                      rows={3} value={formData.description}
+                      onChange={e => setFormData(f => ({ ...f, description: e.target.value }))}
+                      className={`${inputCls} resize-none`}
+                      placeholder="Describe the scope of this template..."
+                    />
+                  </div>
+
+                  {/* Budget */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Estimated Budget (₹)</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">MIN</span>
                         <input
-                          type="text"
-                          required
-                          value={formData.name}
-                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all"
-                          placeholder="e.g. Standard 2BHK Villa"
+                          type="number" value={formData.minBudget}
+                          onChange={e => setFormData(f => ({ ...f, minBudget: e.target.value }))}
+                          className={`${inputCls} pl-12`} placeholder="0"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-600 ml-1">Category</label>
-                        <select
-                          required
-                          value={formData.category}
-                          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all"
-                        >
-                          <option value="">Select Category</option>
-                          {categories.map(c => (
-                            <option key={c._id} value={c._id}>{c.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-600 ml-1">Description</label>
-                        <textarea
-                          rows={3}
-                          value={formData.description}
-                          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm resize-none transition-all"
-                          placeholder="What does this blueprint include?"
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">MAX</span>
+                        <input
+                          type="number" value={formData.maxBudget}
+                          onChange={e => setFormData(f => ({ ...f, maxBudget: e.target.value }))}
+                          className={`${inputCls} pl-12`} placeholder="10,00,000"
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-                      <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest">Base BOQ Structure</h3>
+                  {/* Area + Days */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700">Area (sq ft)</label>
+                      <input
+                        type="number" value={formData.area}
+                        onChange={e => setFormData(f => ({ ...f, area: e.target.value }))}
+                        className={inputCls} placeholder="e.g. 1500"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700">Est. Duration (days)</label>
+                      <input
+                        type="number" value={formData.estimatedDays}
+                        onChange={e => setFormData(f => ({ ...f, estimatedDays: e.target.value }))}
+                        className={inputCls} placeholder="e.g. 45"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Reference Images */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-bold text-slate-700">Reference Images</label>
                       <button
-                        type="button"
-                        onClick={addBOQItem}
-                        className="text-xs font-bold text-blue-600 hover:text-blue-500 flex items-center space-x-1"
+                        type="button" onClick={() => imageInputRef.current?.click()}
+                        className="text-xs font-bold text-blue-600 hover:text-blue-500 flex items-center gap-1"
+                        disabled={uploadingImage}
                       >
-                        <Plus className="w-3 h-3" />
-                        <span>Add Item</span>
+                        <Plus className="w-3 h-3" /> Add Image
                       </button>
                     </div>
-
-                    <div className="space-y-3">
-                      {formData.boqItems.map((item, index) => (
-                        <div key={index} className="grid grid-cols-12 gap-3 items-end bg-gray-50 p-3 rounded-xl border border-gray-200">
-                          <div className="col-span-3 space-y-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Group</label>
-                            <input
-                              type="text"
-                              value={item.groupName}
-                              onChange={(e) => updateBOQItem(index, 'groupName', e.target.value)}
-                              className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-3 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400"
-                            />
-                          </div>
-                          <div className="col-span-5 space-y-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Description</label>
-                            <input
-                              type="text"
-                              value={item.description}
-                              onChange={(e) => updateBOQItem(index, 'description', e.target.value)}
-                              className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-3 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400"
-                            />
-                          </div>
-                          <div className="col-span-2 space-y-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Est. Rate</label>
-                            <input
-                              type="number"
-                              value={item.rate}
-                              onChange={(e) => updateBOQItem(index, 'rate', Number(e.target.value))}
-                              className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-3 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400"
-                            />
-                          </div>
-                          <div className="col-span-2 flex justify-center pb-1.5">
+                    <input ref={imageInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} />
+                    {images.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {images.map((url, i) => (
+                          <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200">
+                            <img src={url} alt="" className="w-full h-full object-cover" />
                             <button
-                              type="button"
-                              onClick={() => removeBOQItem(index)}
-                              className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                              type="button" onClick={() => setImages(prev => prev.filter((_, j) => j !== i))}
+                              className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 flex items-center justify-center"
                             >
+                              <X className="w-3 h-3 text-white" />
+                            </button>
+                          </div>
+                        ))}
+                        {uploadingImage && (
+                          <div className="w-20 h-20 rounded-xl border border-dashed border-blue-300 flex items-center justify-center">
+                            <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <button
+                        type="button" onClick={() => imageInputRef.current?.click()}
+                        disabled={uploadingImage}
+                        className="w-full border border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center gap-2 text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-all"
+                      >
+                        {uploadingImage ? <Loader2 className="w-6 h-6 animate-spin" /> : <ImageIcon className="w-6 h-6" />}
+                        <span className="text-xs font-semibold">{uploadingImage ? 'Uploading...' : 'Select Images'}</span>
+                        <span className="text-[10px]">Upload references or blueprints</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Plan Files */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-bold text-slate-700">Project Plan Files</label>
+                      <button
+                        type="button" onClick={() => fileInputRef.current?.click()}
+                        className="text-xs font-bold text-blue-600 hover:text-blue-500 flex items-center gap-1"
+                        disabled={uploadingFile}
+                      >
+                        <Plus className="w-3 h-3" /> Add File
+                      </button>
+                    </div>
+                    <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileUpload} />
+                    {files.length > 0 ? (
+                      <div className="space-y-2">
+                        {files.map((file, i) => (
+                          <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                            <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+                              <FileText className="w-4 h-4 text-blue-500" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-bold text-gray-900 truncate">{file.name}</p>
+                              <p className="text-[10px] text-slate-400">{(file.size / 1024).toFixed(1)} KB</p>
+                            </div>
+                            <button type="button" onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))} className="text-slate-400 hover:text-red-500 transition-colors">
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
-                        </div>
-                      ))}
-                      {formData.boqItems.length === 0 && (
-                        <div className="py-8 text-center border border-dashed border-gray-200 rounded-2xl">
-                          <p className="text-xs text-slate-400">No BOQ structure added yet.</p>
-                        </div>
-                      )}
-                    </div>
+                        ))}
+                        {uploadingFile && (
+                          <div className="flex items-center gap-2 p-3 border border-dashed border-blue-200 rounded-xl text-blue-500">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span className="text-xs font-semibold">Uploading...</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <button
+                        type="button" onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingFile}
+                        className="w-full border border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center gap-2 text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-all"
+                      >
+                        {uploadingFile ? <Loader2 className="w-6 h-6 animate-spin" /> : <Upload className="w-6 h-6" />}
+                        <span className="text-xs font-semibold">{uploadingFile ? 'Uploading...' : 'Upload Plans'}</span>
+                        <span className="text-[10px]">PDF, DWG, or ZIP</span>
+                      </button>
+                    )}
                   </div>
 
-                  <div className="pt-6 flex space-x-4 border-t border-gray-200">
+                  {/* Footer */}
+                  <div className="pt-4 flex gap-3 border-t border-gray-200">
                     <button
-                      type="button"
-                      onClick={onClose}
-                      className="flex-1 py-3 px-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-slate-600 font-medium transition-all active:scale-[0.98]"
+                      type="button" onClick={() => { onClose(); reset(); }}
+                      className="flex-1 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-slate-600 font-bold transition-all"
                     >
                       Cancel
                     </button>
                     <button
-                      type="submit"
-                      disabled={isLoading}
-                      className="flex-2 py-3 px-8 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-blue-600/20 flex items-center justify-center space-x-2"
+                      type="submit" disabled={isLoading || uploadingImage || uploadingFile}
+                      className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all disabled:opacity-50 shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
                     >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          <span>Architecting...</span>
-                        </>
-                      ) : (
-                        <span>Publish Blueprint</span>
-                      )}
+                      {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Creating...</span></> : <span>Create Template</span>}
                     </button>
                   </div>
                 </form>

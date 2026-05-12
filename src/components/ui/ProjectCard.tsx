@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Calendar,
@@ -8,9 +8,11 @@ import {
   Clock,
   ArrowRight,
   MoreVertical,
-  CheckCircle2,
   AlertCircle,
-  Construction
+  Construction,
+  ExternalLink,
+  BarChart3,
+  IndianRupee,
 } from 'lucide-react';
 import { Project } from '@/types';
 import { GlassCard } from './GlassCard';
@@ -47,6 +49,19 @@ const STATUS_PROGRESS: Record<string, number> = {
 export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
   const latestBudget = project.budgetHistory?.[project.budgetHistory.length - 1]?.amount || 0;
   const progress = STATUS_PROGRESS[project.status] ?? 0;
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showMenu) return;
+    const close = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [showMenu]);
 
   return (
     <GlassCard className="group hover:border-blue-500/50 transition-all duration-500 flex flex-col h-full shadow-sm" gradient>
@@ -58,9 +73,42 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
           )}>
             {project.status}
           </div>
-          <button className="text-slate-500 hover:text-gray-900 transition-colors">
-            <MoreVertical className="w-5 h-5" />
-          </button>
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowMenu(v => !v); }}
+              className="text-slate-400 hover:text-gray-900 transition-colors p-1 rounded-lg hover:bg-gray-100"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+            {showMenu && (
+              <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-gray-200 rounded-xl shadow-lg z-30 overflow-hidden">
+                <Link
+                  href={`/projects/${project._id}`}
+                  onClick={() => setShowMenu(false)}
+                  className="w-full px-4 py-2.5 text-left text-sm font-semibold text-slate-600 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Open Workspace</span>
+                </Link>
+                <Link
+                  href={`/projects/${project._id}?tab=budget`}
+                  onClick={() => setShowMenu(false)}
+                  className="w-full px-4 py-2.5 text-left text-sm font-semibold text-slate-600 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+                >
+                  <IndianRupee className="w-3.5 h-3.5 text-slate-400" />
+                  <span>View Budget</span>
+                </Link>
+                <Link
+                  href={`/projects/${project._id}?tab=milestones`}
+                  onClick={() => setShowMenu(false)}
+                  className="w-full px-4 py-2.5 text-left text-sm font-semibold text-slate-600 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+                >
+                  <BarChart3 className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Milestones</span>
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
 
         <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors line-clamp-1">
@@ -111,11 +159,15 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
 
       <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
         <div className="flex -space-x-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="w-7 h-7 rounded-lg bg-gray-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-500">
-              {i}
-            </div>
-          ))}
+          {project.members?.slice(0, 3).map((member: any, i: number) => {
+            const u = member.user || member;
+            const initial = (u.name || member.name || '?').charAt(0).toUpperCase();
+            return (
+              <div key={i} className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 border-2 border-white flex items-center justify-center text-[10px] font-bold text-white" title={u.name || member.name}>
+                {initial}
+              </div>
+            );
+          })}
           {project.members?.length > 3 && (
             <div className="w-7 h-7 rounded-lg bg-blue-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-blue-600">
               +{project.members.length - 3}

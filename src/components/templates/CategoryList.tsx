@@ -122,9 +122,25 @@ export const CategoryList = () => {
               <div className="p-3 rounded-2xl bg-blue-100 border border-blue-200">
                 <Folder className="w-6 h-6 text-blue-600" />
               </div>
-              <button className="p-2 text-slate-400 hover:text-gray-900 transition-colors">
-                <MoreVertical className="w-4 h-4" />
-              </button>
+              <div className="relative" ref={catMenuId === cat._id ? catMenuRef : null}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setCatMenuId(catMenuId === cat._id ? null : cat._id); }}
+                  className="p-2 text-slate-400 hover:text-gray-900 transition-colors"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+                {catMenuId === cat._id && (
+                  <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-gray-200 rounded-xl shadow-lg z-30 overflow-hidden">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDeleteCategory(cat); }}
+                      className="w-full px-4 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
             <h4 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{cat.name}</h4>
             <div className="mt-4 flex items-center justify-between">
