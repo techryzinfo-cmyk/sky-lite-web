@@ -32,8 +32,21 @@ const statusColors = {
   'Cancelled': 'text-red-700 bg-red-100 border-red-200',
 };
 
+const STATUS_PROGRESS: Record<string, number> = {
+  'Initialized': 5,
+  'Planning': 15,
+  'Site Survey': 25,
+  'In Progress': 50,
+  'Under Snagging': 75,
+  'Snagging Completed': 90,
+  'Completed': 100,
+  'On Hold': 40,
+  'Cancelled': 0,
+};
+
 export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
   const latestBudget = project.budgetHistory?.[project.budgetHistory.length - 1]?.amount || 0;
+  const progress = STATUS_PROGRESS[project.status] ?? 0;
 
   return (
     <GlassCard className="group hover:border-blue-500/50 transition-all duration-500 flex flex-col h-full shadow-sm" gradient>
@@ -80,10 +93,18 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
         <div className="space-y-2">
           <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-slate-500">
             <span>Overall Progress</span>
-            <span>45%</span>
+            <span>{progress}%</span>
           </div>
           <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-200">
-            <div className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full w-[45%]" />
+            <div
+              className={cn(
+                'h-full rounded-full',
+                project.status === 'Completed' ? 'bg-emerald-500' :
+                project.status === 'Cancelled' ? 'bg-gray-300' :
+                'bg-gradient-to-r from-blue-600 to-blue-400'
+              )}
+              style={{ width: `${progress}%` }}
+            />
           </div>
         </div>
       </div>

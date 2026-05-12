@@ -147,6 +147,86 @@ export default function FinancePage() {
           ))}
         </div>
 
+        {/* Monthly Cash Flow Chart */}
+        {(() => {
+          const monthMap: Record<string, { in: number; out: number }> = {};
+          [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).forEach(tx => {
+            const key = new Date(tx.date).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
+            if (!monthMap[key]) monthMap[key] = { in: 0, out: 0 };
+            const meta = getTxMeta(tx);
+            if (meta.prefix === '+') monthMap[key].in += tx.amount;
+            else if (meta.prefix === '-') monthMap[key].out += tx.amount;
+          });
+
+          const months = Object.keys(monthMap).slice(-8);
+          if (months.length < 2) return null;
+
+          const maxVal = Math.max(1, ...months.flatMap(m => [monthMap[m].in, monthMap[m].out]));
+          const W = 640, H = 160, PAD_L = 48, PAD_R = 16, PAD_T = 12, PAD_B = 32;
+          const innerW = W - PAD_L - PAD_R;
+          const innerH = H - PAD_T - PAD_B;
+          const barW = Math.floor(innerW / months.length);
+          const gap = Math.max(2, Math.floor(barW * 0.15));
+          const singleW = Math.floor((barW - gap * 3) / 2);
+
+          const yOf = (v: number) => PAD_T + innerH - (v / maxVal) * innerH;
+          const yTicks = [0, 0.25, 0.5, 0.75, 1].map(f => Math.round(f * maxVal));
+
+          const fmt = (n: number) => n >= 1_000_000 ? `${(n/1_000_000).toFixed(1)}M` : n >= 1_000 ? `${(n/1_000).toFixed(0)}K` : `${n}`;
+
+          return (
+            <GlassCard className="p-6 border-gray-200" gradient>
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 rounded-xl bg-blue-50 border border-blue-200">
+                    <TrendingUp className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900">Monthly Cash Flow</h3>
+                    <p className="text-[10px] text-slate-500">Inflow vs Outflow over time</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-4">
+                  {[['bg-emerald-500', 'Inflow'], ['bg-red-400', 'Outflow']].map(([c, l]) => (
+                    <div key={l} className="flex items-center space-x-1.5">
+                      <div className={cn('w-3 h-3 rounded-sm', c)} />
+                      <span className="text-[10px] font-bold text-slate-500">{l}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="w-full overflow-x-auto">
+                <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: 320 }}>
+                  {/* Y grid + labels */}
+                  {yTicks.map((tick, ti) => {
+                    const y = yOf(tick);
+                    return (
+                      <g key={ti}>
+                        <line x1={PAD_L} y1={y} x2={W - PAD_R} y2={y} stroke="#e5e7eb" strokeWidth={tick === 0 ? 1 : 1} strokeDasharray={tick === 0 ? '0' : '3 3'} />
+                        <text x={PAD_L - 4} y={y + 4} textAnchor="end" fontSize="9" fill="#94a3b8" fontWeight="700">₹{fmt(tick)}</text>
+                      </g>
+                    );
+                  })}
+
+                  {/* Bars */}
+                  {months.map((m, mi) => {
+                    const x = PAD_L + mi * barW + gap;
+                    const inH = Math.max(2, (monthMap[m].in / maxVal) * innerH);
+                    const outH = Math.max(2, (monthMap[m].out / maxVal) * innerH);
+                    return (
+                      <g key={m}>
+                        <rect x={x} y={yOf(monthMap[m].in)} width={singleW} height={inH} rx="3" fill="#10b981" opacity="0.85" />
+                        <rect x={x + singleW + gap} y={yOf(monthMap[m].out)} width={singleW} height={outH} rx="3" fill="#f87171" opacity="0.85" />
+                        <text x={x + singleW + gap / 2} y={H - 4} textAnchor="middle" fontSize="8" fill="#94a3b8" fontWeight="600">{m}</text>
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
+            </GlassCard>
+          );
+        })()}
+
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Project Breakdown */}
           <div className="lg:col-span-2 space-y-4">

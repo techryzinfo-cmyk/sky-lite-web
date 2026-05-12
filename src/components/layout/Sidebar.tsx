@@ -90,9 +90,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
             <p className="text-xs font-bold text-blue-700 uppercase tracking-wider mb-1">Pro Plan</p>
             <p className="text-xs text-slate-500 mb-3">Unlimited projects & storage active.</p>
-            <button className="w-full py-2 px-3 bg-white hover:bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-gray-700 transition-colors">
-              View Billing
-            </button>
+            <Link
+              href="/settings"
+              onClick={onClose}
+              className="block w-full py-2 px-3 text-center bg-white hover:bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-gray-700 transition-colors"
+            >
+              Billing & Settings
+            </Link>
           </div>
         </div>
       </aside>

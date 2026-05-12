@@ -28,6 +28,7 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [isApproverPickerOpen, setIsApproverPickerOpen] = useState(false);
+  const [expandedAuditIndex, setExpandedAuditIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     newBudget: '',
     budgetReason: '',
@@ -194,6 +195,62 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
         </GlassCard>
       </div>
 
+      {/* Budget Trend Spark Chart */}
+      {project.budgetHistory && project.budgetHistory.length >= 2 && (() => {
+        const history = [...project.budgetHistory].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        const W = 560, H = 80, PAD = 8;
+        const maxV = Math.max(...history.map(h => h.amount));
+        const minV = Math.min(...history.map(h => h.amount));
+        const range = maxV - minV || 1;
+        const n = history.length;
+        const xOf = (i: number) => PAD + (i / (n - 1)) * (W - PAD * 2);
+        const yOf = (v: number) => PAD + ((maxV - v) / range) * (H - PAD * 2);
+        const points = history.map((h, i) => `${xOf(i)},${yOf(h.amount)}`).join(' ');
+        const areaPath = `M${xOf(0)},${yOf(history[0].amount)} ` +
+          history.slice(1).map((h, i) => `L${xOf(i + 1)},${yOf(h.amount)}`).join(' ') +
+          ` L${xOf(n - 1)},${H - PAD} L${xOf(0)},${H - PAD} Z`;
+        const fmt = (v: number) => v >= 1_000_000 ? `₹${(v / 1_000_000).toFixed(1)}M` : `₹${(v / 1_000).toFixed(0)}K`;
+        return (
+          <GlassCard className="p-6 border-gray-200" gradient>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 rounded-xl bg-blue-50 border border-blue-200">
+                  <TrendingUp className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-gray-900">Budget Trend</h4>
+                  <p className="text-[10px] text-slate-500">{history.length} revisions recorded</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-slate-400 uppercase tracking-wider">Current</p>
+                <p className="text-sm font-black text-emerald-600">{fmt(currentBudget)}</p>
+              </div>
+            </div>
+            <div className="w-full">
+              <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 80 }}>
+                <defs>
+                  <linearGradient id="budgetGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.2" />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <path d={areaPath} fill="url(#budgetGrad)" />
+                <polyline points={points} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                {history.map((h, i) => (
+                  <g key={i}>
+                    <circle cx={xOf(i)} cy={yOf(h.amount)} r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
+                    {(i === 0 || i === n - 1) && (
+                      <text x={xOf(i)} y={yOf(h.amount) - 8} textAnchor={i === 0 ? 'start' : 'end'} fontSize="9" fill="#64748b" fontWeight="700">{fmt(h.amount)}</text>
+                    )}
+                  </g>
+                ))}
+              </svg>
+            </div>
+          </GlassCard>
+        );
+      })()}
+
       {/* Budget History */}
       <GlassCard className="p-8 border-gray-200" gradient>
         <div className="flex items-center space-x-3 mb-8">
@@ -206,7 +263,9 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
         <div className="space-y-8 relative">
           <div className="absolute left-[21px] top-2 bottom-2 w-px bg-gray-200"></div>
 
-          {project.budgetHistory?.slice().reverse().map((entry, index) => (
+          {project.budgetHistory?.slice().reverse().map((entry, index) => {
+            const isExpanded = expandedAuditIndex === index;
+            return (
             <div key={index} className="relative pl-12">
               <div className={cn(
                 "absolute left-0 top-0 w-11 h-11 rounded-2xl border flex items-center justify-center bg-white z-10 shadow-sm",
@@ -233,18 +292,46 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
                     </div>
                     <p className="text-xs text-slate-500">Updated by <span className="text-blue-600 font-bold">{entry.updatedByName}</span> on {new Date(entry.timestamp).toLocaleDateString()} at {new Date(entry.timestamp).toLocaleTimeString()}</p>
                   </div>
-                  <button className="flex items-center space-x-1 text-xs font-bold text-slate-500 hover:text-gray-900 transition-colors">
-                    <span>View Audit</span>
-                    <ArrowUpRight className="w-3 h-3" />
+                  <button
+                    onClick={() => setExpandedAuditIndex(isExpanded ? null : index)}
+                    className="flex items-center space-x-1 text-xs font-bold text-slate-500 hover:text-gray-900 transition-colors"
+                  >
+                    <span>{isExpanded ? 'Hide Audit' : 'View Audit'}</span>
+                    <ArrowUpRight className={cn("w-3 h-3 transition-transform", isExpanded && "rotate-180")} />
                   </button>
                 </div>
 
                 <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">
                   <p className="text-sm text-slate-500 italic">"{entry.reason}"</p>
                 </div>
+
+                {isExpanded && (
+                  <div className="mt-4 p-4 rounded-xl bg-blue-50 border border-blue-100 space-y-3">
+                    <p className="text-[10px] font-black text-blue-700 uppercase tracking-widest mb-2">Audit Trail</p>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Revision Amount</p>
+                        <p className="font-black text-gray-900 mt-0.5">₹{entry.amount.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Status</p>
+                        <p className={cn("font-black mt-0.5", entry.approvalStatus === 'Approved' ? 'text-emerald-600' : 'text-amber-600')}>{entry.approvalStatus}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Requested By</p>
+                        <p className="font-bold text-blue-600 mt-0.5">{entry.updatedByName}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Timestamp</p>
+                        <p className="font-semibold text-gray-700 mt-0.5">{new Date(entry.timestamp).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </GlassCard>
       <UserPickerModal
