@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 
 export default function ProfilePage() {
-  const { user, refreshUser } = useAuth() as any;
+  const { user, refreshUser } = useAuth();
   const toast = useToast();
 
   const [profileForm, setProfileForm] = useState({ name: '', phone: '' });
@@ -40,11 +40,12 @@ export default function ProfilePage() {
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user?.id) return;
     setSaving(true);
     try {
-      await api.patch('/auth/me', { name: profileForm.name, phone: profileForm.phone, avatar });
+      await api.patch(`/users/${user.id}`, { name: profileForm.name, phoneNumber: profileForm.phone });
+      refreshUser({ name: profileForm.name });
       toast.success('Profile updated successfully');
-      if (typeof refreshUser === 'function') refreshUser();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to update profile');
     } finally {

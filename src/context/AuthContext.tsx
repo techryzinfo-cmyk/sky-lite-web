@@ -12,6 +12,7 @@ interface AuthContextType {
   login: (credentials: any) => Promise<void>;
   register: (data: any) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: (updatedFields?: Partial<User>) => void;
   isAuthenticated: boolean;
 }
 
@@ -60,6 +61,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const refreshUser = (updatedFields?: Partial<User>) => {
+    if (updatedFields) {
+      const merged = { ...user, ...updatedFields } as User;
+      localStorage.setItem('user', JSON.stringify(merged));
+      setUser(merged);
+    } else {
+      const saved = localStorage.getItem('user');
+      if (saved) setUser(JSON.parse(saved));
+    }
+  };
+
   const logout = async () => {
     try {
       await api.post('/auth/logout');
@@ -75,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );
