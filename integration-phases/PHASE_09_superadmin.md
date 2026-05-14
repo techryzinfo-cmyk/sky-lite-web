@@ -1,6 +1,6 @@
 # Phase 09 — Super Admin
 
-**Status:** ⬜ Not Started  
+**Status:** ✅ Audited — 2 bugs fixed (cookie-based auth, logout API call)  
 **Depends on:** Nothing — separate auth from org-level admin
 
 ---
@@ -81,10 +81,31 @@ Returns all orgs with their admin details and stats:
 
 ---
 
+## Frontend Fixes Applied (this phase)
+
+| File | Bug | Fix |
+|------|-----|-----|
+| `app/superadmin/login/page.tsx` | `localStorage.setItem('superadmin_token', response.data.token)` — API returns no `token` in body (uses httpOnly `sa_token` cookie) | Removed the localStorage write; `withCredentials: true` already correct |
+| `app/superadmin/dashboard/page.tsx` | All data fetches used `{ headers: getHeaders() }` (Bearer from localStorage) — `withSuperAdmin` reads `sa_token` cookie, ignores Authorization header | Changed all axios calls to `{ withCredentials: true }` |
+| `app/superadmin/dashboard/page.tsx` | Logout only cleared localStorage — `sa_token` cookie remained active | Logout now calls `POST /superadmin/auth/logout` to clear the cookie server-side |
+
+---
+
+## Dead UI (API route missing)
+
+| Feature | Frontend action | API status |
+|---------|-----------------|------------|
+| Create admin | `POST /superadmin/admins` | Route has only GET — 405 Method Not Allowed |
+| Delete admin | `DELETE /superadmin/admins/:id` | No dynamic route — 404 |
+| Platform stats | `GET /superadmin/stats` | No such route — handled gracefully via `allSettled` |
+
+---
+
 ## Known Observations
 
 | Item | Notes |
 |------|-------|
-| Super admin credentials | Seeded separately — check `.env` or seed script |
-| `withSuperAdmin` middleware | Separate from `withAuth` — uses different JWT secret |
-| No org-level actions | Super admin is read-only dashboard, no CRUD on orgs |
+| Super admin credentials | Seeded separately — check `SuperAdmin` model seed script or `.env` |
+| `withSuperAdmin` middleware | Reads `sa_token` httpOnly cookie via `next/headers` — not an Authorization header |
+| `sa_token` cookie | Set with `sameSite: lax` — requires `withCredentials: true` for cross-origin requests (API on `:3000`, web on `:3001`) |
+| GET `/superadmin/admins` | Returns `[{ orgId, orgName, admin: { name, email, status }, stats: { userCount, projectCount, templateCount } }]` — note `admin` not `owner` |

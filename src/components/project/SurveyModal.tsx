@@ -51,7 +51,14 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
     setIsLoading(true);
 
     try {
-      await api.post(`/projects/${projectId}/survey`, formData);
+      await api.post(`/projects/${projectId}/survey`, {
+        accessibility: formData.accessibility,
+        powerAvailability: formData.powerAvailable ? 'Available' : 'Not Available',
+        waterAvailability: formData.waterAvailable ? 'Available' : 'Not Available',
+        terrainType: formData.terrainNotes,
+        notes: formData.surveyorComments,
+        budgetRecommendation: formData.recommendedBudget || undefined,
+      });
       toast.success('Site survey submitted successfully!');
       onSuccess();
       onClose();

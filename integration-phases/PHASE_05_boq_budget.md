@@ -1,6 +1,6 @@
 # Phase 05 — BOQ & Budget
 
-**Status:** ⬜ Not Started  
+**Status:** ✅ Audited — 1 bug fixed (bulk-status payload key)  
 **Depends on:** Phase 03 (need project ID)
 
 ---
@@ -101,6 +101,22 @@ Budget is stored as an array `project.budgetHistory[]` — latest entry is the c
 1. Open BOQ Approvers modal
 2. Select team members as approvers
 3. **Assert:** Approvers saved to project
+
+---
+
+## Frontend Fixes Applied (this phase)
+
+| File | Bug | Fix |
+|------|-----|-----|
+| `BOQTab.tsx` | Bulk-status PATCH sent `ids` — API expects `itemIds` | Changed `ids:` → `itemIds:` in payload |
+
+---
+
+## Dead UI (API route missing)
+
+| Feature | Frontend action | API status |
+|---------|-----------------|------------|
+| BOQ Approvers modal | PATCH item with `{ approvers: [] }` | BOQ PATCH ignores unknown fields — approvers not saved |
 
 ---
 

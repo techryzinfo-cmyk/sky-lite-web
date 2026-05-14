@@ -78,8 +78,8 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ projectId }) => {
 
   const fetchDocs = async () => {
     try {
-      const res = await api.get(`/projects/${projectId}/documents`);
-      setDocs(Array.isArray(res.data) ? res.data : res.data?.documents ?? []);
+      const res = await api.get(`/projects/${projectId}`);
+      setDocs(Array.isArray(res.data.documents) ? res.data.documents : []);
     } catch {
       setDocs([]);
     } finally {

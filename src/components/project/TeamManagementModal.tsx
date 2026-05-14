@@ -74,7 +74,7 @@ export const TeamManagementModal: React.FC<TeamManagementModalProps> = ({
     setSaving(true);
     try {
       await api.patch(`/projects/${projectId}`, {
-        members: members.map(m => ({ user: m.userId, role: m.role })),
+        members: members.map(m => m.userId),
       });
       toast.success('Team updated successfully');
       onSuccess();

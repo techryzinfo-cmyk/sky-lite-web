@@ -27,7 +27,7 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
     vendorEmail: '',
     vendorPhone: '',
     poNumber: `PO-${Math.floor(100000 + Math.random() * 900000)}`,
-    items: [{ materialId: '', quantity: 0, unit: '', rate: 0 }],
+    items: [{ materialId: '', quantity: 0, unit: '', unitPrice: 0 }],
     totalAmount: 0,
     advancePaid: 0,
     deliveryDate: '',
@@ -39,7 +39,7 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
   const addItem = () => {
     setFormData({
       ...formData,
-      items: [...formData.items, { materialId: '', quantity: 0, unit: '', rate: 0 }]
+      items: [...formData.items, { materialId: '', quantity: 0, unit: '', unitPrice: 0 }]
     });
   };
 
@@ -65,10 +65,11 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
     setIsLoading(true);
 
     try {
-      const total = formData.items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
       await api.post(`/projects/${projectId}/material-purchase`, {
-        ...formData,
-        totalAmount: total
+        vendorName: formData.vendorName,
+        poNumber: formData.poNumber,
+        advancePayment: formData.advancePaid,
+        items: formData.items.map(({ materialId, quantity, unitPrice }) => ({ materialId, quantity, unitPrice })),
       });
       toast.success('Purchase Order created successfully!');
       onSuccess();
@@ -76,7 +77,7 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
       setFormData({
         vendorName: '', vendorEmail: '', vendorPhone: '',
         poNumber: `PO-${Math.floor(100000 + Math.random() * 900000)}`,
-        items: [{ materialId: '', quantity: 0, unit: '', rate: 0 }],
+        items: [{ materialId: '', quantity: 0, unit: '', unitPrice: 0 }],
         totalAmount: 0, advancePaid: 0, deliveryDate: '', terms: ''
       });
     } catch (error: any) {
@@ -193,8 +194,8 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
                             <input
                               type="number"
                               required
-                              value={item.rate}
-                              onChange={(e) => updateItem(index, 'rate', Number(e.target.value))}
+                              value={item.unitPrice}
+                              onChange={(e) => updateItem(index, 'unitPrice', Number(e.target.value))}
                               className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-3 text-xs text-gray-900 focus:outline-none focus:border-blue-500"
                             />
                           </div>

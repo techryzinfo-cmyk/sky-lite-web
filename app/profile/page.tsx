@@ -33,7 +33,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (user) {
-      setProfileForm({ name: user.name || '', phone: user.phone || '' });
+      setProfileForm({ name: user.name || '', phone: user.phoneNumber || '' });
       setAvatar(user.avatar || '');
     }
   }, [user]);

@@ -160,7 +160,7 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
     setIsBulkUpdating(true);
     try {
       await api.patch(`/projects/${projectId}/boq/bulk-status`, {
-        ids: Array.from(checkedIds),
+        itemIds: Array.from(checkedIds),
         status,
       });
       toast.success(`${checkedIds.size} item(s) ${status.toLowerCase()}`);

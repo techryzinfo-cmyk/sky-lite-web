@@ -18,11 +18,10 @@ export default function SuperAdminLogin() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/superadmin/auth/login`, {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/superadmin/auth/login`, {
         email, password
       }, { withCredentials: true });
 
-      localStorage.setItem('superadmin_token', response.data.token);
       toast.success('SuperAdmin access granted');
       router.push('/superadmin/dashboard');
     } catch (error: any) {

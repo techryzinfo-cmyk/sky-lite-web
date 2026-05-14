@@ -293,7 +293,7 @@ function ProjectWorkspaceInner() {
                   <h3 className="text-base font-bold text-gray-900 mb-4">Quick Actions</h3>
                   <div className="grid grid-cols-2 gap-2">
                     {[
-                      { label: 'Add Snag', color: 'bg-blue-50 border-blue-100 text-blue-700 hover:bg-blue-100', tab: 'snags' },
+                      { label: 'Add Snag', color: 'bg-blue-50 border-blue-100 text-blue-700 hover:bg-blue-100', tab: 'issues' },
                       { label: 'Upload Plan', color: 'bg-purple-50 border-purple-100 text-purple-700 hover:bg-purple-100', tab: 'plans' },
                       { label: 'Log Progress', color: 'bg-emerald-50 border-emerald-100 text-emerald-700 hover:bg-emerald-100', tab: 'progress' },
                       { label: 'Request Material', color: 'bg-amber-50 border-amber-100 text-amber-700 hover:bg-amber-100', tab: 'materials' },

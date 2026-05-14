@@ -61,7 +61,11 @@ export const MaterialUsageModal: React.FC<MaterialUsageModalProps> = ({
     setIsLoading(true);
 
     try {
-      await api.post(`/projects/${projectId}/material-usage`, formData);
+      await api.post(`/projects/${projectId}/material-usage`, {
+        locationOrTask: formData.location,
+        commonNote: formData.notes,
+        items: formData.items,
+      });
       toast.success('Material consumption logged successfully!');
       onSuccess();
       onClose();

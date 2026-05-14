@@ -1,6 +1,6 @@
 # Phase 07 — Quality Control: Issues, Risks, Snags, Survey
 
-**Status:** ⬜ Not Started  
+**Status:** ✅ Audited — 1 bug fixed (SurveyModal field name mapping)  
 **Depends on:** Phase 03 (need project ID)
 
 ---
@@ -141,11 +141,19 @@ Valid probability/impact: `Low` | `Medium` | `High` | `Critical`
 
 ---
 
+## Frontend Fixes Applied (this phase)
+
+| File | Bug | Fix |
+|------|-----|-----|
+| `SurveyModal.tsx` | Sent `{ powerAvailable, waterAvailable, terrainNotes, surveyorComments, recommendedBudget }` — SiteSurvey model uses different field names | Remapped to `{ powerAvailability, waterAvailability, terrainType, notes, budgetRecommendation }` in payload; boolean → `'Available'/'Not Available'` string for availability fields |
+
+---
+
 ## Known Observations
 
 | Item | Notes |
 |------|-------|
 | `assignedTo: ""` | API cleans up empty string — safe to send `""` for unassigned |
-| `notifyTeam: true` | API sends email to team members when issue is created |
-| Survey is per-project | One survey document per project — re-submit updates the existing one |
+| `notifyTeam: true` | Passed through `...body` spread; API email logic may not use it |
+| Survey auto-advances project | `POST /api/projects/[id]/survey` sets project status to `"Planning"` automatically |
 | `assigned-snagging` | `GET /api/projects/assigned-snagging` lists snags assigned to current user across all projects |

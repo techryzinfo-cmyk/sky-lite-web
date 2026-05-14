@@ -1,6 +1,6 @@
 # Phase 08 — Templates & Categories
 
-**Status:** ⬜ Not Started  
+**Status:** ✅ Audited — clean, no bugs found  
 **Depends on:** Phase 01 (auth token)
 
 ---

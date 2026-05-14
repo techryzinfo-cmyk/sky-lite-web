@@ -20,14 +20,11 @@ export default function SuperAdminDashboard() {
   const toast = useToast();
   const router = useRouter();
 
-  const getHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('superadmin_token')}` });
-
   const fetchAdmins = async () => {
     try {
-      const headers = getHeaders();
       const [adminsRes, statsRes] = await Promise.allSettled([
-        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/superadmin/admins`, { headers }),
-        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/superadmin/stats`, { headers }),
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/superadmin/admins`, { withCredentials: true }),
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/superadmin/stats`, { withCredentials: true }),
       ]);
       if (adminsRes.status === 'fulfilled') {
         setAdmins(adminsRes.value.data);
@@ -58,8 +55,10 @@ export default function SuperAdminDashboard() {
     return () => document.removeEventListener('mousedown', close);
   }, [adminMenuId]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('superadmin_token');
+  const handleLogout = async () => {
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/superadmin/auth/logout`, {}, { withCredentials: true });
+    } catch {}
     router.push('/superadmin/login');
   };
 
@@ -67,7 +66,7 @@ export default function SuperAdminDashboard() {
     e.preventDefault();
     setIsCreating(true);
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/superadmin/admins`, createForm, { headers: getHeaders() });
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/superadmin/admins`, createForm, { withCredentials: true });
       toast.success('Admin account created');
       setIsCreateModalOpen(false);
       setCreateForm({ name: '', email: '', password: '' });
@@ -83,7 +82,7 @@ export default function SuperAdminDashboard() {
     setAdminMenuId(null);
     if (!window.confirm(`Delete admin "${adminName}"? This cannot be undone.`)) return;
     try {
-      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/superadmin/admins/${adminId}`, { headers: getHeaders() });
+      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/superadmin/admins/${adminId}`, { withCredentials: true });
       toast.success('Admin removed');
       fetchAdmins();
     } catch (error: any) {

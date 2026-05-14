@@ -1,6 +1,6 @@
 # Phase 06 — Materials & Supply Chain
 
-**Status:** ⬜ Not Started  
+**Status:** ✅ Audited — 3 bugs fixed (bulk-action payload, purchase item field, usage field names)  
 **Depends on:** Phase 03 (need project ID)
 
 ---
@@ -78,10 +78,30 @@
 
 ---
 
+## Frontend Fixes Applied (this phase)
+
+| File | Bug | Fix |
+|------|-----|-----|
+| `MaterialModal.tsx` | Stock-in/out sent `{ actionType, materialIds, quantity, note }` — API expects `{ type, items: [{materialId, quantity, note}] }` | Restructured payload; also changed `'In'/'Out'` → `'Received'/'Used'` so inventory totals actually update |
+| `MaterialPurchaseModal.tsx` | Item field `rate` used — API reads `unitPrice` (totalPrice computed as `qty * unitPrice`) | Renamed `rate` → `unitPrice` in state and payload |
+| `MaterialPurchaseModal.tsx` | Top-level `advancePaid` sent — API reads `advancePayment` (determines payment status) | Renamed to `advancePayment` |
+| `MaterialUsageModal.tsx` | Sent `location` + `notes` — API reads `locationOrTask` + `commonNote` | Remapped to correct field names in payload |
+
+---
+
+## Dead UI (API route missing)
+
+| Feature | Frontend action | API status |
+|---------|-----------------|------------|
+| Material request approval | `PATCH /material-requests/:id` or `bulk-status` | Only GET + POST exist — no update routes |
+| Receipt verify button | `PATCH /material-receipts/:id` | Only GET + POST exist; receipts auto-verify on creation |
+
+---
+
 ## Known Observations
 
 | Item | Notes |
 |------|-------|
-| `initialStock` vs `quantity` | Create uses `initialStock`; stock movements use `quantity` in bulk-action |
-| Stock-out guard | API should prevent negative stock — verify error handling |
+| `initialStock` vs `quantity` | Create uses `initialStock`; stock movements use `quantity` in bulk-action `items[]` |
+| Receipts auto-verified | API sets `status: "Verified"` immediately on POST; no separate verify step |
 | `inventory:*` permission | Most inventory routes require `inventory:view` / `inventory:create` etc. |
