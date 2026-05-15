@@ -32,8 +32,11 @@ export const OverviewDashboard = () => {
     const fetchData = async () => {
       try {
         const res = await api.get('/projects');
-        setProjects(res.data);
-        const first5 = res.data.slice(0, 5);
+        const projectList = Array.isArray(res.data)
+          ? res.data
+          : res.data?.projects ?? res.data?.data ?? [];
+        setProjects(projectList);
+        const first5 = projectList.slice(0, 5);
         const [msResults, issueResults, materialResults] = await Promise.all([
           Promise.allSettled(first5.map((p: any) => api.get(`/projects/${p._id}/milestones`))),
           Promise.allSettled(first5.map((p: any) => api.get(`/projects/${p._id}/issues`))),

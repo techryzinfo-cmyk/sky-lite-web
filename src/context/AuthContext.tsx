@@ -26,8 +26,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     const token = Cookies.get('token') || localStorage.getItem('token');
-    if (savedUser && token) {
-      setUser(JSON.parse(savedUser));
+    if (savedUser && savedUser !== 'undefined' && savedUser !== 'null' && token) {
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch {
+        localStorage.removeItem('user');
+      }
     }
     setLoading(false);
   }, []);

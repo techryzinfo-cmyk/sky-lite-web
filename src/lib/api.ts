@@ -1,4 +1,5 @@
 import axios from 'axios';
+import Cookies from 'js-cookie';
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
@@ -49,6 +50,7 @@ api.interceptors.response.use(
           localStorage.removeItem('token');
           localStorage.removeItem('refreshToken');
           localStorage.removeItem('user');
+          Cookies.remove('token');
           window.location.href = '/login';
         }
         return Promise.reject(refreshError);

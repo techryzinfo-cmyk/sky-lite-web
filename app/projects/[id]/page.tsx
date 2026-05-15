@@ -66,8 +66,9 @@ function ProjectWorkspaceInner() {
     try {
       const response = await api.get(`/projects/${id}`);
       setProject(response.data);
-    } catch {
-      console.error('Error fetching project');
+    } catch (err: any) {
+      console.error('Error fetching project:', err?.response?.status, err?.response?.data || err?.message || err);
+      toast.error(err?.response?.data?.message || 'Failed to load project');
     } finally {
       setLoading(false);
     }
