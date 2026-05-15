@@ -57,7 +57,7 @@ export const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSuccess
       setFormData({
         name: initialData.name || '',
         email: initialData.email || '',
-        mobile: initialData.mobile || initialData.phone || '',
+        mobile: initialData.phoneNumber || initialData.mobile || '',
         password: '',
       });
       setSelectedRole(
@@ -95,8 +95,8 @@ export const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSuccess
       const payload: any = {
         name: formData.name,
         email: formData.email,
-        mobile: formData.mobile,
-        role: selectedRole._id || selectedRole.name,
+        phoneNumber: formData.mobile,
+        roleId: selectedRole._id,
         projectIds: selectedProjects.map(p => p._id),
       };
       if (formData.password) payload.password = formData.password;

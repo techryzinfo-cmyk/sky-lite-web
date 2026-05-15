@@ -65,12 +65,14 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({
         });
         toast.success('Material added successfully!');
       } else {
-        const type = mode === 'stock-in' ? 'In' : 'Out';
+        const type = mode === 'stock-in' ? 'Received' : 'Used';
         await api.post(`/projects/${projectId}/materials/bulk-action`, {
-          materialIds: [initialData._id],
-          actionType: type,
-          quantity: formData.quantity,
-          note: formData.note
+          type,
+          items: [{
+            materialId: initialData._id,
+            quantity: formData.quantity,
+            note: formData.note,
+          }],
         });
         toast.success(`Stock ${mode === 'stock-in' ? 'added' : 'removed'} successfully!`);
       }
