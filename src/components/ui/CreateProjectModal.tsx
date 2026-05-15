@@ -168,6 +168,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
           clientEmail: form.clientEmail,
           clientPhone: form.clientPhone,
           documents,
+          category: selectedCategory?._id,
         };
         if (selectedTemplate) payload.templateId = selectedTemplate._id;
         await api.post('/projects', payload);
