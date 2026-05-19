@@ -44,14 +44,14 @@ export const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
 }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(issue?.status || 'Open');
-  const [resolutionNote, setResolutionNote] = useState('');
+  const [resolutionDetails, setResolutionDetails] = useState('');
   const [savingNote, setSavingNote] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
     if (issue) {
       setCurrentStatus(issue.status);
-      setResolutionNote(issue.resolutionNote || '');
+      setResolutionDetails(issue.resolutionDetails || '');
     }
   }, [issue]);
 
@@ -71,10 +71,10 @@ export const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
   };
 
   const handleSaveNote = async () => {
-    if (!resolutionNote.trim()) return;
+    if (!resolutionDetails.trim()) return;
     setSavingNote(true);
     try {
-      await api.patch(`/projects/${projectId}/issues/${issue._id}`, { resolutionNote });
+      await api.patch(`/projects/${projectId}/issues/${issue._id}`, { resolutionDetails });
       toast.success('Resolution note saved');
       onSuccess();
     } catch {
@@ -211,14 +211,14 @@ export const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
                 </div>
 
                 {/* Photos */}
-                {issue.photos?.length > 0 && (
+                {issue.images?.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center space-x-1.5">
                       <ImageIcon className="w-3.5 h-3.5" />
-                      <span>Site Photos ({issue.photos.length})</span>
+                      <span>Site Photos ({issue.images.length})</span>
                     </p>
                     <div className="grid grid-cols-3 gap-2">
-                      {issue.photos.map((photo: string, i: number) => (
+                      {issue.images.map((photo: string, i: number) => (
                         <a key={i} href={photo} target="_blank" rel="noreferrer">
                           <img
                             src={photo}
@@ -240,15 +240,15 @@ export const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
                   </p>
                   <div className="relative">
                     <textarea
-                      value={resolutionNote}
-                      onChange={e => setResolutionNote(e.target.value)}
+                      value={resolutionDetails}
+                      onChange={e => setResolutionDetails(e.target.value)}
                       placeholder="Describe how this issue was resolved or add follow-up notes..."
                       rows={3}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none pr-12"
                     />
                     <button
                       onClick={handleSaveNote}
-                      disabled={savingNote || !resolutionNote.trim()}
+                      disabled={savingNote || !resolutionDetails.trim()}
                       className="absolute right-3 bottom-3 p-1.5 text-blue-600 hover:text-blue-500 disabled:text-slate-300 transition-colors"
                       title="Save note"
                     >

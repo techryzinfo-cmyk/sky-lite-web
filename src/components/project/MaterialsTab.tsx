@@ -745,11 +745,11 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                     <tr key={log._id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
                         <p className="text-sm font-bold text-gray-900">{new Date(log.createdAt).toLocaleDateString()}</p>
-                        <p className="text-[10px] text-slate-500 uppercase tracking-wider">{log.userName}</p>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-wider">{log.usedByName}</p>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="text-sm text-slate-600 font-medium">{log.location}</p>
-                        <p className="text-[10px] text-slate-500 uppercase tracking-wider">{log.workType}</p>
+                        <p className="text-sm text-slate-600 font-medium">{log.locationOrTask || '—'}</p>
+                        {log.commonNote && <p className="text-[10px] text-slate-500 italic mt-0.5">{log.commonNote}</p>}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-wrap gap-2">
@@ -965,9 +965,9 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                       return (
                         <div key={log._id} className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl">
                           <div>
-                            <p className="text-sm font-bold text-gray-900">{log.location || '—'}</p>
+                            <p className="text-sm font-bold text-gray-900">{log.locationOrTask || '—'}</p>
                             <p className="text-[10px] text-slate-500 uppercase tracking-wider">
-                              {log.workType} · {new Date(log.createdAt).toLocaleDateString()} · {log.userName}
+                              {new Date(log.createdAt).toLocaleDateString()} · {log.usedByName}
                             </p>
                           </div>
                           <span className="text-sm font-black text-purple-600">

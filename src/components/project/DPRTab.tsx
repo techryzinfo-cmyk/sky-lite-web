@@ -32,16 +32,24 @@ export const DPRTab: React.FC<DPRTabProps> = ({ projectId }) => {
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [forbidden, setForbidden] = useState(false);
 
   const toast = useToast();
 
   const fetchReports = async () => {
     try {
       const response = await api.get(`/projects/${projectId}/work-progress`);
-      setReports(response.data);
-    } catch (error) {
-      console.error('Error fetching DPRs:', error);
-      toast.error('Failed to load progress reports');
+      const payload = response.data;
+      setReports(Array.isArray(payload) ? payload : payload?.data ?? []);
+    } catch (error: any) {
+      if (error?.response?.status === 403) {
+        setForbidden(true);
+      } else if (error?.response?.status === 404) {
+        setReports([]);
+      } else {
+        console.error('Error fetching DPRs:', error);
+        toast.error('Failed to load progress reports');
+      }
     } finally {
       setLoading(false);
     }
@@ -73,6 +81,18 @@ export const DPRTab: React.FC<DPRTabProps> = ({ projectId }) => {
       <div className="flex flex-col items-center justify-center py-20">
         <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
         <p className="text-slate-500 font-medium">Syncing progress timeline...</p>
+      </div>
+    );
+  }
+
+  if (forbidden) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed border-red-100 rounded-[2rem]">
+        <div className="p-6 rounded-full bg-red-50 border border-red-100 mb-6">
+          <BarChart className="w-12 h-12 text-red-300" />
+        </div>
+        <h3 className="text-xl font-bold text-slate-600 mb-2">Access Restricted</h3>
+        <p className="text-slate-400 max-w-sm text-sm">You don't have permission to view Daily Progress Reports. Contact your administrator to request access.</p>
       </div>
     );
   }

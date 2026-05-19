@@ -13,6 +13,7 @@ import { DocumentsTab } from '@/components/project/DocumentsTab';
 import { IssuesTab } from '@/components/project/IssuesTab';
 import { RisksTab } from '@/components/project/RisksTab';
 import { SurveyTab } from '@/components/project/SurveyTab';
+import { SendForSurveyModal } from '@/components/project/SendForSurveyModal';
 import { DPRTab } from '@/components/project/DPRTab';
 import { MilestonesTab } from '@/components/project/MilestonesTab';
 import { TransactionsTab } from '@/components/project/TransactionsTab';
@@ -60,6 +61,7 @@ function ProjectWorkspaceInner() {
   const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'details');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  const [isSurveyAssignOpen, setIsSurveyAssignOpen] = useState(false);
   const toast = useToast();
 
   useProjectSocket(id as string);
@@ -216,6 +218,41 @@ function ProjectWorkspaceInner() {
         <div className="mt-4">
           {activeTab === 'details' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Site Survey banner */}
+              {project.needSiteSurvey && project.status !== 'Site Survey' && !project.siteSurveyor && (
+                <div className="lg:col-span-3 flex items-center justify-between gap-4 px-5 py-4 bg-amber-50 border border-amber-200 rounded-2xl">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
+                      <Map className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-amber-900">Site survey required</p>
+                      <p className="text-xs text-amber-600">This project needs a site survey before work begins. Assign a surveyor to proceed.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsSurveyAssignOpen(true)}
+                    className="shrink-0 flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm"
+                  >
+                    <Map className="w-3.5 h-3.5" />
+                    Send for Site Survey
+                  </button>
+                </div>
+              )}
+
+              {/* Surveyor assigned badge */}
+              {project.siteSurveyor && (
+                <div className="lg:col-span-3 flex items-center gap-3 px-5 py-3 bg-blue-50 border border-blue-100 rounded-2xl">
+                  <Map className="w-4 h-4 text-blue-600 shrink-0" />
+                  <p className="text-sm text-blue-800">
+                    Site survey assigned to{' '}
+                    <span className="font-bold">
+                      {project.siteSurveyor?.name || 'Surveyor'}
+                    </span>
+                  </p>
+                </div>
+              )}
+
               <div className="lg:col-span-2 space-y-5">
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
                   <h3 className="text-lg font-bold text-gray-900 mb-5">About Project</h3>
@@ -322,7 +359,17 @@ function ProjectWorkspaceInner() {
           {activeTab === 'plans' && <PlansTab projectId={id as string} />}
           {activeTab === 'issues' && <IssuesTab projectId={id as string} />}
           {activeTab === 'risks' && <RisksTab projectId={id as string} />}
-          {activeTab === 'survey' && <SurveyTab projectId={id as string} />}
+          {activeTab === 'survey' && (
+            <SurveyTab
+              projectId={id as string}
+              siteSurveyorId={
+                typeof project.siteSurveyor === 'string'
+                  ? project.siteSurveyor
+                  : (project.siteSurveyor as any)?._id
+              }
+              projectStatus={project.status}
+            />
+          )}
           {activeTab === 'progress' && <DPRTab projectId={id as string} />}
           {activeTab === 'milestones' && <MilestonesTab projectId={id as string} />}
           {activeTab === 'timeline' && <TimelineTab projectId={id as string} />}
@@ -346,6 +393,13 @@ function ProjectWorkspaceInner() {
         onClose={() => setIsEditModalOpen(false)}
         onSuccess={fetchProject}
         initialData={project}
+        projectId={id as string}
+      />
+
+      <SendForSurveyModal
+        isOpen={isSurveyAssignOpen}
+        onClose={() => setIsSurveyAssignOpen(false)}
+        onSuccess={fetchProject}
         projectId={id as string}
       />
 

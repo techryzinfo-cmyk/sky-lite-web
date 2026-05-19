@@ -7,6 +7,7 @@ import {
   FileText, Zap, Upload, Trash2, MapPin, Check,
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
+import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
 import { uploadToCloudinary } from '@/lib/upload';
 
@@ -31,9 +32,6 @@ const emptyForm = {
   startDate: '',
   endDate: '',
   needSiteSurvey: false,
-  clientName: '',
-  clientEmail: '',
-  clientPhone: '',
 };
 
 export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
@@ -41,6 +39,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 }) => {
   const isEditing = !!initialData && !!projectId;
   const toast = useToast();
+  const { user } = useAuth();
 
   // ── Step state (only for create mode) ──
   const [step, setStep] = useState<'category' | 'template' | 'configure'>('category');
@@ -73,9 +72,6 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
         startDate: initialData.startDate ? initialData.startDate.split('T')[0] : '',
         endDate: initialData.endDate ? initialData.endDate.split('T')[0] : '',
         needSiteSurvey: initialData.needSiteSurvey || false,
-        clientName: initialData.clientName || '',
-        clientEmail: initialData.clientEmail || '',
-        clientPhone: initialData.clientPhone || '',
       });
       setDocuments(initialData.documents || []);
     } else {
@@ -162,9 +158,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
           name: form.name,
           description: descParts.join('\n') || undefined,
           category: selectedCategory?._id,
-          clientName: form.clientName || undefined,
-          clientEmail: form.clientEmail || undefined,
-          clientPhone: form.clientPhone || undefined,
+          createdBy: user?.id,
           priority: form.priority,
           startDate: form.startDate || undefined,
           endDate: form.endDate || undefined,
@@ -446,34 +440,6 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                           onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                           className={`${inputCls} resize-none`} placeholder="Project overview..."
                         />
-                      </div>
-                    </div>
-
-                    {/* Client Info */}
-                    <div className="space-y-4">
-                      <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">Client Details</h3>
-                      <div className="grid grid-cols-3 gap-3">
-                        <div>
-                          <label className={labelCls}>Client Name</label>
-                          <input type="text" value={form.clientName}
-                            onChange={e => setForm(f => ({ ...f, clientName: e.target.value }))}
-                            className={inputCls} placeholder="Name"
-                          />
-                        </div>
-                        <div>
-                          <label className={labelCls}>Email</label>
-                          <input type="email" value={form.clientEmail}
-                            onChange={e => setForm(f => ({ ...f, clientEmail: e.target.value }))}
-                            className={inputCls} placeholder="email@example.com"
-                          />
-                        </div>
-                        <div>
-                          <label className={labelCls}>Phone</label>
-                          <input type="text" value={form.clientPhone}
-                            onChange={e => setForm(f => ({ ...f, clientPhone: e.target.value }))}
-                            className={inputCls} placeholder="+91 00000 00000"
-                          />
-                        </div>
                       </div>
                     </div>
 

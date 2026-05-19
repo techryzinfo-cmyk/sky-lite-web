@@ -48,14 +48,15 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
   const fetchBOQ = async () => {
     try {
       const response = await api.get(`/projects/${projectId}/boq`);
-      setItems(response.data);
+      const data: BOQItem[] = Array.isArray(response.data) ? response.data : response.data?.items ?? [];
+      setItems(data);
 
-      const groups = response.data.reduce((acc: Record<string, boolean>, item: BOQItem) => {
+      const groups = data.reduce((acc: Record<string, boolean>, item: BOQItem) => {
         acc[item.groupName] = true;
         return acc;
       }, {});
       setExpandedGroups(groups);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching BOQ:', error);
       toast.error('Failed to load BOQ items');
     } finally {

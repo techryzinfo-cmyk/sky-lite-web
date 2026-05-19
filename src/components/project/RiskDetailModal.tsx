@@ -15,7 +15,7 @@ interface RiskDetailModalProps {
   projectId: string;
 }
 
-const STATUSES = ['Active', 'Monitoring', 'Mitigated', 'Resolved', 'Critical'];
+const STATUSES = ['Active', 'Monitored', 'Resolved', 'Critical'];
 
 const getStatusColor = (status: string) => {
   switch (status) {

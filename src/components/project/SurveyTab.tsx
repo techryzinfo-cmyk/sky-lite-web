@@ -19,26 +19,44 @@ import {
   User,
   Calendar,
   MoreVertical,
-  DollarSign
+  DollarSign,
+  ShieldOff
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
+import { useAuth } from '@/context/AuthContext';
 import { SurveyModal } from './SurveyModal';
 import { SurveyDetailModal } from './SurveyDetailModal';
 
 interface SurveyTabProps {
   projectId: string;
+  siteSurveyorId?: string;
+  projectStatus?: string;
 }
 
-export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
+export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId, siteSurveyorId, projectStatus }) => {
   const [surveys, setSurveys] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSurvey, setSelectedSurvey] = useState<any>(null);
+  const [forbidden, setForbidden] = useState(false);
 
   const toast = useToast();
+  const { user } = useAuth();
+
+  const canAddSurvey = !!(
+    user?.role?.permissions?.includes('*') ||
+    user?.role?.permissions?.some(p => p === 'sitesurvey:create' || p === 'sitesurvey')
+  );
+
+  const isAssignedSurveyor = !!(
+    siteSurveyorId &&
+    (user?.id === siteSurveyorId || user?._id === siteSurveyorId)
+  );
+
+  const showReminder = isAssignedSurveyor && projectStatus === 'Site Survey' && !loading && surveys.length === 0;
 
   const fetchSurveys = async () => {
     try {
@@ -50,11 +68,19 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
           ? payload.surveys
           : Array.isArray(payload?.data)
             ? payload.data
-            : [];
+            : payload && typeof payload === 'object' && !Array.isArray(payload) && payload._id
+              ? [payload]
+              : [];
       setSurveys(normalized);
-    } catch (error) {
-      console.error('Error fetching surveys:', error);
-      toast.error('Failed to load site surveys');
+    } catch (error: any) {
+      if (error?.response?.status === 403) {
+        setForbidden(true);
+      } else if (error?.response?.status === 404) {
+        setSurveys([]);
+      } else {
+        console.error('Error fetching surveys:', error);
+        toast.error('Failed to load site surveys');
+      }
     } finally {
       setLoading(false);
     }
@@ -82,21 +108,60 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
     );
   }
 
+  if (forbidden) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed border-red-100 rounded-[2rem]">
+        <div className="p-6 rounded-full bg-red-50 border border-red-100 mb-6">
+          <ShieldOff className="w-12 h-12 text-red-300" />
+        </div>
+        <h3 className="text-xl font-bold text-slate-600 mb-2">Access Restricted</h3>
+        <p className="text-slate-400 max-w-sm text-sm">You don't have permission to view Site Surveys. Contact your administrator to request access.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {/* Reminder banner for assigned surveyor */}
+      {showReminder && (
+        <div className="flex items-start gap-4 px-5 py-4 bg-amber-50 border border-amber-200 rounded-2xl">
+          <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0 mt-0.5">
+            <ClipboardCheck className="w-4 h-4 text-amber-600" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-amber-900">Site survey pending — action required</p>
+            <p className="text-xs text-amber-700 mt-0.5">You've been assigned to conduct the site survey for this project. Please submit your assessment using the button on the right.</p>
+          </div>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="shrink-0 flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Submit Assessment
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h3 className="text-xl font-bold text-gray-900">Site Surveys & Audits</h3>
           <p className="text-sm text-slate-500 mt-1">Pre-construction assessments and site verification reports.</p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20"
-        >
-          <Plus className="w-4 h-4" />
-          <span>New Survey</span>
-        </button>
+        {canAddSurvey ? (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{surveys.length > 0 ? 'Update Survey' : 'New Survey'}</span>
+          </button>
+        ) : (
+          <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 border border-gray-200 rounded-xl cursor-not-allowed" title="You don't have permission to add surveys">
+            <Plus className="w-4 h-4 text-gray-400" />
+            <span className="text-sm font-bold text-gray-400">{surveys.length > 0 ? 'Update Survey' : 'New Survey'}</span>
+          </div>
+        )}
       </div>
 
       {/* Survey List */}

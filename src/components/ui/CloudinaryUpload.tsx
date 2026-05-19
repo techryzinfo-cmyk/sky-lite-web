@@ -14,12 +14,20 @@ interface CloudinaryUploadProps {
   currentUrl?: string;
 }
 
-const UPLOAD_URL = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_URL!;
+const UPLOAD_URL  = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_URL!;
+const API_KEY     = process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY!;
+const API_SECRET  = process.env.NEXT_PUBLIC_CLOUDINARY_API_SECRET!;
+const FOLDER      = 'skylite';
+
+async function sha1(str: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 export const CloudinaryUpload: React.FC<CloudinaryUploadProps> = ({
   onUpload,
   accept = 'image/*,application/pdf',
-  uploadPreset = 'ml_default',
+  uploadPreset,   // kept in props for API compat, not used
   label = 'Upload File',
   maxSizeMB = 10,
   className,
@@ -38,14 +46,20 @@ export const CloudinaryUpload: React.FC<CloudinaryUploadProps> = ({
       return;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', uploadPreset);
-
     setUploading(true);
     setProgress(0);
 
     try {
+      const timestamp = Math.round(Date.now() / 1000);
+      const signature = await sha1(`folder=${FOLDER}&timestamp=${timestamp}${API_SECRET}`);
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('api_key', API_KEY);
+      formData.append('timestamp', String(timestamp));
+      formData.append('signature', signature);
+      formData.append('folder', FOLDER);
+
       const xhr = new XMLHttpRequest();
       xhr.open('POST', UPLOAD_URL);
 
@@ -60,7 +74,8 @@ export const CloudinaryUpload: React.FC<CloudinaryUploadProps> = ({
           setProgress(100);
           onUpload(data.secure_url, data.public_id);
         } else {
-          setError('Upload failed. Check your Cloudinary upload preset.');
+          const err = JSON.parse(xhr.responseText || '{}');
+          setError(err?.error?.message || 'Upload failed.');
         }
         setUploading(false);
       };
