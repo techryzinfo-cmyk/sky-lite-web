@@ -119,20 +119,25 @@ export const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSuccess
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="w-full max-w-lg relative z-10"
-          >
+    <div className="relative">
+      <AnimatePresence mode="wait">
+        {isOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div
+              key="user-modal-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onClose}
+              className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+            />
+            <motion.div
+              key="user-modal-content"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-lg relative z-10"
+            >
             <GlassCard className="border-gray-200" gradient>
               <div className="p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
                 {/* Header */}
@@ -212,9 +217,9 @@ export const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSuccess
                   <div className="space-y-3">
                     <label className="text-sm font-bold text-slate-700">Access Role</label>
                     <div className="flex flex-wrap gap-2">
-                      {roles.map(role => (
+                      {roles.map((role, idx) => (
                         <button
-                          key={role._id} type="button"
+                          key={role._id || `role-${idx}`} type="button"
                           onClick={() => setSelectedRole(role)}
                           className={cn(
                             'px-4 py-2 rounded-xl border text-sm font-bold transition-all',
@@ -281,18 +286,20 @@ export const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSuccess
             </GlassCard>
           </motion.div>
         </div>
-      )}
+        )}
+      </AnimatePresence>
 
-      {/* Project Picker Modal */}
       <AnimatePresence>
         {isProjectPickerOpen && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
             <motion.div
+              key="project-picker-backdrop"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setIsProjectPickerOpen(false)}
               className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             />
             <motion.div
+              key="project-picker-content"
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -320,11 +327,11 @@ export const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSuccess
                 <div className="space-y-2 max-h-72 overflow-y-auto custom-scrollbar">
                   {filteredProjects.length === 0 ? (
                     <p className="text-sm text-slate-400 text-center py-8">No projects found</p>
-                  ) : filteredProjects.map(project => {
+                  ) : filteredProjects.map((project, idx) => {
                     const isSelected = selectedProjects.some(p => p._id === project._id);
                     return (
                       <button
-                        key={project._id} type="button"
+                        key={project._id || `project-${idx}`} type="button"
                         onClick={() => toggleProject(project)}
                         className={cn(
                           'w-full flex items-center justify-between px-4 py-3 rounded-xl border text-left transition-all',
@@ -364,6 +371,6 @@ export const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSuccess
           </div>
         )}
       </AnimatePresence>
-    </AnimatePresence>
+    </div>
   );
 };

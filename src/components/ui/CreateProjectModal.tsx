@@ -187,15 +187,15 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 
   const templatesForCategory = selectedCategory
     ? templates.filter(t => {
-        const catId = typeof t.category === 'object' ? t.category?._id : t.category;
-        return catId === selectedCategory._id;
-      })
+      const catId = typeof t.category === 'object' ? t.category?._id : t.category;
+      return catId === selectedCategory._id;
+    })
     : templates;
 
   const stepTitle =
     step === 'category' ? 'Select Category' :
-    step === 'template' ? 'Select Template' :
-    isEditing ? 'Update Details' : 'Configure Setup';
+      step === 'template' ? 'Select Template' :
+        isEditing ? 'Update Details' : 'Configure Setup';
 
   return (
     <AnimatePresence>

@@ -2,15 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ClipboardCheck, 
-  Plus, 
-  Loader2, 
-  Map, 
-  Zap, 
-  Droplets, 
-  Mountain, 
-  MessageSquare, 
+import {
+  ClipboardCheck,
+  Plus,
+  Loader2,
+  Map,
+  Zap,
+  Droplets,
+  Mountain,
+  MessageSquare,
   Image as ImageIcon,
   CheckCircle2,
   XCircle,
@@ -37,7 +37,7 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSurvey, setSelectedSurvey] = useState<any>(null);
-  
+
   const toast = useToast();
 
   const fetchSurveys = async () => {
@@ -47,10 +47,10 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
       const normalized = Array.isArray(payload)
         ? payload
         : Array.isArray(payload?.surveys)
-        ? payload.surveys
-        : Array.isArray(payload?.data)
-        ? payload.data
-        : [];
+          ? payload.surveys
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : [];
       setSurveys(normalized);
     } catch (error) {
       console.error('Error fetching surveys:', error);
@@ -90,7 +90,7 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
           <h3 className="text-xl font-bold text-gray-900">Site Surveys & Audits</h3>
           <p className="text-sm text-slate-500 mt-1">Pre-construction assessments and site verification reports.</p>
         </div>
-        <button 
+        <button
           onClick={() => setIsModalOpen(true)}
           className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20"
         >

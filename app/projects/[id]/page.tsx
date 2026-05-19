@@ -17,12 +17,13 @@ import { DPRTab } from '@/components/project/DPRTab';
 import { MilestonesTab } from '@/components/project/MilestonesTab';
 import { TransactionsTab } from '@/components/project/TransactionsTab';
 import { TimelineTab } from '@/components/project/TimelineTab';
+import { ChatTab } from '@/components/project/ChatTab';
 import { useProjectSocket } from '@/hooks/useProjectSocket';
 import {
   Info, FileText, IndianRupee, Package, Files, Map,
   AlertCircle, ShieldAlert, Calendar,
   TrendingUp, GanttChart, ClipboardList, CreditCard,
-  Loader2, ChevronLeft, Pencil,
+  Loader2, ChevronLeft, Pencil, MessageSquare,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { Project } from '@/types';
@@ -44,9 +45,10 @@ const tabs = [
   { id: 'timeline',    name: 'Timeline',       icon: GanttChart },
   { id: 'survey',      name: 'Site Survey',    icon: ClipboardList },
   { id: 'transactions', name: 'Finance',       icon: CreditCard },
+  { id: 'chat',        name: 'Chat',           icon: MessageSquare },
 ];
 
-const IMPLEMENTED = new Set(['details','boq','budget','materials','plans','documents','issues','risks','milestones','survey','progress','transactions','timeline']);
+const IMPLEMENTED = new Set(['details','boq','budget','materials','plans','documents','issues','risks','milestones','survey','progress','transactions','timeline','chat']);
 
 function ProjectWorkspaceInner() {
   const { id } = useParams();
@@ -325,6 +327,7 @@ function ProjectWorkspaceInner() {
           {activeTab === 'milestones' && <MilestonesTab projectId={id as string} />}
           {activeTab === 'timeline' && <TimelineTab projectId={id as string} />}
           {activeTab === 'transactions' && <TransactionsTab projectId={id as string} />}
+          {activeTab === 'chat' && <ChatTab projectId={id as string} />}
 
           {!IMPLEMENTED.has(activeTab) && (
             <div className="flex flex-col items-center justify-center py-40 text-center">

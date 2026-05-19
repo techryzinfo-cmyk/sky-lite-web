@@ -19,9 +19,11 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 
 export const OverviewDashboard = () => {
+  const { isAuthenticated } = useAuth();
   const [projects, setProjects] = useState<any[]>([]);
   const [milestones, setMilestones] = useState<any[]>([]);
   const [issues, setIssues] = useState<any[]>([]);
@@ -174,7 +176,7 @@ export const OverviewDashboard = () => {
                       className={cn(
                         "h-full rounded-full",
                         status === 'Execution' ? "bg-blue-500" :
-                        status === 'Completed' ? "bg-emerald-500" : "bg-gray-300"
+                          status === 'Completed' ? "bg-emerald-500" : "bg-gray-300"
                       )}
                     />
                   </div>

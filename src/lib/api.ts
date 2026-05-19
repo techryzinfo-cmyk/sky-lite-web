@@ -12,7 +12,7 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token') || Cookies.get('token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -41,6 +41,7 @@ api.interceptors.response.use(
 
         const { token } = response.data;
         localStorage.setItem('token', token);
+        Cookies.set('token', token, { expires: 7 }); // Sync cookie
 
         originalRequest.headers.Authorization = `Bearer ${token}`;
         return api(originalRequest);
