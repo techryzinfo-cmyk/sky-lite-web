@@ -50,11 +50,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         )}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100 shrink-0">
-          <Link href="/dashboard" className="text-xl font-black tracking-tight text-gray-900">
-            SKY<span className="text-blue-600">LITE</span>
+        <div className="h-16 flex items-center justify-center px-6 border-b border-gray-100 shrink-0 relative">
+          <Link href="/dashboard" className="flex items-center justify-center">
+            <img src="/SS-Logo-2025-Colour.svg" alt="Sky-Lite Logo" className="h-13 w-auto" />
           </Link>
-          <button onClick={onClose} className="lg:hidden text-slate-400 hover:text-gray-700 transition-colors">
+          <button onClick={onClose} className="absolute right-6 lg:hidden text-slate-400 hover:text-gray-700 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>

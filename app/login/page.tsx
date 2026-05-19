@@ -126,77 +126,77 @@ function LoginForm() {
               )}
             </div>
           ) : (
-          <>
-          <h2 className="text-2xl font-bold mb-6 text-center text-gray-900">Login to Workspace</h2>
+            <>
+              <h2 className="text-2xl font-bold mb-6 text-center text-gray-900">Login to Workspace</h2>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-gray-700">Email Address</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                  placeholder="name@company.com"
-                  required
-                />
-              </div>
-            </div>
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-gray-700">Email Address</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                      placeholder="name@company.com"
+                      required
+                    />
+                  </div>
+                </div>
 
-            <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-gray-700">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-12 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                  placeholder="••••••••"
-                  required
-                />
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-gray-700">Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-12 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                      placeholder="••••••••"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-gray-700 transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-sm pt-1">
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500/20" />
+                    <span className="text-slate-500">Remember me</span>
+                  </label>
+                  <button type="button" onClick={() => setShowForgotPw(true)} className="text-blue-600 hover:text-blue-700 font-medium transition-colors">Forgot password?</button>
+                </div>
+
                 <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-gray-700 transition-colors"
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-xl shadow-sm shadow-blue-600/20 transition-all active:scale-[0.98] flex items-center justify-center space-x-2 mt-2"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {isLoading ? (
+                    <><Loader2 className="w-5 h-5 animate-spin" /><span>Signing in...</span></>
+                  ) : (
+                    <span>Sign In</span>
+                  )}
                 </button>
+              </form>
+
+              <div className="mt-8 pt-6 border-t border-gray-100 text-center">
+                <p className="text-slate-500 text-sm">
+                  Don&apos;t have an account?{' '}
+                  <Link href="/register" className="text-blue-600 font-bold hover:text-blue-700 transition-colors">
+                    Register Workspace
+                  </Link>
+                </p>
               </div>
-            </div>
-
-            <div className="flex items-center justify-between text-sm pt-1">
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500/20" />
-                <span className="text-slate-500">Remember me</span>
-              </label>
-              <button type="button" onClick={() => setShowForgotPw(true)} className="text-blue-600 hover:text-blue-700 font-medium transition-colors">Forgot password?</button>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-xl shadow-sm shadow-blue-600/20 transition-all active:scale-[0.98] flex items-center justify-center space-x-2 mt-2"
-            >
-              {isLoading ? (
-                <><Loader2 className="w-5 h-5 animate-spin" /><span>Signing in...</span></>
-              ) : (
-                <span>Sign In</span>
-              )}
-            </button>
-          </form>
-
-          <div className="mt-8 pt-6 border-t border-gray-100 text-center">
-            <p className="text-slate-500 text-sm">
-              Don&apos;t have an account?{' '}
-              <Link href="/register" className="text-blue-600 font-bold hover:text-blue-700 transition-colors">
-                Register Workspace
-              </Link>
-            </p>
-          </div>
-          </>
+            </>
           )}
         </div>
 
