@@ -161,6 +161,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
         const payload: any = {
           name: form.name,
           description: descParts.join('\n') || undefined,
+          category: selectedCategory?._id,
           clientName: form.clientName || undefined,
           clientEmail: form.clientEmail || undefined,
           clientPhone: form.clientPhone || undefined,
