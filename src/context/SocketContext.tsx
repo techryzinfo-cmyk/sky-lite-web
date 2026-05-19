@@ -33,13 +33,13 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const joinProject = (projectId: string) => {
     if (socket) {
-      socket.emit('joinProject', projectId);
+      socket.emit('join:project', projectId);
     }
   };
 
   const leaveProject = (projectId: string) => {
     if (socket) {
-      socket.emit('leaveProject', projectId);
+      socket.emit('leave:project', projectId);
     }
   };
 
