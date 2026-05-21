@@ -182,7 +182,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
   const handleUpdateRequestStatus = async (requestId: string, status: 'Approved' | 'Rejected') => {
     setUpdatingRequestId(requestId);
     try {
-      await api.patch(`/projects/${projectId}/material-requests/${requestId}`, { status });
+      await api.patch(`/material-requests/${requestId}`, { status });
       toast.success(`Request ${status.toLowerCase()}`);
       if (selectedRequest?._id === requestId) {
         setSelectedRequest((r: any) => r ? { ...r, status } : r);
@@ -208,10 +208,10 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
   const bulkUpdateRequests = async (status: 'Approved' | 'Rejected') => {
     setIsBulkUpdating(true);
     try {
-      await api.patch(`/projects/${projectId}/material-requests/bulk-status`, {
-        ids: Array.from(checkedRequestIds),
-        status,
-      });
+      const ids = Array.from(checkedRequestIds);
+      await Promise.all(
+        ids.map((id) => api.patch(`/material-requests/${id}`, { status }))
+      );
       toast.success(`${checkedRequestIds.size} request(s) ${status.toLowerCase()}`);
       setCheckedRequestIds(new Set());
       fetchRequests();

@@ -8,15 +8,33 @@ const api = axios.create({
   },
 });
 
+let preloadingPromise: Promise<any> | null = null;
+
 // Request interceptor to attach token
 api.interceptors.request.use(
-  (config) => {
+  async (config) => {
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('token') || Cookies.get('token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
+
+    // Workaround for backend Mongoose model registration issue (TemplateCategory)
+    if (config.url && (config.url.includes('/projects') || config.url === 'projects') && typeof window !== 'undefined') {
+      const token = localStorage.getItem('token') || Cookies.get('token');
+      if (token && !preloadingPromise) {
+        preloadingPromise = axios
+          .get(`${process.env.NEXT_PUBLIC_API_URL}/template-categories`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          .catch(() => {});
+      }
+      if (preloadingPromise) {
+        await preloadingPromise;
+      }
+    }
+
     return config;
   },
   (error) => Promise.reject(error)
