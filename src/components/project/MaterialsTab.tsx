@@ -20,7 +20,13 @@ import {
   CreditCard,
   Zap,
   X,
-  CheckCircle2
+  CheckCircle2,
+  Trash2,
+  Printer,
+  XCircle,
+  ScrollText,
+  PackageCheck,
+  Lock,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -43,7 +49,16 @@ const subTabs = [
   { id: 'purchase', name: 'Purchase Orders', icon: ShoppingCart },
   { id: 'receipts', name: 'Receipts (GRN)', icon: FileCheck },
   { id: 'usage', name: 'Usage Log', icon: History },
+  { id: 'activity', name: 'Activity Log', icon: ScrollText },
 ];
+
+const PO_STATUS_COLORS: Record<string, string> = {
+  'Approved':        'text-emerald-700 bg-emerald-100 border-emerald-200',
+  'Rejected':        'text-red-700 bg-red-100 border-red-200',
+  'Pending Approval':'text-amber-700 bg-amber-100 border-amber-200',
+  'Pending':         'text-amber-700 bg-amber-100 border-amber-200',
+  'Active':          'text-blue-700 bg-blue-100 border-blue-200',
+};
 
 export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
   const [activeSubTab, setActiveSubTab] = useState('inventory');
@@ -70,6 +85,10 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [updatingRequestId, setUpdatingRequestId] = useState<string | null>(null);
   const [selectedPO, setSelectedPO] = useState<any>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [updatingPOId, setUpdatingPOId] = useState<string | null>(null);
+  const [activityFeed, setActivityFeed] = useState<any[]>([]);
+  const [activityLoading, setActivityLoading] = useState(false);
 
   const toast = useToast();
 
@@ -121,6 +140,27 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
       console.error('Error fetching usage:', error);
       toast.error('Failed to load usage logs');
     }
+  };
+
+  const fetchActivity = async () => {
+    setActivityLoading(true);
+    try {
+      const [reqRes, poRes, rcptRes, usageRes] = await Promise.all([
+        api.get(`/projects/${projectId}/material-requests`),
+        api.get(`/projects/${projectId}/material-purchase`),
+        api.get(`/projects/${projectId}/material-receipts`),
+        api.get(`/projects/${projectId}/material-usage`),
+      ]);
+      const entries: any[] = [
+        ...(Array.isArray(reqRes.data) ? reqRes.data : []).map((r: any) => ({ ...r, _type: 'request' })),
+        ...(Array.isArray(poRes.data) ? poRes.data : []).map((p: any) => ({ ...p, _type: 'purchase' })),
+        ...(Array.isArray(rcptRes.data) ? rcptRes.data : []).map((r: any) => ({ ...r, _type: 'receipt' })),
+        ...(Array.isArray(usageRes.data) ? usageRes.data : []).map((u: any) => ({ ...u, _type: 'usage' })),
+      ];
+      entries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setActivityFeed(entries);
+    } catch { toast.error('Failed to load activity log'); }
+    finally { setActivityLoading(false); }
   };
 
   const openHistory = async (material: any) => {
@@ -190,6 +230,83 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
     });
   };
 
+  const handleDeleteMaterial = async (materialId: string) => {
+    if (!window.confirm('Delete this material? This cannot be undone.')) return;
+    setDeletingId(materialId);
+    try {
+      await api.delete(`/projects/${projectId}/materials/${materialId}`);
+      toast.success('Material deleted');
+      fetchMaterials();
+    } catch { toast.error('Failed to delete material'); }
+    finally { setDeletingId(null); }
+  };
+
+  const handleDeleteRequest = async (requestId: string) => {
+    if (!window.confirm('Delete this request?')) return;
+    setDeletingId(requestId);
+    try {
+      await api.delete(`/projects/${projectId}/material-requests/${requestId}`);
+      toast.success('Request deleted');
+      if (selectedRequest?._id === requestId) setSelectedRequest(null);
+      fetchRequests();
+    } catch { toast.error('Failed to delete request'); }
+    finally { setDeletingId(null); }
+  };
+
+  const handleDeleteUsageLog = async (logId: string) => {
+    if (!window.confirm('Delete this usage log? Consumed quantities will be restored to stock.')) return;
+    setDeletingId(logId);
+    try {
+      await api.delete(`/projects/${projectId}/material-usage/${logId}`);
+      toast.success('Usage log deleted and stock restored');
+      await Promise.all([fetchUsage(), fetchMaterials()]);
+    } catch { toast.error('Failed to delete usage log'); }
+    finally { setDeletingId(null); }
+  };
+
+  const handleDeletePO = async (purchaseId: string) => {
+    if (!window.confirm('Delete this purchase order?')) return;
+    setDeletingId(purchaseId);
+    try {
+      await api.delete(`/projects/${projectId}/material-purchase/${purchaseId}`);
+      toast.success('Purchase order deleted');
+      setSelectedPO(null);
+      fetchPurchases();
+    } catch { toast.error('Failed to delete purchase order'); }
+    finally { setDeletingId(null); }
+  };
+
+  const handleUpdatePOStatus = async (purchaseId: string, status: 'Approved' | 'Rejected') => {
+    setUpdatingPOId(purchaseId);
+    try {
+      await api.patch(`/projects/${projectId}/material-purchase/${purchaseId}`, { status });
+      toast.success(`Purchase order ${status.toLowerCase()}`);
+      setSelectedPO((po: any) => po ? { ...po, status } : po);
+      fetchPurchases();
+    } catch { toast.error(`Failed to ${status.toLowerCase()} purchase order`); }
+    finally { setUpdatingPOId(null); }
+  };
+
+  const printReceipt = (receipt: any) => {
+    const win = window.open('', '_blank');
+    if (!win) return;
+    const rows = receipt.items.map((item: any) =>
+      `<tr><td style="border:1px solid #ccc;padding:8px">${item.materialId?.name || 'Item'}</td><td style="border:1px solid #ccc;padding:8px">${item.quantity} ${item.unit}</td></tr>`
+    ).join('');
+    win.document.write(`<!DOCTYPE html><html><head><title>GRN-${receipt._id.slice(-6).toUpperCase()}</title>
+<style>body{font-family:sans-serif;padding:24px;color:#111}h2{margin:0 0 4px}p{margin:4px 0}table{border-collapse:collapse;width:100%;margin-top:12px}th{background:#f3f4f6;border:1px solid #ccc;padding:8px;text-align:left}</style>
+</head><body>
+<h2>Goods Receipt Note — GRN-${receipt._id.slice(-6).toUpperCase()}</h2>
+<p>Date: ${new Date(receipt.createdAt).toLocaleDateString()}</p>
+<p>Vendor: ${receipt.vendorName}</p>
+<p>Challan: ${receipt.challanNumber}${receipt.invoiceNumber ? ` &nbsp;|&nbsp; Invoice: ${receipt.invoiceNumber}` : ''}</p>
+<p>Status: ${receipt.status}</p>
+<table><thead><tr><th style="border:1px solid #ccc;padding:8px">Material</th><th style="border:1px solid #ccc;padding:8px">Quantity</th></tr></thead><tbody>${rows}</tbody></table>
+</body></html>`);
+    win.document.close();
+    win.print();
+  };
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -203,6 +320,8 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
         await Promise.all([fetchMaterials(), fetchPurchases()]);
       } else if (activeSubTab === 'usage') {
         await Promise.all([fetchMaterials(), fetchUsage()]);
+      } else if (activeSubTab === 'activity') {
+        await fetchActivity();
       }
       setLoading(false);
     };
@@ -347,22 +466,30 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                           {(() => {
                             const received = material.totalReceived || 0;
                             const consumed = material.totalConsumed || 0;
-                            const stock = received - consumed;
+                            const rawStock = received - consumed;
+                            const stock = Math.max(0, rawStock);
+                            const overConsumed = rawStock < 0;
                             const pct = received > 0 ? Math.max(0, Math.min(100, (stock / received) * 100)) : 0;
-                            const isLow = stock <= (material.minimumStock ?? material.minStock ?? 0) && stock >= 0;
+                            const isLow = !overConsumed && stock <= (material.minimumStock ?? material.minStock ?? 0);
                             return (
                               <>
-                                <span className={cn('text-lg font-black', isLow ? 'text-red-600' : 'text-gray-900')}>{stock}</span>
-                                <div className="h-1 w-16 bg-gray-200 rounded-full overflow-hidden mt-1">
-                                  <div className={cn('h-full rounded-full', isLow ? 'bg-red-400' : 'bg-blue-500')} style={{ width: `${pct}%` }} />
-                                </div>
+                                {overConsumed ? (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-red-100 border border-red-200 text-red-600 uppercase tracking-wide">Over-consumed</span>
+                                ) : (
+                                  <>
+                                    <span className={cn('text-lg font-black', isLow ? 'text-red-600' : 'text-gray-900')}>{stock}</span>
+                                    <div className="h-1 w-16 bg-gray-200 rounded-full overflow-hidden mt-1">
+                                      <div className={cn('h-full rounded-full', isLow ? 'bg-red-400' : 'bg-blue-500')} style={{ width: `${pct}%` }} />
+                                    </div>
+                                  </>
+                                )}
                               </>
                             );
                           })()}
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-end space-x-1">
                           <button
                             onClick={() => {
                               setModalMode('stock-in');
@@ -391,6 +518,14 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                             className="p-2 text-slate-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
                           >
                             <History className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteMaterial(material._id)}
+                            disabled={deletingId === material._id}
+                            title="Delete Material"
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-40"
+                          >
+                            {deletingId === material._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                           </button>
                         </div>
                       </td>
@@ -486,8 +621,9 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                     </div>
                     <span className={cn(
                       "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border",
-                      request.status === 'Approved' ? 'text-emerald-700 bg-emerald-100 border-emerald-200' :
-                      request.status === 'Rejected' ? 'text-red-700 bg-red-100 border-red-200' :
+                      request.status === 'Approved'   ? 'text-emerald-700 bg-emerald-100 border-emerald-200' :
+                      request.status === 'Fulfilled'  ? 'text-blue-700 bg-blue-100 border-blue-200' :
+                      request.status === 'Rejected'   ? 'text-red-700 bg-red-100 border-red-200' :
                       'text-amber-700 bg-amber-100 border-amber-200'
                     )}>
                       {request.status}
@@ -517,10 +653,51 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                       </div>
                       <span className="text-[10px] font-bold text-slate-500">{request.requestedByName}</span>
                     </div>
-                    <button
-                      onClick={() => setSelectedRequest(request)}
-                      className="text-xs font-bold text-blue-600 hover:text-blue-500 transition-colors"
-                    >Details &rarr;</button>
+                    <div className="flex items-center space-x-2">
+                      {request.status === 'Pending' && (
+                        <>
+                          <button
+                            onClick={() => handleUpdateRequestStatus(request._id, 'Rejected')}
+                            disabled={updatingRequestId === request._id}
+                            title="Reject"
+                            className="p-1.5 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-600 hover:text-white transition-all disabled:opacity-50"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleUpdateRequestStatus(request._id, 'Approved')}
+                            disabled={updatingRequestId === request._id}
+                            title="Approve"
+                            className="p-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all disabled:opacity-50"
+                          >
+                            {updatingRequestId === request._id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                          </button>
+                        </>
+                      )}
+                      {request.status === 'Approved' && (
+                        <button
+                          onClick={() => handleUpdateRequestStatus(request._id, 'Fulfilled')}
+                          disabled={updatingRequestId === request._id}
+                          title="Mark Fulfilled"
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white text-[10px] font-bold transition-all disabled:opacity-50"
+                        >
+                          {updatingRequestId === request._id ? <Loader2 className="w-3 h-3 animate-spin" /> : <PackageCheck className="w-3 h-3" />}
+                          Fulfill
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDeleteRequest(request._id)}
+                        disabled={deletingId === request._id}
+                        title="Delete"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
+                      >
+                        {deletingId === request._id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                      </button>
+                      <button
+                        onClick={() => setSelectedRequest(request)}
+                        className="text-xs font-bold text-blue-600 hover:text-blue-500 transition-colors"
+                      >Details &rarr;</button>
+                    </div>
                   </div>
                 </GlassCard>
               ))}
@@ -611,20 +788,29 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        {receipt.status !== 'Verified' ? (
+                        <div className="flex items-center justify-end space-x-2">
+                          {receipt.status !== 'Verified' ? (
+                            <button
+                              onClick={() => handleVerifyReceipt(receipt._id)}
+                              className="flex items-center space-x-1 text-xs font-bold text-emerald-600 hover:text-emerald-500 transition-colors"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Verify</span>
+                            </button>
+                          ) : (
+                            <span className="text-xs font-bold text-emerald-600 flex items-center space-x-1">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Verified</span>
+                            </span>
+                          )}
                           <button
-                            onClick={() => handleVerifyReceipt(receipt._id)}
-                            className="flex items-center space-x-1 text-xs font-bold text-emerald-600 hover:text-emerald-500 transition-colors"
+                            onClick={() => printReceipt(receipt)}
+                            title="Print Receipt"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-gray-900 hover:bg-gray-100 transition-all"
                           >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Verify</span>
+                            <Printer className="w-4 h-4" />
                           </button>
-                        ) : (
-                          <span className="text-xs font-bold text-emerald-600 flex items-center space-x-1">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Verified</span>
-                          </span>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -673,7 +859,10 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                       <p className="text-sm font-bold text-gray-900">{po.poNumber}</p>
                       <p className="text-[10px] text-slate-500 uppercase tracking-wider">{po.vendorName}</p>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-100 text-blue-700 border border-blue-200">
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border",
+                      PO_STATUS_COLORS[po.status] || 'text-blue-700 bg-blue-100 border-blue-200'
+                    )}>
                       {po.status || 'Active'}
                     </span>
                   </div>
@@ -681,19 +870,35 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                     {po.items.map((item: any, i: number) => (
                       <div key={i} className="flex justify-between text-xs">
                         <span className="text-slate-500">{item.materialId?.name}</span>
-                        <span className="text-gray-900 font-bold">{item.quantity} {item.unit}</span>
+                        <span className="text-gray-900 font-bold">{item.quantity} {item.unit} {(item.unitPrice || item.unitCost) ? `· ₹${((item.unitPrice || item.unitCost) * item.quantity).toLocaleString()}` : ''}</span>
                       </div>
                     ))}
                   </div>
                   <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                     <div className="flex flex-col">
                       <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Total Amount</span>
-                      <span className="text-sm font-bold text-emerald-600">₹{po.totalAmount?.toLocaleString()}</span>
+                      <span className="text-sm font-bold text-emerald-600">₹{(po.grandTotal ?? po.totalAmount)?.toLocaleString() ?? '—'}</span>
                     </div>
-                    <button
-                      onClick={() => setSelectedPO(po)}
-                      className="text-xs font-bold text-blue-600 hover:text-blue-500 transition-colors"
-                    >View PO &rarr;</button>
+                    <div className="flex items-center space-x-2">
+                      {po.status !== 'Approved' ? (
+                        <button
+                          onClick={() => handleDeletePO(po._id)}
+                          disabled={deletingId === po._id}
+                          title="Delete PO"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
+                        >
+                          {deletingId === po._id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                        </button>
+                      ) : (
+                        <span title="Approved POs cannot be deleted" className="p-1.5 text-slate-300 cursor-not-allowed">
+                          <Lock className="w-3.5 h-3.5" />
+                        </span>
+                      )}
+                      <button
+                        onClick={() => setSelectedPO(po)}
+                        className="text-xs font-bold text-blue-600 hover:text-blue-500 transition-colors"
+                      >View PO &rarr;</button>
+                    </div>
                   </div>
                 </GlassCard>
               ))}
@@ -738,6 +943,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                     <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Date & User</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Location / Work</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Materials Consumed</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -760,6 +966,16 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                           ))}
                         </div>
                       </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => handleDeleteUsageLog(log._id)}
+                          disabled={deletingId === log._id}
+                          title="Delete log (restores stock)"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
+                        >
+                          {deletingId === log._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -769,6 +985,91 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <History className="w-16 h-16 text-gray-300 mb-4" />
               <p className="text-slate-500">No usage logs found.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeSubTab === 'activity' && (
+        <div className="space-y-6">
+          <GlassCard className="p-4 border-gray-200" gradient>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-gray-900">Activity Log</h3>
+              <p className="text-xs text-slate-500">All material activity — requests, purchases, receipts, and consumption — in chronological order.</p>
+            </div>
+          </GlassCard>
+
+          {activityLoading ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
+              <p className="text-slate-500 font-medium">Loading activity...</p>
+            </div>
+          ) : activityFeed.length > 0 ? (
+            <div className="space-y-3">
+              {activityFeed.map((entry) => {
+                const typeConfig = {
+                  request: { icon: ClipboardList, bg: 'bg-blue-100', border: 'border-blue-200', text: 'text-blue-600', label: 'Material Request', idLabel: `REQ-${entry._id?.slice(-6).toUpperCase()}` },
+                  purchase: { icon: ShoppingCart, bg: 'bg-purple-100', border: 'border-purple-200', text: 'text-purple-600', label: 'Purchase Order', idLabel: entry.poNumber || `PO-${entry._id?.slice(-6).toUpperCase()}` },
+                  receipt:  { icon: FileCheck, bg: 'bg-emerald-100', border: 'border-emerald-200', text: 'text-emerald-600', label: 'Goods Receipt (GRN)', idLabel: `GRN-${entry._id?.slice(-6).toUpperCase()}` },
+                  usage:    { icon: Zap, bg: 'bg-orange-100', border: 'border-orange-200', text: 'text-orange-600', label: 'Material Usage', idLabel: entry.locationOrTask || 'Usage' },
+                }[entry._type as string] || { icon: ScrollText, bg: 'bg-gray-100', border: 'border-gray-200', text: 'text-gray-600', label: 'Activity', idLabel: entry._id };
+
+                const Icon = typeConfig.icon;
+                const statusBadge = entry.status ? (
+                  <span className={cn(
+                    'px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wide border',
+                    entry.status === 'Approved' || entry.status === 'Verified' ? 'text-emerald-700 bg-emerald-100 border-emerald-200' :
+                    entry.status === 'Rejected' ? 'text-red-700 bg-red-100 border-red-200' :
+                    entry.status === 'Fulfilled' ? 'text-blue-700 bg-blue-100 border-blue-200' :
+                    'text-amber-700 bg-amber-100 border-amber-200'
+                  )}>{entry.status}</span>
+                ) : null;
+
+                const summaryItems: string[] = entry._type === 'usage'
+                  ? (entry.items || []).map((it: any) => `${it.materialId?.name || 'Item'}: −${it.quantity} ${it.unit}`)
+                  : (entry.items || []).map((it: any) => `${it.materialId?.name || 'Item'}: ${it.quantity} ${it.unit}`);
+
+                return (
+                  <div key={`${entry._type}-${entry._id}`} className="flex items-start gap-4 p-4 bg-white border border-gray-200 rounded-2xl hover:border-blue-200 transition-all">
+                    <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border', typeConfig.bg, typeConfig.border)}>
+                      <Icon className={cn('w-5 h-5', typeConfig.text)} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-black text-slate-500 uppercase tracking-wider">{typeConfig.label}</span>
+                        {statusBadge}
+                      </div>
+                      <p className="text-sm font-bold text-gray-900 mt-0.5 truncate">{typeConfig.idLabel}</p>
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        {summaryItems.slice(0, 4).map((s, i) => (
+                          <span key={i} className="px-1.5 py-0.5 rounded bg-gray-100 border border-gray-200 text-[10px] font-bold text-slate-500">{s}</span>
+                        ))}
+                        {summaryItems.length > 4 && (
+                          <span className="px-1.5 py-0.5 rounded bg-gray-100 border border-gray-200 text-[10px] font-bold text-slate-400">+{summaryItems.length - 4} more</span>
+                        )}
+                      </div>
+                      {(entry.vendorName || entry.requestedByName || entry.usedByName || entry.commonNote) && (
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          {entry.vendorName && `Vendor: ${entry.vendorName}`}
+                          {entry.requestedByName && `By: ${entry.requestedByName}`}
+                          {entry.usedByName && `By: ${entry.usedByName}`}
+                          {entry.commonNote && ` · "${entry.commonNote}"`}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-[10px] font-bold text-slate-400">{new Date(entry.createdAt).toLocaleDateString()}</p>
+                      <p className="text-[10px] text-slate-400">{new Date(entry.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 text-center border-2 border-dashed border-gray-200 rounded-3xl">
+              <ScrollText className="w-16 h-16 text-gray-300 mb-4" />
+              <h3 className="text-xl font-bold text-gray-900 mb-2">No activity yet</h3>
+              <p className="text-slate-500">Material activity will appear here once requests, purchases, receipts, or usage logs are created.</p>
             </div>
           )}
         </div>
@@ -796,8 +1097,9 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                 <div className="flex items-center space-x-2">
                   <span className={cn(
                     "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border",
-                    selectedRequest.status === 'Approved' ? 'text-emerald-700 bg-emerald-100 border-emerald-200' :
-                    selectedRequest.status === 'Rejected' ? 'text-red-700 bg-red-100 border-red-200' :
+                    selectedRequest.status === 'Approved'  ? 'text-emerald-700 bg-emerald-100 border-emerald-200' :
+                    selectedRequest.status === 'Fulfilled' ? 'text-blue-700 bg-blue-100 border-blue-200' :
+                    selectedRequest.status === 'Rejected'  ? 'text-red-700 bg-red-100 border-red-200' :
                     'text-amber-700 bg-amber-100 border-amber-200'
                   )}>{selectedRequest.status}</span>
                   <button onClick={() => setSelectedRequest(null)} className="p-2 rounded-xl hover:bg-gray-100 text-slate-400 hover:text-gray-900 transition-colors">
@@ -843,6 +1145,16 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                       <span>Approve</span>
                     </button>
                   </div>
+                )}
+                {selectedRequest.status === 'Approved' && (
+                  <button
+                    onClick={() => handleUpdateRequestStatus(selectedRequest._id, 'Fulfilled')}
+                    disabled={updatingRequestId === selectedRequest._id}
+                    className="w-full py-3 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-500 transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
+                  >
+                    {updatingRequestId === selectedRequest._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <PackageCheck className="w-4 h-4" />}
+                    <span>Mark as Fulfilled</span>
+                  </button>
                 )}
               </div>
             </GlassCard>
@@ -896,9 +1208,9 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                           <tr key={i} className="border-b border-gray-100">
                             <td className="px-4 py-3 text-sm font-semibold text-gray-900">{item.materialId?.name || 'Material'}</td>
                             <td className="px-4 py-3 text-sm text-right text-slate-600">{item.quantity} {item.unit}</td>
-                            <td className="px-4 py-3 text-sm text-right text-slate-600">₹{item.unitCost?.toLocaleString() || '—'}</td>
+                            <td className="px-4 py-3 text-sm text-right text-slate-600">₹{(item.unitPrice ?? item.unitCost)?.toLocaleString() || '—'}</td>
                             <td className="px-4 py-3 text-sm text-right font-bold text-gray-900">
-                              ₹{(item.quantity * (item.unitCost || 0)).toLocaleString()}
+                              ₹{(item.quantity * (item.unitPrice ?? item.unitCost ?? 0)).toLocaleString()}
                             </td>
                           </tr>
                         ))}
@@ -908,7 +1220,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                 </div>
                 <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
                   <span className="text-sm font-black text-slate-600 uppercase tracking-wider">Total Amount</span>
-                  <span className="text-xl font-black text-emerald-600">₹{selectedPO.totalAmount?.toLocaleString() || '—'}</span>
+                  <span className="text-xl font-black text-emerald-600">₹{(selectedPO.grandTotal ?? selectedPO.totalAmount)?.toLocaleString() || '—'}</span>
                 </div>
                 {selectedPO.expectedDelivery && (
                   <div className="flex items-center space-x-3 p-4 bg-gray-50 border border-gray-200 rounded-xl">
@@ -917,6 +1229,25 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Expected Delivery</p>
                       <p className="text-sm font-bold text-gray-900">{new Date(selectedPO.expectedDelivery).toLocaleDateString()}</p>
                     </div>
+                  </div>
+                )}
+                {(selectedPO.status === 'Pending Approval' || selectedPO.status === 'Pending') && (
+                  <div className="flex space-x-3 pt-2">
+                    <button
+                      onClick={() => handleUpdatePOStatus(selectedPO._id, 'Rejected')}
+                      disabled={updatingPOId === selectedPO._id}
+                      className="flex-1 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-bold hover:bg-red-600 hover:text-white hover:border-red-600 transition-all disabled:opacity-50"
+                    >
+                      Reject
+                    </button>
+                    <button
+                      onClick={() => handleUpdatePOStatus(selectedPO._id, 'Approved')}
+                      disabled={updatingPOId === selectedPO._id}
+                      className="flex-1 py-3 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-500 transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
+                    >
+                      {updatingPOId === selectedPO._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                      <span>Approve</span>
+                    </button>
                   </div>
                 )}
               </div>

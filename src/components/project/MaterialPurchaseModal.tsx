@@ -160,57 +160,80 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
                     </div>
 
                     <div className="space-y-3">
-                      {formData.items.map((item, index) => (
-                        <div key={index} className="grid grid-cols-12 gap-3 items-end bg-gray-50 p-3 rounded-xl border border-gray-200">
-                          <div className="col-span-4 space-y-1">
-                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Material</label>
-                            <select
-                              required
-                              value={item.materialId}
-                              onChange={(e) => updateItem(index, 'materialId', e.target.value)}
-                              className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-3 text-xs text-gray-900 focus:outline-none focus:border-blue-500"
-                            >
-                              <option value="">Select Material</option>
-                              {materials.map(m => (
-                                <option key={m._id} value={m._id}>{m.name}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div className="col-span-3 space-y-1">
-                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Quantity</label>
-                            <div className="flex items-center bg-white border border-gray-200 rounded-lg pr-2">
-                              <input
-                                type="number"
-                                required
-                                value={item.quantity}
-                                onChange={(e) => updateItem(index, 'quantity', Number(e.target.value))}
-                                className="w-full bg-transparent py-1.5 px-3 text-xs text-gray-900 focus:outline-none"
-                              />
-                              <span className="text-[9px] font-bold text-slate-400 uppercase">{item.unit || '-'}</span>
+                      {formData.items.map((item, index) => {
+                        const subtotal = item.quantity * item.unitPrice;
+                        return (
+                          <div key={index} className="bg-gray-50 p-3 rounded-xl border border-gray-200 space-y-2">
+                            <div className="grid grid-cols-12 gap-3 items-end">
+                              <div className="col-span-5 space-y-1">
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Material</label>
+                                <select
+                                  required
+                                  value={item.materialId}
+                                  onChange={(e) => updateItem(index, 'materialId', e.target.value)}
+                                  className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-3 text-xs text-gray-900 focus:outline-none focus:border-blue-500"
+                                >
+                                  <option value="">Select Material</option>
+                                  {materials.map(m => (
+                                    <option key={m._id} value={m._id}>{m.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="col-span-3 space-y-1">
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Quantity</label>
+                                <div className="flex items-center bg-white border border-gray-200 rounded-lg pr-2">
+                                  <input
+                                    type="number"
+                                    required
+                                    value={item.quantity}
+                                    onChange={(e) => updateItem(index, 'quantity', Number(e.target.value))}
+                                    className="w-full bg-transparent py-1.5 px-3 text-xs text-gray-900 focus:outline-none"
+                                  />
+                                  <span className="text-[9px] font-bold text-slate-400 uppercase">{item.unit || '-'}</span>
+                                </div>
+                              </div>
+                              <div className="col-span-3 space-y-1">
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Rate (₹)</label>
+                                <input
+                                  type="number"
+                                  required
+                                  min={0}
+                                  value={item.unitPrice}
+                                  onChange={(e) => updateItem(index, 'unitPrice', Number(e.target.value))}
+                                  className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-3 text-xs text-gray-900 focus:outline-none focus:border-blue-500"
+                                />
+                              </div>
+                              <div className="col-span-1 flex justify-center pb-1">
+                                <button
+                                  type="button"
+                                  onClick={() => removeItem(index)}
+                                  className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                            {/* Subtotal row */}
+                            <div className="flex items-center justify-between px-1 pt-1 border-t border-gray-200">
+                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Subtotal</span>
+                              <span className="text-xs font-black text-emerald-600">
+                                ₹{subtotal > 0 ? subtotal.toLocaleString() : '—'}
+                              </span>
                             </div>
                           </div>
-                          <div className="col-span-3 space-y-1">
-                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Rate (₹)</label>
-                            <input
-                              type="number"
-                              required
-                              value={item.unitPrice}
-                              onChange={(e) => updateItem(index, 'unitPrice', Number(e.target.value))}
-                              className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-3 text-xs text-gray-900 focus:outline-none focus:border-blue-500"
-                            />
-                          </div>
-                          <div className="col-span-2 flex justify-center pb-1">
-                            <button
-                              type="button"
-                              onClick={() => removeItem(index)}
-                              className="p-2 text-slate-400 hover:text-red-500 transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
+
+                    {/* Grand total */}
+                    {formData.items.length > 0 && (
+                      <div className="flex items-center justify-between px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl mt-2">
+                        <span className="text-sm font-black text-slate-600 uppercase tracking-wider">Grand Total</span>
+                        <span className="text-lg font-black text-emerald-600">
+                          ₹{formData.items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0).toLocaleString()}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">

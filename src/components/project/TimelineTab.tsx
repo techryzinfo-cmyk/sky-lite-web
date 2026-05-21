@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Loader2, GanttChart, ChevronLeft, ChevronRight, ChevronDown, CheckCircle2, Circle } from 'lucide-react';
+import {
+  Loader2, GanttChart, ChevronLeft, ChevronRight, ChevronDown,
+  CheckCircle2, Circle, CalendarClock,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
@@ -11,11 +14,11 @@ interface TimelineTabProps {
 }
 
 const STATUS_COLORS: Record<string, { bar: string; fill: string; text: string; border: string }> = {
-  'Completed':   { bar: 'bg-emerald-500', fill: 'bg-emerald-50',  text: 'text-emerald-700', border: 'border-emerald-300' },
-  'In Progress': { bar: 'bg-blue-500',    fill: 'bg-blue-50',     text: 'text-blue-700',    border: 'border-blue-300'   },
-  'Delayed':     { bar: 'bg-red-500',     fill: 'bg-red-50',      text: 'text-red-700',     border: 'border-red-300'    },
-  'Pending':     { bar: 'bg-slate-400',   fill: 'bg-slate-50',    text: 'text-slate-600',   border: 'border-slate-300'  },
-  'On Hold':     { bar: 'bg-amber-400',   fill: 'bg-amber-50',    text: 'text-amber-700',   border: 'border-amber-300'  },
+  'Completed':   { bar: 'bg-emerald-500', fill: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-400' },
+  'In Progress': { bar: 'bg-blue-500',    fill: 'bg-blue-100',    text: 'text-blue-700',    border: 'border-blue-400'   },
+  'Delayed':     { bar: 'bg-red-500',     fill: 'bg-red-100',     text: 'text-red-700',     border: 'border-red-400'    },
+  'Pending':     { bar: 'bg-slate-400',   fill: 'bg-slate-100',   text: 'text-slate-600',   border: 'border-slate-300'  },
+  'On Hold':     { bar: 'bg-amber-400',   fill: 'bg-amber-100',   text: 'text-amber-700',   border: 'border-amber-400'  },
 };
 
 const STATUS_DOT: Record<string, string> = {
@@ -26,25 +29,32 @@ const STATUS_DOT: Record<string, string> = {
   'On Hold':     'bg-amber-400',
 };
 
-const MILESTONE_H = 64;
-const TASK_H      = 44;
-const DAY_W       = 32;
+const MILESTONE_H = 56;
+const TASK_H      = 40;
+const DAY_W       = 28;
+const MONTH_ROW   = 32;
+const DAY_ROW     = 26;
+const LABEL_W     = 224;
 
-function addDays(date: Date, n: number) {
+function addDays(date: Date, n: number): Date {
   const d = new Date(date);
   d.setDate(d.getDate() + n);
   return d;
 }
 
-function startOfDay(d: Date) {
+function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
-function diffDays(a: Date, b: Date) {
+function diffDays(a: Date, b: Date): number {
   return Math.round((startOfDay(b).getTime() - startOfDay(a).getTime()) / 86_400_000);
 }
 
-function monthLabel(d: Date) {
+function fmtShort(d: Date): string {
+  return d.toLocaleDateString('default', { day: 'numeric', month: 'short' });
+}
+
+function monthLabel(d: Date): string {
   return d.toLocaleString('default', { month: 'short', year: '2-digit' });
 }
 
@@ -62,13 +72,12 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({ projectId }) => {
       .finally(() => setLoading(false));
   }, [projectId]);
 
-  const toggleExpand = (id: string) => {
+  const toggleExpand = (id: string) =>
     setExpandedIds(prev => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
-  };
 
   if (loading) {
     return (
@@ -79,36 +88,24 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({ projectId }) => {
     );
   }
 
-  // Normalize dates — barStart must always be <= barEnd and both in the milestone's real period
+  // Normalise milestone dates and attach per-task dates
   const normalized = milestones.map(m => {
     const due = (m.dueDate || m.targetDate)
       ? startOfDay(new Date(m.dueDate || m.targetDate))
       : null;
-    const explicitStart = m.startDate
-      ? startOfDay(new Date(m.startDate))
-      : null;
+    const explicitStart = m.startDate ? startOfDay(new Date(m.startDate)) : null;
 
-    let barEnd: Date;
-    let barStart: Date;
+    let barEnd: Date   = due ?? addDays(explicitStart ?? startOfDay(new Date(m.createdAt)), 14);
+    let barStart: Date = explicitStart ?? addDays(barEnd, -14);
+    if (barStart > barEnd) barStart = addDays(barEnd, -7);
 
-    if (due) {
-      barEnd   = due;
-      barStart = explicitStart ?? addDays(due, -30);
-    } else {
-      barStart = explicitStart ?? startOfDay(new Date(m.createdAt));
-      barEnd   = addDays(barStart, 30);
-    }
+    const tasks = (Array.isArray(m.tasks) ? m.tasks : []).map((t: any) => {
+      const tStart = t.startDate ? startOfDay(new Date(t.startDate)) : barStart;
+      const tEnd   = (t.dueDate || t.endDate) ? startOfDay(new Date(t.dueDate || t.endDate)) : barEnd;
+      return { ...t, tStart, tEnd };
+    });
 
-    // Safety: guarantee start ≤ end
-    if (barStart > barEnd) barStart = addDays(barEnd, -30);
-
-    return {
-      ...m,
-      label:    m.name || m.title || 'Untitled',
-      barStart,
-      barEnd,
-      tasks:    Array.isArray(m.tasks) ? m.tasks : [],
-    };
+    return { ...m, label: m.name || m.title || 'Untitled', barStart, barEnd, tasks };
   });
 
   if (normalized.length === 0) {
@@ -118,36 +115,52 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({ projectId }) => {
           <GanttChart className="w-12 h-12 text-gray-300" />
         </div>
         <h3 className="text-xl font-bold text-gray-900 mb-2">No timeline data yet</h3>
-        <p className="text-slate-500 max-w-xs">Add milestones to visualize your project timeline.</p>
+        <p className="text-slate-500 max-w-xs">Add milestones with dates to visualize your project timeline.</p>
       </div>
     );
   }
 
-  const today       = startOfDay(new Date());
-  const allDates    = normalized.flatMap(m => [m.barStart, m.barEnd]);
-  const rangeStart  = allDates.reduce((a, b) => a < b ? a : b);
-  const rangeEnd    = allDates.reduce((a, b) => a > b ? a : b);
-  const viewStart   = addDays(rangeStart, -7);
-  const viewEnd     = addDays(rangeEnd, 7);
-  const totalDays   = diffDays(viewStart, viewEnd) + 1;
-  const todayOffset = diffDays(viewStart, today);
+  const today = startOfDay(new Date());
 
+  // Range covers milestone bars AND individual task bars
+  const allDates = normalized.flatMap(m => [
+    m.barStart, m.barEnd,
+    ...m.tasks.flatMap((t: any) => [t.tStart, t.tEnd]),
+  ]);
+  const rangeStart = allDates.reduce((a, b) => (a < b ? a : b));
+  const rangeEnd   = allDates.reduce((a, b) => (a > b ? a : b));
+  const viewStart  = addDays(rangeStart, -4);
+  const viewEnd    = addDays(rangeEnd, 6);
+  const totalDays  = diffDays(viewStart, viewEnd) + 1;
+  const todayOff   = diffDays(viewStart, today);
+  const totalW     = totalDays * DAY_W;
+
+  // Month header segments
   const months: { label: string; span: number }[] = [];
   {
     let cur = new Date(viewStart.getFullYear(), viewStart.getMonth(), 1);
     while (cur <= viewEnd) {
-      const monthStart = cur < viewStart ? viewStart : cur;
-      const nextMonth  = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
-      const monthEnd   = nextMonth > viewEnd ? viewEnd : addDays(nextMonth, -1);
-      months.push({ label: monthLabel(cur), span: diffDays(monthStart, monthEnd) + 1 });
-      cur = nextMonth;
+      const ms = cur < viewStart ? viewStart : cur;
+      const next = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+      const me = next > viewEnd ? viewEnd : addDays(next, -1);
+      months.push({ label: monthLabel(cur), span: diffDays(ms, me) + 1 });
+      cur = next;
     }
   }
+
+  // Day cells array (used for day-row header and weekend shading)
+  const days = Array.from({ length: totalDays }, (_, i) => addDays(viewStart, i));
 
   const scroll = (dir: -1 | 1) =>
     scrollRef.current?.scrollBy({ left: dir * DAY_W * 7, behavior: 'smooth' });
 
-  const todayVisible = todayOffset >= 0 && todayOffset < totalDays;
+  const scrollToToday = () => {
+    if (!scrollRef.current) return;
+    const x = Math.max(0, todayOff * DAY_W - scrollRef.current.clientWidth / 2);
+    scrollRef.current.scrollTo({ left: x, behavior: 'smooth' });
+  };
+
+  const todayInRange = todayOff >= 0 && todayOff < totalDays;
 
   return (
     <div className="space-y-6">
@@ -155,7 +168,7 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({ projectId }) => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h3 className="text-xl font-bold text-gray-900">Project Timeline</h3>
-          <p className="text-sm text-slate-500 mt-1">Gantt view — click a milestone to expand its tasks.</p>
+          <p className="text-sm text-slate-500 mt-1">Click a milestone row to expand its tasks.</p>
         </div>
         <div className="flex items-center flex-wrap gap-x-4 gap-y-2">
           {Object.entries(STATUS_COLORS).map(([s, c]) => (
@@ -165,30 +178,49 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({ projectId }) => {
             </div>
           ))}
           <div className="flex items-center gap-1.5">
-            <div className="w-px h-3 bg-red-500" />
+            <div className="w-0.5 h-3 bg-red-500 rounded-full" />
             <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider">Today</span>
           </div>
         </div>
       </div>
 
-      {/* Scroll nav */}
+      {/* Scroll controls */}
       <div className="flex items-center justify-end gap-2">
-        <button onClick={() => scroll(-1)} className="p-2 rounded-xl bg-white border border-gray-200 text-slate-500 hover:text-gray-900 hover:bg-gray-50 transition-all">
+        <button
+          onClick={() => scroll(-1)}
+          className="p-2 rounded-xl bg-white border border-gray-200 text-slate-500 hover:text-gray-900 hover:bg-gray-50 transition-all"
+        >
           <ChevronLeft className="w-4 h-4" />
         </button>
-        <button onClick={() => scroll(1)} className="p-2 rounded-xl bg-white border border-gray-200 text-slate-500 hover:text-gray-900 hover:bg-gray-50 transition-all">
+        {todayInRange && (
+          <button
+            onClick={scrollToToday}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs font-bold hover:bg-red-100 transition-all"
+          >
+            <CalendarClock className="w-3.5 h-3.5" />
+            Today
+          </button>
+        )}
+        <button
+          onClick={() => scroll(1)}
+          className="p-2 rounded-xl bg-white border border-gray-200 text-slate-500 hover:text-gray-900 hover:bg-gray-50 transition-all"
+        >
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Gantt */}
+      {/* Gantt grid */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="flex">
 
-          {/* ── Left labels column ── */}
-          <div className="w-56 shrink-0 border-r border-gray-200 bg-gray-50/80">
-            {/* Month header spacer */}
-            <div className="h-10 border-b border-gray-200 flex items-center px-4">
+          {/* ── Label column ── */}
+          <div style={{ width: LABEL_W }} className="shrink-0 border-r border-gray-200 bg-gray-50">
+
+            {/* Header spacer (matches two header rows) */}
+            <div
+              style={{ height: MONTH_ROW + DAY_ROW }}
+              className="border-b border-gray-200 flex items-end px-4 pb-1.5 bg-gray-50"
+            >
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Milestone / Task</span>
             </div>
 
@@ -202,57 +234,62 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({ projectId }) => {
 
               return (
                 <div key={rowKey}>
-                  {/* Milestone row */}
+                  {/* Milestone label row */}
                   <div
                     onClick={() => hasTasks && toggleExpand(rowKey)}
+                    style={{ height: MILESTONE_H }}
                     className={cn(
                       'flex items-center gap-2 px-3 border-b border-gray-100',
                       i % 2 === 0 ? 'bg-white' : 'bg-gray-50/60',
                       hasTasks ? 'cursor-pointer hover:bg-blue-50/40 transition-colors' : ''
                     )}
-                    style={{ height: MILESTONE_H }}
                   >
-                    <ChevronDown
-                      className={cn(
-                        'w-3.5 h-3.5 shrink-0 text-slate-400 transition-transform duration-200',
-                        hasTasks ? 'opacity-100' : 'opacity-0',
-                        expanded ? 'rotate-0' : '-rotate-90'
-                      )}
-                    />
+                    <ChevronDown className={cn(
+                      'w-3.5 h-3.5 shrink-0 text-slate-400 transition-transform duration-200',
+                      hasTasks ? 'opacity-100' : 'opacity-0',
+                      expanded ? 'rotate-0' : '-rotate-90'
+                    )} />
                     <div className={cn('w-2.5 h-2.5 rounded-full shrink-0', dotColor)} />
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-gray-900 truncate leading-tight">{m.label}</p>
-                      <p className={cn('text-[9px] font-black uppercase tracking-widest mt-0.5', c.text)}>
-                        {m.status || 'Pending'}
-                        {hasTasks && (
-                          <span className="ml-1.5 normal-case font-semibold text-slate-400">
-                            · {done}/{m.tasks.length}
-                          </span>
-                        )}
+                      <p className="text-[9px] text-slate-400 mt-0.5">
+                        {fmtShort(m.barStart)} → {fmtShort(m.barEnd)}
                       </p>
+                      {hasTasks && (
+                        <p className={cn('text-[9px] font-bold mt-0.5', c.text)}>
+                          {done}/{m.tasks.length} tasks · {m.status || 'Pending'}
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  {/* Task sub-rows */}
+                  {/* Task label rows */}
                   {expanded && m.tasks.map((task: any, ti: number) => (
                     <div
                       key={task._id || ti}
+                      style={{ height: TASK_H }}
                       className={cn(
-                        'flex items-center gap-2 pl-10 pr-3 border-b border-gray-100',
+                        'flex items-center gap-2 pl-9 pr-3 border-b border-gray-100',
                         i % 2 === 0 ? 'bg-blue-50/20' : 'bg-blue-50/30'
                       )}
-                      style={{ height: TASK_H }}
                     >
                       {task.isCompleted
                         ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
                         : <Circle className="w-3.5 h-3.5 shrink-0 text-gray-300" />
                       }
-                      <p className={cn(
-                        'text-[10px] font-semibold truncate',
-                        task.isCompleted ? 'text-emerald-600 line-through' : 'text-slate-600'
-                      )}>
-                        {task.title || task.name || 'Task'}
-                      </p>
+                      <div className="min-w-0">
+                        <p className={cn(
+                          'text-[10px] font-semibold truncate',
+                          task.isCompleted ? 'text-emerald-600 line-through' : 'text-slate-600'
+                        )}>
+                          {task.title || task.name || 'Task'}
+                        </p>
+                        {(task.startDate || task.dueDate || task.endDate) && (
+                          <p className="text-[9px] text-slate-400 mt-0.5">
+                            {fmtShort(task.tStart)} → {fmtShort(task.tEnd)}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -260,12 +297,12 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({ projectId }) => {
             })}
           </div>
 
-          {/* ── Scrollable chart area ── */}
+          {/* ── Scrollable chart ── */}
           <div ref={scrollRef} className="flex-1 overflow-x-auto">
-            <div style={{ width: totalDays * DAY_W, minWidth: '100%', position: 'relative' }}>
+            <div style={{ width: totalW, position: 'relative' }}>
 
-              {/* Month headers */}
-              <div className="h-10 border-b border-gray-200 flex" style={{ width: totalDays * DAY_W }}>
+              {/* Month header row */}
+              <div className="flex border-b border-gray-200 bg-gray-50" style={{ height: MONTH_ROW, width: totalW }}>
                 {months.map((mo, i) => (
                   <div
                     key={i}
@@ -277,7 +314,29 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({ projectId }) => {
                 ))}
               </div>
 
-              {/* Milestone + task chart rows */}
+              {/* Day-number row */}
+              <div className="flex border-b border-gray-200" style={{ height: DAY_ROW, width: totalW }}>
+                {days.map((d, di) => {
+                  const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                  const isToday   = di === todayOff;
+                  return (
+                    <div
+                      key={di}
+                      style={{ width: DAY_W }}
+                      className={cn(
+                        'shrink-0 flex items-center justify-center border-r text-[10px] font-bold',
+                        isToday   ? 'bg-red-500 text-white border-red-400' :
+                        isWeekend ? 'bg-gray-100 text-slate-400 border-gray-200' :
+                                    'bg-white text-slate-400 border-gray-100'
+                      )}
+                    >
+                      {d.getDate()}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Data rows */}
               {normalized.map((m, mi) => {
                 const rowKey   = m._id || String(mi);
                 const expanded = expandedIds.has(rowKey);
@@ -286,101 +345,121 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({ projectId }) => {
 
                 const barLeft  = Math.max(0, diffDays(viewStart, m.barStart)) * DAY_W;
                 const barDays  = Math.max(1, diffDays(m.barStart, m.barEnd) + 1);
-                const barWidth = barDays * DAY_W;
+                const barW     = barDays * DAY_W;
 
                 const done  = m.tasks.filter((t: any) => t.isCompleted).length;
                 const total = m.tasks.length;
-                const pct   = total > 0 ? Math.round((done / total) * 100) : (m.status === 'Completed' ? 100 : 0);
-
-                const WeekendShading = () => (
-                  <>
-                    {Array.from({ length: totalDays }).map((_, di) => {
-                      const d = addDays(viewStart, di);
-                      return (d.getDay() === 0 || d.getDay() === 6) ? (
-                        <div key={di} className="absolute top-0 bottom-0 bg-gray-100/50" style={{ left: di * DAY_W, width: DAY_W }} />
-                      ) : null;
-                    })}
-                  </>
-                );
+                const pct   = total > 0
+                  ? Math.round((done / total) * 100)
+                  : (m.status === 'Completed' ? 100 : 0);
 
                 return (
                   <div key={rowKey}>
-                    {/* Milestone chart row */}
+
+                    {/* Milestone row */}
                     <div
                       className={cn('relative border-b border-gray-100', isEven ? 'bg-white' : 'bg-gray-50/40')}
-                      style={{ height: MILESTONE_H, width: totalDays * DAY_W }}
+                      style={{ height: MILESTONE_H, width: totalW }}
                     >
-                      <WeekendShading />
+                      {/* Weekend shading */}
+                      {days.map((d, di) =>
+                        (d.getDay() === 0 || d.getDay() === 6)
+                          ? <div key={di} className="absolute top-0 bottom-0 bg-gray-100/50" style={{ left: di * DAY_W, width: DAY_W }} />
+                          : null
+                      )}
 
                       {/* Today line */}
-                      {todayVisible && (
-                        <div className="absolute top-0 bottom-0 w-0.5 bg-red-400/80 z-10" style={{ left: todayOffset * DAY_W + DAY_W / 2 }} />
+                      {todayInRange && (
+                        <div
+                          className="absolute top-0 bottom-0 w-0.5 bg-red-400/70 z-10"
+                          style={{ left: todayOff * DAY_W + DAY_W / 2 }}
+                        />
                       )}
 
                       {/* Milestone bar */}
                       <div
-                        className={cn('absolute top-4 h-9 rounded-xl border overflow-hidden z-20 flex items-center', c.fill, c.border)}
-                        style={{ left: barLeft, width: barWidth }}
-                        title={`${m.label} — ${pct}%`}
+                        className={cn('absolute rounded-xl border overflow-hidden z-20 flex items-center', c.fill, c.border)}
+                        style={{ left: barLeft, width: barW, top: 10, height: 36 }}
+                        title={`${m.label}: ${fmtShort(m.barStart)} – ${fmtShort(m.barEnd)} (${pct}%)`}
                       >
                         {/* Progress fill */}
                         <div
-                          className={cn('absolute left-0 top-0 bottom-0 rounded-xl transition-all', c.bar)}
-                          style={{ width: `${pct}%`, opacity: 0.75 }}
+                          className={cn('absolute left-0 top-0 bottom-0 rounded-xl', c.bar)}
+                          style={{ width: `${pct}%`, opacity: 0.5 }}
                         />
-                        {/* Label */}
-                        <span className={cn('relative px-2.5 text-[9px] font-black uppercase tracking-wider truncate', c.text)}>
-                          {barWidth > 80 ? m.label : (m.status || 'Pending')}
-                        </span>
-                        {pct > 0 && barWidth > 90 && (
-                          <span className={cn('relative ml-auto px-2 text-[9px] font-black shrink-0', c.text)}>{pct}%</span>
+                        {barW >= 56 && (
+                          <span className={cn('relative px-2.5 text-[9px] font-black uppercase tracking-wide truncate flex-1', c.text)}>
+                            {m.label}
+                          </span>
+                        )}
+                        {pct > 0 && barW >= 80 && (
+                          <span className={cn('relative px-2 text-[9px] font-black shrink-0', c.text)}>{pct}%</span>
                         )}
                       </div>
+
+                      {/* Due-date tick mark */}
+                      <div
+                        className={cn('absolute top-2 bottom-2 w-0.5 z-30 rounded-full opacity-80', c.bar)}
+                        style={{ left: barLeft + barW - 1 }}
+                        title={`Due: ${fmtShort(m.barEnd)}`}
+                      />
                     </div>
 
-                    {/* Task chart rows */}
-                    {expanded && m.tasks.map((task: any, ti: number) => (
-                      <div
-                        key={task._id || ti}
-                        className={cn('relative border-b border-gray-100', isEven ? 'bg-blue-50/20' : 'bg-blue-50/30')}
-                        style={{ height: TASK_H, width: totalDays * DAY_W }}
-                      >
-                        <WeekendShading />
+                    {/* Task rows */}
+                    {expanded && m.tasks.map((task: any, ti: number) => {
+                      const tLeft = Math.max(0, diffDays(viewStart, task.tStart)) * DAY_W;
+                      const tDays = Math.max(1, diffDays(task.tStart, task.tEnd) + 1);
+                      const tW    = tDays * DAY_W;
 
-                        {/* Today line */}
-                        {todayVisible && (
-                          <div className="absolute top-0 bottom-0 w-0.5 bg-red-400/60 z-10" style={{ left: todayOffset * DAY_W + DAY_W / 2 }} />
-                        )}
-
-                        {/* Task bar — spans parent's date range, inset slightly */}
+                      return (
                         <div
-                          className={cn(
-                            'absolute top-2.5 h-5 rounded-lg border z-20 flex items-center px-2 overflow-hidden',
-                            task.isCompleted
-                              ? 'bg-emerald-500 border-emerald-600'
-                              : 'bg-white border-gray-300 border-dashed'
-                          )}
-                          style={{ left: barLeft + 12, width: Math.max(DAY_W * 2, barWidth - 24) }}
-                          title={task.title || task.name}
+                          key={task._id || ti}
+                          className={cn('relative border-b border-gray-100', isEven ? 'bg-blue-50/20' : 'bg-blue-50/30')}
+                          style={{ height: TASK_H, width: totalW }}
                         >
-                          <span className={cn(
-                            'text-[8px] font-bold truncate',
-                            task.isCompleted ? 'text-white' : 'text-slate-400'
-                          )}>
-                            {task.title || task.name || 'Task'}
-                          </span>
+                          {days.map((d, di) =>
+                            (d.getDay() === 0 || d.getDay() === 6)
+                              ? <div key={di} className="absolute top-0 bottom-0 bg-gray-100/40" style={{ left: di * DAY_W, width: DAY_W }} />
+                              : null
+                          )}
+
+                          {todayInRange && (
+                            <div
+                              className="absolute top-0 bottom-0 w-0.5 bg-red-400/50 z-10"
+                              style={{ left: todayOff * DAY_W + DAY_W / 2 }}
+                            />
+                          )}
+
+                          <div
+                            className={cn(
+                              'absolute z-20 rounded-lg border flex items-center px-2 overflow-hidden',
+                              task.isCompleted
+                                ? 'bg-emerald-500 border-emerald-600'
+                                : 'bg-white border-blue-300'
+                            )}
+                            style={{ left: tLeft, width: Math.max(DAY_W, tW), top: 8, height: 24 }}
+                            title={`${task.title || task.name}: ${fmtShort(task.tStart)} – ${fmtShort(task.tEnd)}`}
+                          >
+                            <span className={cn(
+                              'text-[9px] font-bold truncate',
+                              task.isCompleted ? 'text-white' : 'text-blue-600'
+                            )}>
+                              {tW >= 48 ? (task.title || task.name || 'Task') : ''}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 );
               })}
             </div>
           </div>
+
         </div>
       </div>
 
-      {/* Summary cards */}
+      {/* Status summary */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {Object.entries(STATUS_COLORS).map(([status, c]) => {
           const count = normalized.filter(m => (m.status || 'Pending') === status).length;

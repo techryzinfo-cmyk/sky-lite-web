@@ -144,6 +144,25 @@ export const MilestoneDetailModal: React.FC<Props> = ({
 
       // 2. Log material usage if any rows filled
       const validMaterials = (form.materials ?? []).filter(r => r.materialId && Number(r.quantity) > 0);
+
+      // Validate quantities against available balance
+      for (const r of validMaterials) {
+        const mat = materials.find((m: any) => m._id === r.materialId);
+        if (mat) {
+          const avail = mat.balance ?? 0;
+          if (avail <= 0) {
+            toast.error(`"${mat.name}" is out of stock`);
+            setSubmitting(null);
+            return;
+          }
+          if (Number(r.quantity) > avail) {
+            toast.error(`Insufficient stock for "${mat.name}" — only ${avail} ${mat.unit} available`);
+            setSubmitting(null);
+            return;
+          }
+        }
+      }
+
       if (validMaterials.length > 0) {
         await api.post(`/projects/${projectId}/material-usage`, {
           items: validMaterials.map(r => ({ materialId: r.materialId, quantity: Number(r.quantity) })),
@@ -301,10 +320,14 @@ export const MilestoneDetailModal: React.FC<Props> = ({
                   return (
                     <div key={i} className={cn('rounded-2xl border transition-all', task.isCompleted ? 'bg-emerald-50/60 border-emerald-100' : 'bg-white border-gray-200 hover:border-blue-200')}>
 
-                      {/* Task header */}
-                      <div className="flex items-start gap-3 p-4">
+                      {/* Task header — click anywhere to expand details */}
+                      <div
+                        className="flex items-start gap-3 p-4 cursor-pointer select-none"
+                        onClick={() => setExpandedTask(isExpanded ? null : i)}
+                      >
                         <button
-                          onClick={() => {
+                          onClick={e => {
+                            e.stopPropagation();
                             if (task.isCompleted) { handleUncheckTask(i); return; }
                             const opening = !form.open;
                             setForm(i, {
@@ -330,9 +353,9 @@ export const MilestoneDetailModal: React.FC<Props> = ({
                             <p className={cn('text-sm font-semibold', task.isCompleted ? 'line-through text-slate-400' : 'text-gray-900')}>
                               {task.title}
                             </p>
-                            <button onClick={() => setExpandedTask(isExpanded ? null : i)} className="shrink-0 p-1 text-slate-400 hover:text-gray-700 transition-colors">
+                            <span className="shrink-0 p-1 text-slate-400">
                               {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                            </button>
+                            </span>
                           </div>
                           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5">
                             {(task.startDate || task.endDate) && (
@@ -498,33 +521,50 @@ export const MilestoneDetailModal: React.FC<Props> = ({
                                   <p className="text-xs text-slate-400 italic">No materials found for this project.</p>
                                 )}
 
-                                {(form.materials ?? []).map((row, rowIdx) => (
-                                  <div key={rowIdx} className="flex items-center gap-2">
+                                {(form.materials ?? []).map((row, rowIdx) => {
+                                  const selMat = materials.find((m: any) => m._id === row.materialId);
+                                  const balance = selMat ? (selMat.balance ?? 0) : undefined;
+                                  const outOfStock = balance !== undefined && balance <= 0;
+                                  const exceeded = !outOfStock && balance !== undefined && Number(row.quantity) > balance;
+                                  const inputBad = outOfStock || exceeded;
+                                  return (
+                                  <div key={rowIdx} className="flex items-start gap-2">
                                     <select
                                       value={row.materialId}
                                       onChange={e => updateMaterialRow(i, rowIdx, 'materialId', e.target.value)}
                                       className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                     >
                                       <option value="">— Select material —</option>
-                                      {materials.map(m => (
+                                      {materials.map((m: any) => (
                                         <option key={m._id} value={m._id}>
-                                          {m.name} ({m.unit}) — {m.balance ?? 0} available
+                                          {m.name} ({m.unit}) — {Math.max(0, m.balance ?? 0)} available
                                         </option>
                                       ))}
                                     </select>
-                                    <input
-                                      type="number"
-                                      min={0}
-                                      value={row.quantity}
-                                      onChange={e => updateMaterialRow(i, rowIdx, 'quantity', e.target.value)}
-                                      placeholder="Qty"
-                                      className="w-24 bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-right text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                                    />
-                                    <button type="button" onClick={() => removeMaterialRow(i, rowIdx)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                                    <div className="flex flex-col items-end gap-0.5">
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        max={balance !== undefined ? Math.max(0, balance) : undefined}
+                                        value={row.quantity}
+                                        disabled={outOfStock}
+                                        onChange={e => updateMaterialRow(i, rowIdx, 'quantity', e.target.value)}
+                                        placeholder={outOfStock ? '—' : 'Qty'}
+                                        className={`w-24 bg-white border rounded-xl px-3 py-2 text-sm text-right text-gray-900 focus:outline-none focus:ring-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                                          inputBad
+                                            ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500'
+                                            : 'border-gray-200 focus:ring-blue-500/20 focus:border-blue-500'
+                                        }`}
+                                      />
+                                      {outOfStock && <span className="text-[10px] text-red-500 font-medium">Out of stock</span>}
+                                      {exceeded && <span className="text-[10px] text-red-500 font-medium">Max {balance}</span>}
+                                    </div>
+                                    <button type="button" onClick={() => removeMaterialRow(i, rowIdx)} className="p-2 mt-0.5 text-slate-300 hover:text-red-500 transition-colors">
                                       <Trash2 className="w-4 h-4" />
                                     </button>
                                   </div>
-                                ))}
+                                  );
+                                })}
                               </div>
 
                               {/* Action buttons */}

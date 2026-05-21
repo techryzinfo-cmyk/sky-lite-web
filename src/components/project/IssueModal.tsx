@@ -13,15 +13,20 @@ interface IssueModalProps {
   onSuccess: () => void;
   projectId: string;
   type: 'Issue' | 'Snag';
+  existingIssue?: any;
 }
 
-export const IssueModal: React.FC<IssueModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  onSuccess, 
+const CATEGORIES = ['Technical', 'Resource', 'Financial', 'Site', 'Client', 'Third Party', 'Other'];
+
+export const IssueModal: React.FC<IssueModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
   projectId,
-  type
+  type,
+  existingIssue,
 }) => {
+  const isEdit = !!existingIssue;
   const [isLoading, setIsLoading] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [notifyTeam, setNotifyTeam] = useState(true);
@@ -30,49 +35,58 @@ export const IssueModal: React.FC<IssueModalProps> = ({
     description: '',
     priority: 'Medium',
     category: 'Technical',
-    assignedTo: ''
+    assignedTo: '',
   });
-  
+
   const toast = useToast();
 
   useEffect(() => {
-    if (isOpen) {
-      // Fetch project members for assignment
-      const fetchMembers = async () => {
-        try {
-          const response = await api.get(`/projects/${projectId}`);
-          setUsers(response.data.members?.map((m: any) => m.user || m) || []);
-        } catch (error) {
-          console.error('Error fetching members:', error);
-        }
-      };
-      fetchMembers();
+    if (!isOpen) return;
+
+    if (isEdit && existingIssue) {
+      setFormData({
+        title: existingIssue.title || '',
+        description: existingIssue.description || '',
+        priority: existingIssue.priority || 'Medium',
+        category: existingIssue.category || 'Technical',
+        assignedTo: existingIssue.assignedTo?._id || existingIssue.assignedTo || '',
+      });
+    } else {
+      setFormData({ title: '', description: '', priority: 'Medium', category: 'Technical', assignedTo: '' });
     }
-  }, [isOpen, projectId]);
+
+    api.get(`/users?projectId=${projectId}`)
+      .then(res => {
+        const rawUsers: any[] = Array.isArray(res.data) ? res.data : [];
+        setUsers(rawUsers);
+      })
+      .catch(() => console.error('Error fetching project members'));
+  }, [isOpen, projectId, existingIssue?._id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
     try {
-      await api.post(`/projects/${projectId}/issues`, {
-        ...formData,
-        type,
-        category: type === 'Snag' ? 'Snag' : formData.category,
-        notifyTeam,
-      });
-      toast.success(`${type} reported successfully!`);
+      if (isEdit) {
+        await api.patch(`/projects/${projectId}/issues/${existingIssue._id}`, {
+          ...formData,
+          category: type === 'Snag' ? 'Snag' : formData.category,
+        });
+        toast.success(`${type} updated successfully!`);
+      } else {
+        await api.post(`/projects/${projectId}/issues`, {
+          ...formData,
+          type,
+          category: type === 'Snag' ? 'Snag' : formData.category,
+          notifyTeam,
+        });
+        toast.success(`${type} reported successfully!`);
+      }
       onSuccess();
       onClose();
-      setFormData({
-        title: '',
-        description: '',
-        priority: 'Medium',
-        category: 'Technical',
-        assignedTo: ''
-      });
+      setFormData({ title: '', description: '', priority: 'Medium', category: 'Technical', assignedTo: '' });
     } catch (error: any) {
-      toast.error(error.response?.data?.message || `Failed to report ${type}`);
+      toast.error(error.response?.data?.message || `Failed to ${isEdit ? 'update' : 'report'} ${type}`);
     } finally {
       setIsLoading(false);
     }
@@ -89,7 +103,7 @@ export const IssueModal: React.FC<IssueModalProps> = ({
             onClick={onClose}
             className="absolute inset-0 bg-black/30 backdrop-blur-sm"
           />
-          
+
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -104,7 +118,7 @@ export const IssueModal: React.FC<IssueModalProps> = ({
                       <AlertTriangle className="w-6 h-6 text-amber-600" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-gray-900">Report New {type}</h2>
+                      <h2 className="text-xl font-bold text-gray-900">{isEdit ? `Edit ${type}` : `Report New ${type}`}</h2>
                       <p className="text-xs text-slate-500 mt-0.5">Project Tracking & Accountability</p>
                     </div>
                   </div>
@@ -148,12 +162,7 @@ export const IssueModal: React.FC<IssueModalProps> = ({
                         onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                         className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all disabled:opacity-50"
                       >
-                        <option value="Technical">Technical</option>
-                        <option value="Resource">Resource</option>
-                        <option value="Financial">Financial</option>
-                        <option value="Site">Site</option>
-                        <option value="Client">Client</option>
-                        <option value="Other">Other</option>
+                        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
                   </div>
@@ -184,16 +193,18 @@ export const IssueModal: React.FC<IssueModalProps> = ({
                     />
                   </div>
 
-                  <label className="flex items-center space-x-3 p-3 rounded-xl bg-amber-50 border border-amber-200 cursor-pointer group">
-                    <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${notifyTeam ? 'bg-amber-500 border-amber-500' : 'border-gray-300'}`}>
-                      {notifyTeam && <Bell className="w-3 h-3 text-white" />}
-                      <input type="checkbox" className="hidden" checked={notifyTeam} onChange={e => setNotifyTeam(e.target.checked)} />
-                    </div>
-                    <div>
-                      <span className="text-sm font-semibold text-amber-800">Notify project team</span>
-                      <p className="text-[10px] text-amber-600">Send in-app alert to all project members when this {type.toLowerCase()} is reported.</p>
-                    </div>
-                  </label>
+                  {!isEdit && (
+                    <label className="flex items-center space-x-3 p-3 rounded-xl bg-amber-50 border border-amber-200 cursor-pointer group">
+                      <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${notifyTeam ? 'bg-amber-500 border-amber-500' : 'border-gray-300'}`}>
+                        {notifyTeam && <Bell className="w-3 h-3 text-white" />}
+                        <input type="checkbox" className="hidden" checked={notifyTeam} onChange={e => setNotifyTeam(e.target.checked)} />
+                      </div>
+                      <div>
+                        <span className="text-sm font-semibold text-amber-800">Notify project team</span>
+                        <p className="text-[10px] text-amber-600">Send in-app alert to all project members when this {type.toLowerCase()} is reported.</p>
+                      </div>
+                    </label>
+                  )}
 
                   <div className="pt-2 flex space-x-4">
                     <button
@@ -211,10 +222,10 @@ export const IssueModal: React.FC<IssueModalProps> = ({
                       {isLoading ? (
                         <>
                           <Loader2 className="w-5 h-5 animate-spin" />
-                          <span>Reporting...</span>
+                          <span>{isEdit ? 'Saving...' : 'Reporting...'}</span>
                         </>
                       ) : (
-                        <span>Report {type}</span>
+                        <span>{isEdit ? `Save ${type}` : `Report ${type}`}</span>
                       )}
                     </button>
                   </div>

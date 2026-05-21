@@ -7,13 +7,14 @@ import {
   Calendar, Plus, Loader2, Target, Flag, X,
   CheckCircle2, Circle, ChevronDown, ChevronUp,
   Trash2, LayoutGrid, AlignLeft, MoreVertical, Pencil,
-  User, Clock, MessageSquare, ChevronRight, Camera, Image as ImageIcon,
+  User, Clock, MessageSquare, ChevronRight, Camera, Image as ImageIcon, FileText,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import { uploadToCloudinary } from '@/lib/upload';
 import { useToast } from '@/context/ToastContext';
+import { XERImportModal } from './XERImportModal';
 
 interface MilestonesTabProps {
   projectId: string;
@@ -44,7 +45,7 @@ const emptyTaskForm = () => ({
 });
 
 const emptyMilestoneForm = () => ({
-  name: '', description: '', dueDate: '',
+  name: '', description: '',
   tasks: [] as Array<{
     title: string; description: string; startDate: string;
     endDate: string; assignedTo: string; isCompleted: boolean;
@@ -63,6 +64,8 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
   const [togglingTask, setTogglingTask]   = useState<string | null>(null);
   const [view, setView]                   = useState<'cards' | 'gantt'>('cards');
   const [milestoneMenuId, setMilestoneMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+  const [isXERModalOpen, setIsXERModalOpen] = useState(false);
 
   // Completion note + proof image prompt state
   const [completionPrompt, setCompletionPrompt] = useState<{
@@ -87,9 +90,9 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
   // ── Data fetching ──────────────────────────────────────────────────────────
   const fetchData = async () => {
     try {
-      const [msRes, projRes] = await Promise.all([
+      const [msRes, usersRes] = await Promise.all([
         api.get(`/projects/${projectId}/milestones`),
-        api.get(`/projects/${projectId}`),
+        api.get(`/users?projectId=${projectId}`),
       ]);
 
       const data = Array.isArray(msRes.data)
@@ -99,13 +102,8 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
           : [];
       setMilestones(data);
 
-      const rawMembers: any[] = projRes.data?.members || [];
-      setMembers(
-        rawMembers.map((m: any) => ({
-          _id:  m.user?._id || m._id || String(m),
-          name: m.user?.name || m.name || 'Member',
-        }))
-      );
+      const rawUsers: any[] = Array.isArray(usersRes.data) ? usersRes.data : [];
+      setMembers(rawUsers.map((u: any) => ({ _id: u._id, name: u.name || 'Member' })));
     } catch (error) {
       console.error('Error fetching milestones:', error);
       toast.error('Failed to load milestones');
@@ -131,7 +129,6 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
     setFormData({
       name:        milestone.name || '',
       description: milestone.description || '',
-      dueDate:     milestone.dueDate ? milestone.dueDate.slice(0, 10) : '',
       tasks: (milestone.tasks || []).map((t: any) => ({
         title:       t.title || '',
         description: t.description || '',
@@ -149,6 +146,10 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
   // ── Task form in modal ─────────────────────────────────────────────────────
   const commitTask = () => {
     if (!taskForm.title.trim()) return;
+    if (taskForm.startDate && taskForm.endDate && taskForm.endDate < taskForm.startDate) {
+      toast.error('End date cannot be before the start date');
+      return;
+    }
     setFormData(prev => ({
       ...prev,
       tasks: [...prev.tasks, {
@@ -176,7 +177,6 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
       const payload = {
         name:        formData.name,
         description: formData.description,
-        dueDate:     formData.dueDate || null,
         tasks:       formData.tasks.map(t => ({
           ...t,
           assignedTo: t.assignedTo || undefined,
@@ -250,6 +250,11 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
 
   const handleSaveEditTask = async () => {
     if (!editingTask) return;
+    const { startDate, endDate } = editingTask.form;
+    if (startDate && endDate && endDate < startDate) {
+      toast.error('End date cannot be before the start date');
+      return;
+    }
     const ms = milestones.find(m => m._id === editingTask.milestoneId);
     if (!ms) return;
     setIsSavingEditTask(true);
@@ -362,6 +367,12 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
             </button>
           </div>
           <button
+            onClick={() => setIsXERModalOpen(true)}
+            className="flex items-center space-x-2 bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100 px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
+          >
+            <FileText className="w-4 h-4" /><span>Import XER</span>
+          </button>
+          <button
             onClick={openCreateModal}
             className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20"
           >
@@ -450,40 +461,42 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
                       >
                         {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
-                      <div className="relative">
-                        <button onClick={e => { e.stopPropagation(); setMilestoneMenuId(milestoneMenuId === milestone._id ? null : milestone._id); }} className="p-1 text-slate-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-                        {milestoneMenuId === milestone._id && (
-                          <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-gray-200 rounded-xl shadow-lg z-30 overflow-hidden">
-                            <button onClick={() => openEditModal(milestone)} className="w-full px-4 py-2.5 text-left text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2">
-                              <Pencil className="w-3.5 h-3.5" /><span>Edit</span>
-                            </button>
-                            <button onClick={() => handleDelete(milestone._id, milestone.name)} className="w-full px-4 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2">
-                              <Trash2 className="w-3.5 h-3.5" /><span>Delete</span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          if (milestoneMenuId === milestone._id) {
+                            setMilestoneMenuId(null); setMenuPos(null);
+                          } else {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+                            setMilestoneMenuId(milestone._id);
+                          }
+                        }}
+                        className="p-1 text-slate-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
 
-                  <h4 className="text-lg font-bold text-gray-900 mb-1">{milestone.name}</h4>
-                  <p className="text-xs text-slate-500 line-clamp-2 mb-4">{milestone.description}</p>
+                  <div
+                    className="cursor-pointer"
+                    onClick={() => router.push(`/projects/${projectId}/milestones/${milestone._id}`)}
+                  >
+                    <h4 className="text-lg font-bold text-gray-900 mb-1">{milestone.name}</h4>
+                    <p className="text-xs text-slate-500 line-clamp-2 mb-4">{milestone.description}</p>
 
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center space-x-1.5 text-slate-500">
-                        <Calendar className="w-3.5 h-3.5" />
-                        <span>{milestone.dueDate ? new Date(milestone.dueDate).toLocaleDateString() : 'No due date'}</span>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-500 font-medium">{completedTasks}/{totalTasks} tasks</span>
+                        <span className="font-black text-gray-900">{progress}%</span>
                       </div>
-                      <span className="font-black text-gray-900">{progress}%</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-200">
-                      <motion.div
-                        initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ duration: 0.6 }}
-                        className={cn('h-full rounded-full', milestone.status === 'Completed' ? 'bg-emerald-500' : milestone.status === 'On Hold' ? 'bg-amber-500' : 'bg-blue-500')}
-                      />
+                      <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-200">
+                        <motion.div
+                          initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ duration: 0.6 }}
+                          className={cn('h-full rounded-full', milestone.status === 'Completed' ? 'bg-emerald-500' : milestone.status === 'On Hold' ? 'bg-amber-500' : 'bg-blue-500')}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -747,23 +760,42 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Start Date</label>
-                    <input type="date" value={editingTask.form.startDate} onChange={e => setEditingTask(prev => prev ? { ...prev, form: { ...prev.form, startDate: e.target.value } } : null)} className={inputCls} />
+                    <input
+                      type="date"
+                      value={editingTask.form.startDate}
+                      onChange={e => {
+                        const s = e.target.value;
+                        setEditingTask(prev => prev ? {
+                          ...prev,
+                          form: {
+                            ...prev.form,
+                            startDate: s,
+                            endDate: prev.form.endDate && prev.form.endDate < s ? '' : prev.form.endDate,
+                          }
+                        } : null);
+                      }}
+                      className={inputCls}
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">End Date</label>
-                    <input type="date" value={editingTask.form.endDate} onChange={e => setEditingTask(prev => prev ? { ...prev, form: { ...prev.form, endDate: e.target.value } } : null)} className={inputCls} />
+                    <input
+                      type="date"
+                      value={editingTask.form.endDate}
+                      min={editingTask.form.startDate || undefined}
+                      onChange={e => setEditingTask(prev => prev ? { ...prev, form: { ...prev.form, endDate: e.target.value } } : null)}
+                      className={inputCls}
+                    />
                   </div>
                 </div>
 
-                {members.length > 0 && (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assign To</label>
-                    <select value={editingTask.form.assignedTo} onChange={e => setEditingTask(prev => prev ? { ...prev, form: { ...prev.form, assignedTo: e.target.value } } : null)} className={inputCls}>
-                      <option value="">— Unassigned —</option>
-                      {members.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
-                    </select>
-                  </div>
-                )}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assign To</label>
+                  <select value={editingTask.form.assignedTo} onChange={e => setEditingTask(prev => prev ? { ...prev, form: { ...prev.form, assignedTo: e.target.value } } : null)} className={inputCls}>
+                    <option value="">— Unassigned —</option>
+                    {members.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
+                  </select>
+                </div>
 
                 <div className="flex gap-3 pt-1">
                   <button onClick={() => setEditingTask(null)} className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-slate-600 transition-all">Cancel</button>
@@ -781,6 +813,46 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
         )}
       </AnimatePresence>
 
+
+      {/* ── XER Import Modal ── */}
+      {/* ── Fixed-position milestone context menu (escapes card overflow-hidden) ── */}
+      {milestoneMenuId && menuPos && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => { setMilestoneMenuId(null); setMenuPos(null); }} />
+          <div
+            style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 50 }}
+            className="w-36 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden"
+          >
+            <button
+              onClick={() => {
+                const ms = milestones.find(m => m._id === milestoneMenuId);
+                if (ms) openEditModal(ms);
+                setMilestoneMenuId(null); setMenuPos(null);
+              }}
+              className="w-full px-4 py-2.5 text-left text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+            >
+              <Pencil className="w-3.5 h-3.5" /><span>Edit</span>
+            </button>
+            <button
+              onClick={() => {
+                const ms = milestones.find(m => m._id === milestoneMenuId);
+                if (ms) handleDelete(ms._id, ms.name);
+                setMilestoneMenuId(null); setMenuPos(null);
+              }}
+              className="w-full px-4 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
+            >
+              <Trash2 className="w-3.5 h-3.5" /><span>Delete</span>
+            </button>
+          </div>
+        </>
+      )}
+
+      <XERImportModal
+        isOpen={isXERModalOpen}
+        onClose={() => setIsXERModalOpen(false)}
+        onSuccess={fetchData}
+        projectId={projectId}
+      />
 
       {/* ── Create / Edit Modal ── */}
       <AnimatePresence>
@@ -813,11 +885,6 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-slate-600">Description</label>
                     <textarea rows={2} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} className={inputCls + ' resize-none'} placeholder="What needs to be achieved?" />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-600">Due Date</label>
-                    <input type="date" value={formData.dueDate} onChange={e => setFormData({ ...formData, dueDate: e.target.value })} className={inputCls} />
                   </div>
 
                   {/* Tasks section */}
@@ -876,22 +943,38 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1.5">
                             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Start Date</label>
-                            <input type="date" value={taskForm.startDate} onChange={e => setTaskForm({ ...taskForm, startDate: e.target.value })} className={inputCls} />
+                            <input
+                              type="date"
+                              value={taskForm.startDate}
+                              onChange={e => {
+                                const s = e.target.value;
+                                setTaskForm(prev => ({
+                                  ...prev,
+                                  startDate: s,
+                                  endDate: prev.endDate && prev.endDate < s ? '' : prev.endDate,
+                                }));
+                              }}
+                              className={inputCls}
+                            />
                           </div>
                           <div className="space-y-1.5">
                             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">End Date</label>
-                            <input type="date" value={taskForm.endDate} onChange={e => setTaskForm({ ...taskForm, endDate: e.target.value })} className={inputCls} />
+                            <input
+                              type="date"
+                              value={taskForm.endDate}
+                              min={taskForm.startDate || undefined}
+                              onChange={e => setTaskForm({ ...taskForm, endDate: e.target.value })}
+                              className={inputCls}
+                            />
                           </div>
                         </div>
-                        {members.length > 0 && (
-                          <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assign To</label>
-                            <select value={taskForm.assignedTo} onChange={e => setTaskForm({ ...taskForm, assignedTo: e.target.value })} className={inputCls}>
-                              <option value="">— Unassigned —</option>
-                              {members.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
-                            </select>
-                          </div>
-                        )}
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assign To</label>
+                          <select value={taskForm.assignedTo} onChange={e => setTaskForm({ ...taskForm, assignedTo: e.target.value })} className={inputCls}>
+                            <option value="">— Unassigned —</option>
+                            {members.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
+                          </select>
+                        </div>
                         <div className="flex gap-2 pt-1">
                           <button type="button" onClick={() => { setShowTaskForm(false); setTaskForm(emptyTaskForm()); }} className="flex-1 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-slate-600 transition-all">Cancel</button>
                           <button type="button" onClick={commitTask} disabled={!taskForm.title.trim()} className="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-white transition-all">Add Task</button>

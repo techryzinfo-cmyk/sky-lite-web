@@ -8,6 +8,7 @@ import { useToast } from '@/context/ToastContext';
 
 interface EscalationRule {
   priority: string;
+  isCustom?: boolean;
   escalateTo: string;
   escalateAfterHours: number;
   notifyEmails: string;
@@ -19,31 +20,56 @@ interface EscalationMatrixModalProps {
   projectId: string;
 }
 
-const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
+const FIXED_PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
 
 const defaultRules = (): EscalationRule[] =>
-  PRIORITIES.map(p => ({ priority: p, escalateTo: '', escalateAfterHours: p === 'Critical' ? 2 : p === 'High' ? 8 : 24, notifyEmails: '' }));
+  FIXED_PRIORITIES.map(p => ({
+    priority: p,
+    escalateTo: '',
+    escalateAfterHours: p === 'Critical' ? 2 : p === 'High' ? 8 : 24,
+    notifyEmails: '',
+  }));
 
 export const EscalationMatrixModal: React.FC<EscalationMatrixModalProps> = ({ isOpen, onClose, projectId }) => {
-  const [rules, setRules] = useState<EscalationRule[]>(defaultRules());
+  const [rules, setRules]     = useState<EscalationRule[]>(defaultRules());
+  const [members, setMembers] = useState<{ _id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving]   = useState(false);
   const toast = useToast();
 
   useEffect(() => {
     if (!isOpen) return;
     setLoading(true);
-    api.get(`/projects/${projectId}/escalation-matrix`)
-      .then(r => {
-        if (r.data?.rules?.length) setRules(r.data.rules);
+    Promise.all([
+      api.get(`/projects/${projectId}/escalation-matrix`),
+      api.get(`/users?projectId=${projectId}`),
+    ])
+      .then(([matrixRes, usersRes]) => {
+        if (matrixRes.data?.rules?.length) setRules(matrixRes.data.rules);
         else setRules(defaultRules());
+        const rawUsers: any[] = Array.isArray(usersRes.data) ? usersRes.data : [];
+        setMembers(rawUsers.map((u: any) => ({ _id: u._id, name: u.name || 'Member' })));
       })
       .catch(() => setRules(defaultRules()))
       .finally(() => setLoading(false));
   }, [isOpen, projectId]);
 
-  const update = (index: number, field: keyof EscalationRule, value: string | number) => {
+  const update = (index: number, field: keyof EscalationRule, value: string | number | boolean) => {
     setRules(prev => prev.map((r, i) => i === index ? { ...r, [field]: value } : r));
+  };
+
+  const addLevel = () => {
+    setRules(prev => [...prev, {
+      priority: '',
+      isCustom: true,
+      escalateTo: '',
+      escalateAfterHours: 24,
+      notifyEmails: '',
+    }]);
+  };
+
+  const removeLevel = (index: number) => {
+    setRules(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSave = async () => {
@@ -105,23 +131,53 @@ export const EscalationMatrixModal: React.FC<EscalationMatrixModalProps> = ({ is
                 ) : (
                   <div className="space-y-4">
                     {rules.map((rule, i) => (
-                      <div key={rule.priority} className={`p-5 rounded-2xl border ${priorityColors[rule.priority] || 'bg-gray-50 border-gray-200'}`}>
+                      <div
+                        key={i}
+                        className={`p-5 rounded-2xl border ${
+                          rule.isCustom ? 'bg-gray-50 border-gray-200 text-gray-700' : (priorityColors[rule.priority] || 'bg-gray-50 border-gray-200 text-gray-700')
+                        }`}
+                      >
                         <div className="flex items-center justify-between mb-4">
-                          <span className="text-xs font-black uppercase tracking-widest">{rule.priority} Priority</span>
-                          <span className="text-[10px] text-slate-500 font-semibold">
-                            Escalate after {rule.escalateAfterHours}h
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold text-current opacity-70 uppercase tracking-wider">Escalate To (Name/Role)</label>
+                          {rule.isCustom ? (
                             <input
                               type="text"
+                              value={rule.priority}
+                              onChange={e => update(i, 'priority', e.target.value)}
+                              placeholder="Level name (e.g. Director)"
+                              className="text-xs font-black uppercase tracking-widest bg-white border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500 w-52"
+                            />
+                          ) : (
+                            <span className="text-xs font-black uppercase tracking-widest">{rule.priority} Priority</span>
+                          )}
+                          <div className="flex items-center space-x-3">
+                            <span className="text-[10px] text-current opacity-60 font-semibold">
+                              After {rule.escalateAfterHours}h
+                            </span>
+                            {rule.isCustom && (
+                              <button
+                                onClick={() => removeLevel(i)}
+                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                title="Remove level"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-current opacity-70 uppercase tracking-wider">Assign Person</label>
+                            <select
                               value={rule.escalateTo}
                               onChange={e => update(i, 'escalateTo', e.target.value)}
-                              placeholder="e.g. Site Manager"
-                              className="w-full bg-white border border-current/20 rounded-xl py-2 px-3 text-xs text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-current/20 transition-all"
-                            />
+                              className="w-full bg-white border border-current/20 rounded-xl py-2 px-3 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-current/20 transition-all"
+                            >
+                              <option value="">Select Member</option>
+                              {members.map(m => (
+                                <option key={m._id} value={m.name}>{m.name}</option>
+                              ))}
+                            </select>
                           </div>
                           <div className="space-y-1.5">
                             <label className="text-[10px] font-bold text-current opacity-70 uppercase tracking-wider">Escalate After (Hours)</label>
@@ -147,7 +203,15 @@ export const EscalationMatrixModal: React.FC<EscalationMatrixModalProps> = ({ is
                       </div>
                     ))}
 
-                    <div className="mt-2 p-4 bg-gray-50 rounded-2xl border border-gray-200">
+                    <button
+                      onClick={addLevel}
+                      className="w-full py-3 border-2 border-dashed border-gray-300 rounded-2xl text-sm font-bold text-slate-500 hover:border-orange-400 hover:text-orange-600 hover:bg-orange-50 transition-all flex items-center justify-center space-x-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add Escalation Level</span>
+                    </button>
+
+                    <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200">
                       <p className="text-xs text-slate-500 leading-relaxed">
                         <span className="font-bold text-gray-700">How it works:</span> When an issue is marked as "Escalated", the system will notify the configured contacts based on the issue's priority level. Emails are sent after the configured hours threshold is exceeded without resolution.
                       </p>

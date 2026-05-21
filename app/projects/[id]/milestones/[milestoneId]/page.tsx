@@ -56,6 +56,11 @@ export default function MilestoneDetailPage() {
   const [submitForms, setSubmitForms] = useState<Record<number, SubmitForm>>({});
   const [expandedTask, setExpandedTask] = useState<number | null>(null);
 
+  // Add task state
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [addTaskForm, setAddTaskForm] = useState({ title: '', description: '', startDate: '', endDate: '', assignedTo: '' });
+  const [isSavingAdd, setIsSavingAdd] = useState(false);
+
   // Edit task state
   const [editingTask, setEditingTask] = useState<{
     taskIndex: number;
@@ -69,9 +74,9 @@ export default function MilestoneDetailPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [msRes, projRes, matRes] = await Promise.all([
+        const [msRes, usersRes, matRes] = await Promise.all([
           api.get(`/projects/${projectId}/milestones`),
-          api.get(`/projects/${projectId}`),
+          api.get(`/users?projectId=${projectId}`),
           api.get(`/projects/${projectId}/materials`),
         ]);
 
@@ -80,8 +85,8 @@ export default function MilestoneDetailPage() {
         if (!found) { toast.error('Milestone not found'); router.push(`/projects/${projectId}?tab=milestones`); return; }
         setMilestone(found);
 
-        const rawMembers: any[] = projRes.data?.members || [];
-        setMembers(rawMembers.map((m: any) => ({ _id: m.user?._id || m._id || String(m), name: m.user?.name || m.name || 'Member' })));
+        const rawUsers: any[] = Array.isArray(usersRes.data) ? usersRes.data : [];
+        setMembers(rawUsers.map((u: any) => ({ _id: u._id, name: u.name || 'Member' })));
 
         const matList = Array.isArray(matRes.data) ? matRes.data : matRes.data?.materials ?? [];
         setMaterials(matList);
@@ -143,6 +148,24 @@ export default function MilestoneDetailPage() {
       }
 
       const validMaterials = (form.materials ?? []).filter(r => r.materialId && Number(r.quantity) > 0);
+
+      for (const r of validMaterials) {
+        const mat = materials.find(m => m._id === r.materialId);
+        if (mat) {
+          const avail = mat.balance ?? 0;
+          if (avail <= 0) {
+            toast.error(`"${mat.name}" is out of stock`);
+            setSubmitting(null);
+            return;
+          }
+          if (Number(r.quantity) > avail) {
+            toast.error(`Insufficient stock for "${mat.name}" — only ${avail} ${mat.unit} available`);
+            setSubmitting(null);
+            return;
+          }
+        }
+      }
+
       if (validMaterials.length > 0) {
         await api.post(`/projects/${projectId}/material-usage`, {
           items: validMaterials.map(r => ({ materialId: r.materialId, quantity: Number(r.quantity) })),
@@ -166,7 +189,7 @@ export default function MilestoneDetailPage() {
       if (payload.status === 'Completed') toast.success('All tasks done — milestone Completed!');
       else toast.success('Task submitted');
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to submit task');
+      toast.error(err?.response?.data?.message || err?.message || 'Failed to submit task');
     } finally { setSubmitting(null); }
   };
 
@@ -202,6 +225,11 @@ export default function MilestoneDetailPage() {
 
   const handleSaveEdit = async () => {
     if (!editingTask) return;
+    const { startDate, endDate } = editingTask.form;
+    if (startDate && endDate && endDate < startDate) {
+      toast.error('End date cannot be before start date');
+      return;
+    }
     setIsSavingEdit(true);
     const tasks: any[] = milestone.tasks || [];
     const updatedTasks = tasks.map((t: any, i: number) => {
@@ -222,6 +250,33 @@ export default function MilestoneDetailPage() {
       toast.success('Task updated');
     } catch { toast.error('Failed to update task'); }
     finally { setIsSavingEdit(false); }
+  };
+
+  // ── Add task ─────────────────────────────────────────────────────────────────
+  const handleAddTask = async () => {
+    if (!addTaskForm.title.trim()) return;
+    if (addTaskForm.startDate && addTaskForm.endDate && addTaskForm.endDate < addTaskForm.startDate) {
+      toast.error('End date cannot be before start date');
+      return;
+    }
+    setIsSavingAdd(true);
+    const tasks: any[] = milestone.tasks || [];
+    const newTask = {
+      title:       addTaskForm.title.trim(),
+      description: addTaskForm.description || undefined,
+      startDate:   addTaskForm.startDate   || undefined,
+      endDate:     addTaskForm.endDate     || undefined,
+      assignedTo:  addTaskForm.assignedTo  || undefined,
+      isCompleted: false,
+    };
+    try {
+      const res = await api.patch(`/projects/${projectId}/milestones/${milestoneId}`, { tasks: [...tasks, newTask] });
+      setMilestone(res.data);
+      setAddTaskForm({ title: '', description: '', startDate: '', endDate: '', assignedTo: '' });
+      setShowAddTask(false);
+      toast.success('Task added');
+    } catch { toast.error('Failed to add task'); }
+    finally { setIsSavingAdd(false); }
   };
 
   // ── Loading ──────────────────────────────────────────────────────────────────
@@ -318,17 +373,101 @@ export default function MilestoneDetailPage() {
 
         {/* ── Task list ── */}
         <div className="space-y-4">
-          <h2 className="text-lg font-bold text-gray-900">Tasks</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-gray-900">Tasks</h2>
+            <button
+              onClick={() => setShowAddTask(v => !v)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-all shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Add Task
+            </button>
+          </div>
 
-          {tasks.length === 0 && (
+          {/* ── Add task inline form ── */}
+          <AnimatePresence>
+            {showAddTask && (
+              <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
+                <GlassCard className="p-5 border-blue-200 bg-blue-50/30" gradient>
+                  <p className="text-xs font-black text-blue-700 uppercase tracking-wider mb-4">New Task</p>
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Title *</label>
+                      <input
+                        autoFocus type="text" value={addTaskForm.title}
+                        onChange={e => setAddTaskForm(p => ({ ...p, title: e.target.value }))}
+                        onKeyDown={e => { if (e.key === 'Enter') handleAddTask(); }}
+                        className={inputCls} placeholder="e.g. Pour concrete slab"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Description</label>
+                      <input type="text" value={addTaskForm.description}
+                        onChange={e => setAddTaskForm(p => ({ ...p, description: e.target.value }))}
+                        className={inputCls} placeholder="Optional details..." />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Start Date</label>
+                        <input type="date" value={addTaskForm.startDate}
+                          onChange={e => {
+                            const s = e.target.value;
+                            setAddTaskForm(p => ({
+                              ...p,
+                              startDate: s,
+                              endDate: p.endDate && p.endDate < s ? '' : p.endDate,
+                            }));
+                          }}
+                          className={inputCls} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">End Date</label>
+                        <input type="date" value={addTaskForm.endDate}
+                          min={addTaskForm.startDate || undefined}
+                          onChange={e => setAddTaskForm(p => ({ ...p, endDate: e.target.value }))}
+                          className={inputCls} />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assign To</label>
+                      <select value={addTaskForm.assignedTo}
+                        onChange={e => setAddTaskForm(p => ({ ...p, assignedTo: e.target.value }))}
+                        className={inputCls}>
+                        <option value="">— Unassigned —</option>
+                        {members.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="flex gap-3 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => { setShowAddTask(false); setAddTaskForm({ title: '', description: '', startDate: '', endDate: '', assignedTo: '' }); }}
+                        className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-slate-600 transition-all"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button" onClick={handleAddTask}
+                        disabled={isSavingAdd || !addTaskForm.title.trim()}
+                        className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-sm font-bold text-white transition-all flex items-center justify-center gap-2"
+                      >
+                        {isSavingAdd ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4" />Add Task</>}
+                      </button>
+                    </div>
+                  </div>
+                </GlassCard>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {tasks.length === 0 && !showAddTask && (
             <div className="flex flex-col items-center justify-center py-24 border-2 border-dashed border-gray-200 rounded-3xl">
               <AlertCircle className="w-12 h-12 text-gray-300 mb-4" />
-              <p className="text-slate-500 font-medium">No tasks in this milestone.</p>
+              <p className="text-slate-500 font-medium">No tasks yet.</p>
               <button
-                onClick={() => router.push(`/projects/${projectId}?tab=milestones`)}
+                onClick={() => setShowAddTask(true)}
                 className="mt-3 text-sm font-bold text-blue-600 hover:text-blue-500 transition-colors"
               >
-                Go back and add tasks →
+                + Add the first task
               </button>
             </div>
           )}
@@ -342,11 +481,31 @@ export default function MilestoneDetailPage() {
             return (
               <GlassCard key={i} className={cn('border transition-all', task.isCompleted ? 'border-emerald-100 bg-emerald-50/40' : 'border-gray-200 hover:border-blue-200')} gradient>
 
-                {/* Task header row */}
-                <div className="flex items-start gap-4 p-5">
+                {/* Task header row — click anywhere to open submit form (incomplete) or toggle detail (completed) */}
+                <div
+                  className="flex items-start gap-4 p-5 cursor-pointer select-none"
+                  onClick={() => {
+                    if (task.isCompleted) {
+                      setExpandedTask(isExpanded ? null : i);
+                    } else {
+                      const opening = !form.open;
+                      setForm(i, {
+                        open: opening,
+                        ...(opening && form.materials.length === 0 && materials.length > 0
+                          ? { materials: [{ materialId: '', quantity: '' }] }
+                          : {}),
+                      });
+                    }
+                  }}
+                >
                   {/* Checkbox */}
                   <button
-                    onClick={() => task.isCompleted ? handleUncheck(i) : setForm(i, { open: !form.open, ...((!form.open && form.materials.length === 0 && materials.length > 0) ? { materials: [{ materialId: '', quantity: '' }] } : {}) })}
+                    onClick={e => {
+                      e.stopPropagation();
+                      task.isCompleted
+                        ? handleUncheck(i)
+                        : setForm(i, { open: !form.open, ...((!form.open && form.materials.length === 0 && materials.length > 0) ? { materials: [{ materialId: '', quantity: '' }] } : {}) });
+                    }}
                     disabled={isSubmitting}
                     className="shrink-0 mt-0.5 focus:outline-none"
                   >
@@ -368,19 +527,16 @@ export default function MilestoneDetailPage() {
                         {/* Edit — only if not completed */}
                         {!task.isCompleted && (
                           <button
-                            onClick={() => openEdit(i)}
+                            onClick={e => { e.stopPropagation(); openEdit(i); }}
                             className="p-1.5 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
                             title="Edit task"
                           >
                             <Pencil className="w-4 h-4" />
                           </button>
                         )}
-                        <button
-                          onClick={() => setExpandedTask(isExpanded ? null : i)}
-                          className="p-1.5 text-slate-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                        >
+                        <span className="p-1.5 text-slate-400">
                           {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </button>
+                        </span>
                       </div>
                     </div>
 
@@ -519,31 +675,49 @@ export default function MilestoneDetailPage() {
                             )}
 
                             <div className="space-y-2 max-h-48 overflow-y-auto">
-                              {(form.materials ?? []).map((row, ri) => (
-                                <div key={ri} className="flex items-center gap-2">
-                                  <select
-                                    value={row.materialId}
-                                    onChange={e => updateMaterialRow(i, ri, 'materialId', e.target.value)}
-                                    className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                                  >
-                                    <option value="">— Select —</option>
-                                    {materials.map(m => (
-                                      <option key={m._id} value={m._id}>
-                                        {m.name} ({m.unit}) — {m.balance ?? 0} avail.
-                                      </option>
-                                    ))}
-                                  </select>
-                                  <input
-                                    type="number" min={0} value={row.quantity}
-                                    onChange={e => updateMaterialRow(i, ri, 'quantity', e.target.value)}
-                                    placeholder="Qty"
-                                    className="w-20 bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-right text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-                                  />
-                                  <button type="button" onClick={() => removeMaterialRow(i, ri)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              ))}
+                              {(form.materials ?? []).map((row, ri) => {
+                                const selMat = materials.find(m => m._id === row.materialId);
+                                const balance = selMat ? (selMat.balance ?? 0) : undefined;
+                                const outOfStock = balance !== undefined && balance <= 0;
+                                const exceeded = !outOfStock && balance !== undefined && Number(row.quantity) > balance;
+                                const inputBad = outOfStock || exceeded;
+                                return (
+                                  <div key={ri} className="flex items-start gap-2">
+                                    <select
+                                      value={row.materialId}
+                                      onChange={e => updateMaterialRow(i, ri, 'materialId', e.target.value)}
+                                      className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                    >
+                                      <option value="">— Select —</option>
+                                      {materials.map(m => (
+                                        <option key={m._id} value={m._id}>
+                                          {m.name} ({m.unit}) — {Math.max(0, m.balance ?? 0)} avail.
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <div className="flex flex-col items-end gap-0.5">
+                                      <input
+                                        type="number" min={0}
+                                        max={balance !== undefined ? Math.max(0, balance) : undefined}
+                                        value={row.quantity}
+                                        disabled={outOfStock}
+                                        onChange={e => updateMaterialRow(i, ri, 'quantity', e.target.value)}
+                                        placeholder={outOfStock ? '—' : 'Qty'}
+                                        className={`w-20 bg-white border rounded-xl px-3 py-2 text-sm text-right text-gray-900 focus:outline-none focus:ring-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                                          inputBad
+                                            ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500'
+                                            : 'border-gray-200 focus:ring-blue-500/20 focus:border-blue-500'
+                                        }`}
+                                      />
+                                      {outOfStock && <span className="text-[10px] text-red-500 font-medium">Out of stock</span>}
+                                      {exceeded && <span className="text-[10px] text-red-500 font-medium">Max {balance}</span>}
+                                    </div>
+                                    <button type="button" onClick={() => removeMaterialRow(i, ri)} className="p-2 mt-0.5 text-slate-300 hover:text-red-500 transition-colors">
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         </div>
@@ -612,27 +786,36 @@ export default function MilestoneDetailPage() {
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Start</label>
                     <input type="date" value={editingTask.form.startDate}
-                      onChange={e => setEditingTask(p => p ? { ...p, form: { ...p.form, startDate: e.target.value } } : null)}
+                      onChange={e => {
+                        const s = e.target.value;
+                        setEditingTask(p => p ? {
+                          ...p,
+                          form: {
+                            ...p.form,
+                            startDate: s,
+                            endDate: p.form.endDate && p.form.endDate < s ? '' : p.form.endDate,
+                          },
+                        } : null);
+                      }}
                       className={inputCls} />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">End</label>
                     <input type="date" value={editingTask.form.endDate}
+                      min={editingTask.form.startDate || undefined}
                       onChange={e => setEditingTask(p => p ? { ...p, form: { ...p.form, endDate: e.target.value } } : null)}
                       className={inputCls} />
                   </div>
                 </div>
-                {members.length > 0 && (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assign To</label>
-                    <select value={editingTask.form.assignedTo}
-                      onChange={e => setEditingTask(p => p ? { ...p, form: { ...p.form, assignedTo: e.target.value } } : null)}
-                      className={inputCls}>
-                      <option value="">— Unassigned —</option>
-                      {members.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
-                    </select>
-                  </div>
-                )}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assign To</label>
+                  <select value={editingTask.form.assignedTo}
+                    onChange={e => setEditingTask(p => p ? { ...p, form: { ...p.form, assignedTo: e.target.value } } : null)}
+                    className={inputCls}>
+                    <option value="">— Unassigned —</option>
+                    {members.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
+                  </select>
+                </div>
                 <div className="flex gap-3 pt-1">
                   <button onClick={() => setEditingTask(null)} className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-slate-600 transition-all">Cancel</button>
                   <button onClick={handleSaveEdit} disabled={isSavingEdit || !editingTask.form.title.trim()}
