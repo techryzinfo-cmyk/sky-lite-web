@@ -42,37 +42,66 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
   const [searchQuery, setSearchQuery]   = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
   const [deletingId, setDeletingId]     = useState<string | null>(null);
+  const [escalationMatrix, setEscalationMatrix] = useState<any>(null);
 
   const toast = useToast();
   const { user } = useAuth();
 
   const fetchIssues = async () => {
+    setLoading(true);
     try {
-      const response = await api.get(`/projects/${projectId}/issues`);
+      const endpoint = activeType === 'Snag'
+        ? `/projects/${projectId}/snags`
+        : `/projects/${projectId}/issues`;
+      const response = await api.get(endpoint);
       setIssues(response.data);
     } catch (error) {
-      toast.error('Failed to load issues');
+      toast.error(`Failed to load ${activeType.toLowerCase()}s`);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchIssues(); }, [projectId]);
+  const fetchEscalationMatrix = async () => {
+    try {
+      const response = await api.get(`/projects/${projectId}/escalation-matrix`);
+      if (response.data && response.data.levels && response.data.levels.length > 0) {
+        const isSaved = !!(response.data._id || response.data.createdAt);
+        if (isSaved) {
+          setEscalationMatrix(response.data);
+          return;
+        }
+      }
+      setEscalationMatrix(null);
+    } catch (error) {
+      console.error('Failed to load escalation matrix:', error);
+      setEscalationMatrix(null);
+    }
+  };
+
+  useEffect(() => {
+    if (activeType === 'Snag' && statusFilter === 'Escalated') {
+      setStatusFilter('All');
+    }
+    fetchIssues();
+    fetchEscalationMatrix();
+  }, [projectId, activeType]);
 
   const handleDeleteIssue = async (e: React.MouseEvent, issueId: string) => {
     e.stopPropagation();
-    if (!window.confirm('Delete this issue? This cannot be undone.')) return;
+    if (!window.confirm(`Delete this ${activeType.toLowerCase()}? This cannot be undone.`)) return;
     setDeletingId(issueId);
     try {
-      await api.delete(`/projects/${projectId}/issues/${issueId}`);
-      toast.success('Issue deleted');
+      const endpoint = activeType === 'Snag' ? `/snags/${issueId}` : `/issues/${issueId}`;
+      await api.delete(endpoint);
+      toast.success(`${activeType} deleted`);
       fetchIssues();
     } catch (error: any) {
       if (error.response?.status >= 500) {
-        toast.success('Issue deleted');
+        toast.success(`${activeType} deleted`);
         fetchIssues();
       } else {
-        toast.error(error.response?.data?.message || 'Failed to delete issue');
+        toast.error(error.response?.data?.message || `Failed to delete ${activeType.toLowerCase()}`);
       }
     } finally {
       setDeletingId(null);
@@ -109,12 +138,7 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
     }
   };
 
-  const typeMatches = (i: any) =>
-    i.type === activeType ||
-    (activeType === 'Snag' && (!i.type || i.type === '') && i.category === 'Snag') ||
-    (activeType === 'Issue' && !i.type && i.category !== 'Snag');
-
-  const typeIssues = issues.filter(typeMatches);
+  const typeIssues = issues;
   const currentUserId = user?.id || (user as any)?._id;
 
   const filteredIssues = typeIssues.filter(i => {
@@ -183,6 +207,46 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
         ))}
       </div>
 
+      {/* Escalation Matrix Pathway */}
+      {escalationMatrix && escalationMatrix.levels && escalationMatrix.levels.length > 0 && (
+        <GlassCard className="p-4 border-orange-100/50 bg-orange-50/10" gradient>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center space-x-2 shrink-0">
+              <div className="p-2 rounded-xl bg-orange-50 border border-orange-200">
+                <GitBranch className="w-4 h-4 text-orange-600 animate-pulse" />
+              </div>
+              <div>
+                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Escalation Pathway</h4>
+                <p className="text-[10px] text-slate-500">Configured sequential progression for resolving critical issues.</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+              {escalationMatrix.levels.map((lvl: any, idx: number) => {
+                const userName = lvl.user?.name || 'Unassigned';
+                const userRole = lvl.role || lvl.user?.role?.name || 'Member';
+                return (
+                  <React.Fragment key={lvl._id || idx}>
+                    {idx > 0 && (
+                      <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
+                    )}
+                    <div className="flex items-center space-x-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm shrink-0">
+                      <span className="flex items-center justify-center w-5 h-5 rounded-lg bg-orange-100 text-orange-700 text-[10px] font-black">
+                        L{lvl.level}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold text-gray-900 leading-tight">{userName}</p>
+                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider leading-none">{userRole}</p>
+                      </div>
+                    </div>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+        </GlassCard>
+      )}
+
       {/* Search + Filter */}
       <div className="space-y-3">
         <div className="relative group">
@@ -197,30 +261,33 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {STATUS_FILTERS.map(f => (
-            <button
-              key={f}
-              onClick={() => setStatusFilter(f)}
-              className={cn(
-                'px-3 py-1.5 rounded-xl text-xs font-bold border transition-all',
-                statusFilter === f
-                  ? getFilterActiveClass(f)
-                  : 'bg-white border-gray-200 text-slate-500 hover:border-gray-300 hover:text-gray-900'
-              )}
-            >
-              {f}
-              {f !== 'All' && f !== 'My Task' && (
-                <span className="ml-1.5 opacity-70">
-                  ({typeIssues.filter(i => i.status === f).length})
-                </span>
-              )}
-              {f === 'My Task' && currentUserId && (
-                <span className="ml-1.5 opacity-70">
-                  ({typeIssues.filter(i => (i.assignedTo?._id || i.assignedTo) === currentUserId).length})
-                </span>
-              )}
-            </button>
-          ))}
+          {STATUS_FILTERS.map(f => {
+            if (activeType === 'Snag' && f === 'Escalated') return null;
+            return (
+              <button
+                key={f}
+                onClick={() => setStatusFilter(f)}
+                className={cn(
+                  'px-3 py-1.5 rounded-xl text-xs font-bold border transition-all',
+                  statusFilter === f
+                    ? getFilterActiveClass(f)
+                    : 'bg-white border-gray-200 text-slate-500 hover:border-gray-300 hover:text-gray-900'
+                )}
+              >
+                {f}
+                {f !== 'All' && f !== 'My Task' && (
+                  <span className="ml-1.5 opacity-70">
+                    ({typeIssues.filter(i => i.status === f).length})
+                  </span>
+                )}
+                {f === 'My Task' && currentUserId && (
+                  <span className="ml-1.5 opacity-70">
+                    ({typeIssues.filter(i => (i.assignedTo?._id || i.assignedTo) === currentUserId).length})
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -253,9 +320,16 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
                         <span className={cn('px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border', getPriorityColor(issue.priority))}>
                           {issue.priority}
                         </span>
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                          {issue.category}
-                        </span>
+                        {issue.category && (
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            {issue.category}
+                          </span>
+                        )}
+                        {issue.status === 'Escalated' && issue.escalationLevel > 0 && (
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border bg-purple-100 border-purple-200 text-purple-700">
+                            Level {issue.escalationLevel}
+                          </span>
+                        )}
                       </div>
                       <h4 className="text-base font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{issue.title}</h4>
                       <div className="flex items-center space-x-4 mt-2">
@@ -340,11 +414,12 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
         onSuccess={fetchIssues}
         issue={selectedIssue}
         projectId={projectId}
+        type={activeType}
       />
 
       <EscalationMatrixModal
         isOpen={isEscalationOpen}
-        onClose={() => setIsEscalationOpen(false)}
+        onClose={() => { setIsEscalationOpen(false); fetchEscalationMatrix(); }}
         projectId={projectId}
       />
     </div>

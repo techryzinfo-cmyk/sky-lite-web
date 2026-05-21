@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, AlertTriangle, User, Clock, Loader2, CheckCircle2,
-  Image as ImageIcon, MessageSquare, Tag, MapPin, Send,
+  Image as ImageIcon, MessageSquare, Tag, MapPin, Send, GitBranch,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
@@ -16,6 +16,7 @@ interface IssueDetailModalProps {
   onSuccess: () => void;
   issue: any;
   projectId: string;
+  type: 'Issue' | 'Snag';
 }
 
 const STATUSES = ['Open', 'In Progress', 'Escalated', 'Resolved', 'Closed'];
@@ -40,12 +41,13 @@ const getStatusColor = (status: string) => {
 };
 
 export const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
-  isOpen, onClose, onSuccess, issue, projectId,
+  isOpen, onClose, onSuccess, issue, projectId, type,
 }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(issue?.status || 'Open');
   const [resolutionDetails, setResolutionDetails] = useState('');
   const [savingNote, setSavingNote] = useState(false);
+  const [escalationMatrix, setEscalationMatrix] = useState<any>(null);
   const toast = useToast();
 
   useEffect(() => {
@@ -55,11 +57,77 @@ export const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
     }
   }, [issue]);
 
+  useEffect(() => {
+    if (isOpen && projectId) {
+      api.get(`/projects/${projectId}/escalation-matrix`)
+        .then(res => {
+          const isSaved = !!(res.data?._id || res.data?.createdAt);
+          if (isSaved) {
+            setEscalationMatrix(res.data);
+          } else {
+            setEscalationMatrix(null);
+          }
+        })
+        .catch(err => {
+          console.error("Error fetching escalation matrix in detail modal:", err);
+          setEscalationMatrix(null);
+        });
+    }
+  }, [isOpen, projectId]);
+
   const handleStatusUpdate = async (newStatus: string) => {
     if (newStatus === currentStatus) return;
+
+    if (type === 'Issue' && newStatus === 'Escalated') {
+      if (!escalationMatrix || !escalationMatrix.levels || escalationMatrix.levels.length === 0) {
+        toast.error('Please configure the Escalation Matrix for this project first.');
+        return;
+      }
+
+      const currentLvl = issue.escalationLevel || 0;
+      const nextLvl = currentLvl + 1;
+      const levelConfig = escalationMatrix.levels.find((lvl: any) => lvl.level === nextLvl);
+
+      if (!levelConfig) {
+        toast.error(`No escalation contact configured for Escalation Level ${nextLvl}. Max level reached.`);
+        return;
+      }
+
+      const assignedUserId = levelConfig.user?._id || levelConfig.user;
+      if (!assignedUserId) {
+        toast.error(`Please assign a person to Escalation Level ${nextLvl} in the Escalation Matrix.`);
+        return;
+      }
+
+      setIsUpdating(true);
+      try {
+        await api.patch(`/issues/${issue._id}`, {
+          status: 'Escalated',
+          escalationLevel: nextLvl,
+          assignedTo: assignedUserId,
+          note: `Auto-escalated to Level ${nextLvl} (assigned to ${levelConfig.user?.name || 'configured contact'})`
+        });
+
+        setCurrentStatus('Escalated');
+        toast.success(`Issue escalated to Level ${nextLvl}!`);
+        onSuccess();
+        onClose();
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || 'Failed to escalate issue');
+      } finally {
+        setIsUpdating(false);
+      }
+      return;
+    }
+
     setIsUpdating(true);
     try {
-      await api.patch(`/projects/${projectId}/issues/${issue._id}`, { status: newStatus });
+      const endpoint = type === 'Snag' ? `/snags/${issue._id}` : `/issues/${issue._id}`;
+      const payload: any = { status: newStatus };
+      if (type === 'Issue' && (newStatus === 'Resolved' || newStatus === 'Closed')) {
+        payload.escalationLevel = 0;
+      }
+      await api.patch(endpoint, payload);
       setCurrentStatus(newStatus);
       toast.success('Status updated');
       onSuccess();
@@ -74,7 +142,8 @@ export const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
     if (!resolutionDetails.trim()) return;
     setSavingNote(true);
     try {
-      await api.patch(`/projects/${projectId}/issues/${issue._id}`, { resolutionDetails });
+      const endpoint = type === 'Snag' ? `/snags/${issue._id}` : `/issues/${issue._id}`;
+      await api.patch(endpoint, { resolutionDetails });
       toast.success('Resolution note saved');
       onSuccess();
     } catch {
@@ -147,7 +216,10 @@ export const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
                 <div className="space-y-2">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Update Status</p>
                   <div className="flex flex-wrap gap-2">
-                    {STATUSES.map(s => (
+                    {(type === 'Snag'
+                      ? ['Draft', 'Open', 'In Progress', 'Resolved', 'Closed']
+                      : ['Open', 'In Progress', 'Escalated', 'Resolved', 'Closed']
+                    ).map(s => (
                       <button
                         key={s}
                         onClick={() => handleStatusUpdate(s)}
@@ -205,6 +277,15 @@ export const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
                       <div>
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Type</p>
                         <p className="text-xs font-semibold text-gray-900">{issue.type}</p>
+                      </div>
+                    </div>
+                  )}
+                  {currentStatus === 'Escalated' && issue.escalationLevel > 0 && (
+                    <div className="flex items-center space-x-3 p-3 bg-purple-50 rounded-xl border border-purple-100">
+                      <GitBranch className="w-4 h-4 text-purple-500 shrink-0" />
+                      <div>
+                        <p className="text-[9px] font-black text-purple-600 uppercase tracking-widest">Escalation Stage</p>
+                        <p className="text-xs font-semibold text-purple-900">Level {issue.escalationLevel}</p>
                       </div>
                     </div>
                   )}
