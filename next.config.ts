@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const allowedDevOrigins = [
   "192.168.1.21",
+  "192.168.1.12",
   ...(process.env.ALLOWED_DEV_ORIGINS
     ? process.env.ALLOWED_DEV_ORIGINS.split(",").map((s) => s.trim())
     : [])

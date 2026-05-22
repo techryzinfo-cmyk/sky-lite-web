@@ -45,7 +45,7 @@ const tabs = [
   { id: 'progress',    name: 'Progress',       icon: TrendingUp },
   { id: 'timeline',    name: 'Timeline',       icon: GanttChart },
   { id: 'survey',      name: 'Site Survey',    icon: ClipboardList },
-  { id: 'transactions', name: 'Finance',       icon: CreditCard },
+  { id: 'transactions', name: 'Transactions',   icon: CreditCard },
   { id: 'chat',        name: 'Chat',           icon: MessageSquare },
 ];
 

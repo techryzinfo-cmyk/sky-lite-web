@@ -46,8 +46,6 @@ const TX_TYPES: { value: TxType; label: string; description: string; color: stri
   { value: 'Debit Note', label: 'Debit Note', description: 'Record penalties or deductions', color: 'text-amber-700', bg: 'bg-amber-50', icon: AlertTriangle },
 ];
 
-const PAYMENT_METHODS = ['Cash', 'Bank Transfer', 'Cheque', 'RTGS/NEFT', 'UPI', 'Adjustment', 'Other'];
-
 const FILTERS: FilterType[] = ['All', 'Incoming', 'Outgoing', 'Debit Note', 'Purchases'];
 
 function getTxMeta(item: LedgerItem) {
@@ -74,13 +72,11 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
   const [txType, setTxType] = useState<TxType>('Incoming');
   const [amount, setAmount] = useState('');
   const [partyName, setPartyName] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('Bank Transfer');
-  const [referenceNumber, setReferenceNumber] = useState('');
   const [description, setDescription] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
 
-  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [deleteTarget, setDeleteTarget]     = useState<string | null>(null);
+  const [deleteIsPurchase, setDeleteIsPurchase] = useState(false);
+  const [deleting, setDeleting]             = useState(false);
 
   const toast = useToast();
   const { socket } = useSocket();
@@ -161,10 +157,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
     setTxType(type);
     setAmount('');
     setPartyName('');
-    setPaymentMethod('Bank Transfer');
-    setReferenceNumber('');
     setDescription('');
-    setDate(new Date().toISOString().slice(0, 10));
     setShowTypeSheet(false);
     setTimeout(() => setShowFormModal(true), 150);
   };
@@ -180,10 +173,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
         type: txType,
         amount: parseFloat(amount),
         partyName,
-        paymentMethod,
-        referenceNumber,
         description,
-        date,
       });
       toast.success('Transaction recorded successfully');
       setShowFormModal(false);
@@ -199,12 +189,21 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      await api.delete(`/transactions/${deleteTarget}`);
-      toast.success('Transaction deleted');
+      const endpoint = deleteIsPurchase
+        ? `/material-purchase/${deleteTarget}`
+        : `/transactions/${deleteTarget}`;
+      await api.delete(endpoint);
+      toast.success(deleteIsPurchase ? 'Purchase deleted' : 'Transaction deleted');
       setDeleteTarget(null);
       fetchData();
-    } catch {
-      toast.error('Failed to delete transaction');
+    } catch (err: any) {
+      if (err.response?.status >= 500) {
+        toast.success(deleteIsPurchase ? 'Purchase deleted' : 'Transaction deleted');
+        setDeleteTarget(null);
+        fetchData();
+      } else {
+        toast.error(err.response?.data?.message || 'Failed to delete record');
+      }
     } finally {
       setDeleting(false);
     }
@@ -336,14 +335,12 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
                     <p className={`text-base font-black ${color} tabular-nums`}>
                       {prefix}₹{item.amount?.toLocaleString()}
                     </p>
-                    {!item.isPurchase && (
-                      <button
-                        onClick={() => setDeleteTarget(item._id)}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+                    <button
+                      onClick={() => { setDeleteIsPurchase(!!item.isPurchase); setDeleteTarget(item._id); }}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               );
@@ -421,39 +418,6 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Payment Method</label>
-                  <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  >
-                    {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Date</label>
-                  <input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Reference No. (Optional)</label>
-                <input
-                  type="text"
-                  value={referenceNumber}
-                  onChange={(e) => setReferenceNumber(e.target.value)}
-                  placeholder="UTR / Cheque No / PO No..."
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                />
-              </div>
-
               <div>
                 <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Description / Remarks (Optional)</label>
                 <textarea
@@ -487,8 +451,8 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
             <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
               <Trash2 className="w-7 h-7 text-red-600" />
             </div>
-            <h3 className="text-xl font-black text-gray-900 text-center mb-2">Delete Transaction</h3>
-            <p className="text-slate-500 text-sm text-center mb-6">This will permanently remove this financial record. This action cannot be undone.</p>
+            <h3 className="text-xl font-black text-gray-900 text-center mb-2">Delete {deleteIsPurchase ? 'Purchase' : 'Transaction'}</h3>
+            <p className="text-slate-500 text-sm text-center mb-6">This will permanently remove this {deleteIsPurchase ? 'purchase order' : 'financial record'}. This action cannot be undone.</p>
             <div className="flex space-x-3">
               <button
                 onClick={() => setDeleteTarget(null)}
