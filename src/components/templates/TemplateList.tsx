@@ -1,9 +1,9 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus, Search, MoreVertical, ChevronRight,
-  Loader2, Layers, IndianRupee, Clock, Layout,
+  Loader2, Layers, DollarSign, Clock, Layout,
   Eye, Pencil, Trash2, Maximize2, SquareStack,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -192,7 +192,7 @@ export const TemplateList = () => {
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Budget</p>
                     <p className="text-xs font-bold text-emerald-600">
                       {template.minBudget || template.maxBudget
-                        ? `₹${((template.minBudget || 0) / 100000).toFixed(0)}L–₹${((template.maxBudget || 0) / 100000).toFixed(0)}L`
+                        ? `$${((template.minBudget || 0) / 100000).toFixed(0)}L–$${((template.maxBudget || 0) / 100000).toFixed(0)}L`
                         : '—'
                       }
                     </p>

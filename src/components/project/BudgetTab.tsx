@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import {
-  IndianRupee,
+  DollarSign,
   History,
   TrendingUp,
   TrendingDown,
@@ -82,10 +82,10 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
           <div className="flex justify-between items-start">
             <div>
               <p className="text-sm text-slate-500 font-medium uppercase tracking-wider">Current Budget</p>
-              <p className="text-3xl font-black text-gray-900 mt-1">₹{currentBudget.toLocaleString()}</p>
+              <p className="text-3xl font-black text-gray-900 mt-1">${currentBudget.toLocaleString()}</p>
             </div>
             <div className="p-3 rounded-2xl bg-emerald-100 border border-emerald-200">
-              <IndianRupee className="w-6 h-6 text-emerald-600" />
+              <DollarSign className="w-6 h-6 text-emerald-600" />
             </div>
           </div>
           <div className="mt-4 flex items-center space-x-2">
@@ -160,7 +160,7 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
                 <input
                   type="number"
                   required
-                  placeholder="New Amount (₹)"
+                  placeholder="New Amount ($)"
                   value={formData.newBudget}
                   onChange={(e) => setFormData({ ...formData, newBudget: e.target.value })}
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-4 text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
@@ -209,7 +209,7 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
         const areaPath = `M${xOf(0)},${yOf(history[0].amount)} ` +
           history.slice(1).map((h, i) => `L${xOf(i + 1)},${yOf(h.amount)}`).join(' ') +
           ` L${xOf(n - 1)},${H - PAD} L${xOf(0)},${H - PAD} Z`;
-        const fmt = (v: number) => v >= 1_000_000 ? `₹${(v / 1_000_000).toFixed(1)}M` : `₹${(v / 1_000).toFixed(0)}K`;
+        const fmt = (v: number) => v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1)}M` : `$${(v / 1_000).toFixed(0)}K`;
         return (
           <GlassCard className="p-6 border-gray-200" gradient>
             <div className="flex items-center justify-between mb-3">
@@ -282,7 +282,7 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                   <div>
                     <div className="flex items-center space-x-2 mb-1">
-                      <span className="text-lg font-black text-gray-900">₹{entry.amount.toLocaleString()}</span>
+                      <span className="text-lg font-black text-gray-900">${entry.amount.toLocaleString()}</span>
                       <span className={cn(
                         "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border",
                         entry.approvalStatus === 'Approved' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'
@@ -311,7 +311,7 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
                     <div className="grid grid-cols-2 gap-3 text-xs">
                       <div>
                         <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Revision Amount</p>
-                        <p className="font-black text-gray-900 mt-0.5">₹{entry.amount.toLocaleString()}</p>
+                        <p className="font-black text-gray-900 mt-0.5">${entry.amount.toLocaleString()}</p>
                       </div>
                       <div>
                         <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Status</p>

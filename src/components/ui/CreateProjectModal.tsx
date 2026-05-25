@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -389,7 +389,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                           />
                         </div>
                         <div>
-                          <label className={labelCls}>Budget (₹)</label>
+                          <label className={labelCls}>Budget ($)</label>
                           <input type="number" value={form.budget}
                             onChange={e => setForm(f => ({ ...f, budget: e.target.value }))}
                             className={inputCls} placeholder="e.g. 50,00,000"

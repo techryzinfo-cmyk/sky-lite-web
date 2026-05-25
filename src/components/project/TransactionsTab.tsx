@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -228,7 +228,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Net Balance</span>
           </div>
           <p className={`text-3xl font-black mt-1 ${netBalance >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
-            {netBalance < 0 ? '-' : ''}₹{Math.abs(netBalance).toLocaleString()}
+            {netBalance < 0 ? '-' : ''}${Math.abs(netBalance).toLocaleString()}
           </p>
         </div>
 
@@ -238,7 +238,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
           </div>
           <div>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Inflow</p>
-            <p className="text-2xl font-black text-gray-900 mt-1">₹{totals.incoming.toLocaleString()}</p>
+            <p className="text-2xl font-black text-gray-900 mt-1">${totals.incoming.toLocaleString()}</p>
           </div>
         </div>
 
@@ -248,7 +248,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
           </div>
           <div>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Outflow</p>
-            <p className="text-2xl font-black text-gray-900 mt-1">₹{totals.outgoing.toLocaleString()}</p>
+            <p className="text-2xl font-black text-gray-900 mt-1">${totals.outgoing.toLocaleString()}</p>
           </div>
         </div>
       </div>
@@ -333,7 +333,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
 
                   <div className="flex items-center space-x-4 ml-4">
                     <p className={`text-base font-black ${color} tabular-nums`}>
-                      {prefix}₹{item.amount?.toLocaleString()}
+                      {prefix}${item.amount?.toLocaleString()}
                     </p>
                     <button
                       onClick={() => { setDeleteIsPurchase(!!item.isPurchase); setDeleteTarget(item._id); }}
@@ -395,7 +395,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
 
             <div className="p-6 space-y-5">
               <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Amount (₹) *</label>
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Amount ($) *</label>
                 <input
                   type="number"
                   value={amount}

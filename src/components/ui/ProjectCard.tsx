@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
@@ -12,7 +12,7 @@ import {
   Construction,
   ExternalLink,
   BarChart3,
-  IndianRupee,
+  DollarSign,
   Pencil,
   Trash2,
 } from 'lucide-react';
@@ -99,7 +99,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project, onEdit, onDel
                   onClick={() => setShowMenu(false)}
                   className="w-full px-4 py-2.5 text-left text-sm font-semibold text-slate-600 hover:bg-gray-50 transition-colors flex items-center space-x-2"
                 >
-                  <IndianRupee className="w-3.5 h-3.5 text-slate-400" />
+                  <DollarSign className="w-3.5 h-3.5 text-slate-400" />
                   <span>View Budget</span>
                 </Link>
                 <Link
@@ -155,7 +155,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project, onEdit, onDel
           </div>
           <div className="flex items-center space-x-2 text-slate-500">
             <Construction className="w-4 h-4 text-emerald-500" />
-            <span className="text-xs font-medium">₹{latestBudget.toLocaleString()}</span>
+            <span className="text-xs font-medium">${latestBudget.toLocaleString()}</span>
           </div>
         </div>
 

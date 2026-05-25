@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -193,7 +193,7 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
                                 </div>
                               </div>
                               <div className="col-span-3 space-y-1">
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Rate (₹)</label>
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Rate ($)</label>
                                 <input
                                   type="number"
                                   required
@@ -217,7 +217,7 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
                             <div className="flex items-center justify-between px-1 pt-1 border-t border-gray-200">
                               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Subtotal</span>
                               <span className="text-xs font-black text-emerald-600">
-                                ₹{subtotal > 0 ? subtotal.toLocaleString() : '—'}
+                                ${subtotal > 0 ? subtotal.toLocaleString() : '—'}
                               </span>
                             </div>
                           </div>
@@ -230,7 +230,7 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
                       <div className="flex items-center justify-between px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl mt-2">
                         <span className="text-sm font-black text-slate-600 uppercase tracking-wider">Grand Total</span>
                         <span className="text-lg font-black text-emerald-600">
-                          ₹{formData.items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0).toLocaleString()}
+                          ${formData.items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0).toLocaleString()}
                         </span>
                       </div>
                     )}
@@ -248,7 +248,7 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-600 ml-1">Advance Amount (₹)</label>
+                      <label className="text-sm font-medium text-slate-600 ml-1">Advance Amount ($)</label>
                       <input
                         type="number"
                         value={formData.advancePaid}

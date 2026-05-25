@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -316,7 +316,7 @@ export const BOQModal: React.FC<BOQModalProps> = ({
 
                           <div>
                             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
-                              Unit Cost (₹) <span className="text-red-400">*</span>
+                              Unit Cost ($) <span className="text-red-400">*</span>
                             </label>
                             <input
                               type="number"
@@ -344,7 +344,7 @@ export const BOQModal: React.FC<BOQModalProps> = ({
                           {/* Total */}
                           <div className="flex items-center justify-between p-4 rounded-2xl bg-blue-50 border border-blue-200">
                             <span className="text-sm font-bold text-blue-600 uppercase tracking-wider">Total</span>
-                            <span className="text-xl font-black text-gray-900">₹{editTotal.toLocaleString()}</span>
+                            <span className="text-xl font-black text-gray-900">${editTotal.toLocaleString()}</span>
                           </div>
                         </div>
                       </div>
@@ -464,7 +464,7 @@ export const BOQModal: React.FC<BOQModalProps> = ({
                                     value={row.unitCost}
                                     onChange={e => updateRow(row.id, 'unitCost', e.target.value)}
                                     className={inputCls(!!errors[`${row.id}_unitCost`])}
-                                    placeholder="Unit Cost (₹) *"
+                                    placeholder="Unit Cost ($) *"
                                   />
                                   {errors[`${row.id}_unitCost`] && (
                                     <p className="text-xs text-red-500 mt-1">{errors[`${row.id}_unitCost`]}</p>

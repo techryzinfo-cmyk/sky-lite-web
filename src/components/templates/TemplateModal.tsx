@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -215,7 +215,7 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({ isOpen, onClose, o
 
                   {/* Budget */}
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Estimated Budget (₹)</label>
+                    <label className="text-sm font-bold text-slate-700">Estimated Budget ($)</label>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">MIN</span>

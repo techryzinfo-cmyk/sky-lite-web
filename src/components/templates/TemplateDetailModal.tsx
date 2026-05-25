@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -97,7 +97,7 @@ export const TemplateDetailModal: React.FC<TemplateDetailModalProps> = ({
                           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Budget Range</p>
                           <p className="text-sm font-black text-gray-900">
                             {template.minBudget || template.maxBudget
-                              ? `₹${(template.minBudget || 0).toLocaleString()} – ₹${(template.maxBudget || 0).toLocaleString()}`
+                              ? `$${(template.minBudget || 0).toLocaleString()} – $${(template.maxBudget || 0).toLocaleString()}`
                               : '—'
                             }
                           </p>

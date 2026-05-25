@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -227,7 +227,7 @@ export const BOQImportModal: React.FC<BOQImportModalProps> = ({
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Estimated Total</p>
-                        <p className="text-lg font-black text-emerald-700">₹{estimatedTotal.toLocaleString()}</p>
+                        <p className="text-lg font-black text-emerald-700">${estimatedTotal.toLocaleString()}</p>
                       </div>
                     </div>
 
@@ -249,8 +249,8 @@ export const BOQImportModal: React.FC<BOQImportModalProps> = ({
                               <td className="px-3 py-2 text-gray-900 max-w-[200px] truncate">{item.itemDescription}</td>
                               <td className="px-3 py-2 text-slate-500">{item.unit || '-'}</td>
                               <td className="px-3 py-2 text-right font-bold text-slate-600">{item.quantity}</td>
-                              <td className="px-3 py-2 text-right text-slate-500">₹{Number(item.unitCost).toLocaleString()}</td>
-                              <td className="px-3 py-2 text-right font-bold text-blue-600">₹{Number(item.totalCost).toLocaleString()}</td>
+                              <td className="px-3 py-2 text-right text-slate-500">${Number(item.unitCost).toLocaleString()}</td>
+                              <td className="px-3 py-2 text-right font-bold text-blue-600">${Number(item.totalCost).toLocaleString()}</td>
                             </tr>
                           ))}
                         </tbody>

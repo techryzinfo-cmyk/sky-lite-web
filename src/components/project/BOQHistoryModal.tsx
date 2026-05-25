@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, History, Loader2, CheckCircle2, XCircle, Clock, User } from 'lucide-react';
+import { X, History, Loader2, CheckCircle2, XCircle, Clock, User, GitBranch } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 
@@ -23,15 +23,20 @@ const getStatusStyle = (status: string) => {
 };
 
 export const BOQHistoryModal: React.FC<BOQHistoryModalProps> = ({ isOpen, onClose, item, projectId }) => {
-  const [history, setHistory] = useState<any[]>([]);
+  // `versions` holds all historical versions of this BOQ item chain (newest first)
+  const [versions, setVersions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !item) return;
     setLoading(true);
-    api.get(`/projects/${projectId}/boq/${item._id}`)
-      .then(res => setHistory(res.data?.approvalHistory || res.data?.history || []))
-      .catch(() => setHistory(item.approvalHistory || []))
+    // Correct endpoint: GET /projects/:id/boq/history/:historyId
+    // historyId is set when the item was first created (version 1).
+    // For v1 items historyId === _id, so the fallback is safe.
+    const historyId = item.historyId || item._id;
+    api.get(`/projects/${projectId}/boq/history/${historyId}`)
+      .then(res => setVersions(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setVersions([]))
       .finally(() => setLoading(false));
   }, [isOpen, item, projectId]);
 
@@ -56,10 +61,10 @@ export const BOQHistoryModal: React.FC<BOQHistoryModalProps> = ({ isOpen, onClos
               <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200">
-                    <History className="w-5 h-5 text-blue-600" />
+                    <GitBranch className="w-5 h-5 text-blue-600" />
                   </div>
                   <div>
-                    <h2 className="text-base font-bold text-gray-900">Approval History</h2>
+                    <h2 className="text-base font-bold text-gray-900">Version History</h2>
                     <p className="text-xs text-slate-500 mt-0.5 truncate max-w-[260px]">{item.itemDescription}</p>
                   </div>
                 </div>
@@ -69,7 +74,7 @@ export const BOQHistoryModal: React.FC<BOQHistoryModalProps> = ({ isOpen, onClos
               </div>
 
               <div className="p-6">
-                {/* Current status */}
+                {/* Current item header */}
                 <div className="flex items-center justify-between mb-6 p-4 bg-gray-50 rounded-2xl border border-gray-100">
                   <div>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Current Status</p>
@@ -85,30 +90,51 @@ export const BOQHistoryModal: React.FC<BOQHistoryModalProps> = ({ isOpen, onClos
                 {loading ? (
                   <div className="flex flex-col items-center py-10">
                     <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-3" />
-                    <p className="text-sm text-slate-500">Loading history...</p>
+                    <p className="text-sm text-slate-500">Loading version history...</p>
                   </div>
-                ) : history.length > 0 ? (
+                ) : versions.length > 0 ? (
                   <div className="relative space-y-4">
                     <div className="absolute left-5 top-2 bottom-2 w-px bg-gray-200" />
-                    {history.map((entry: any, i: number) => {
-                      const s = getStatusStyle(entry.status);
+                    {versions.map((ver: any, i: number) => {
+                      const s = getStatusStyle(ver.status);
                       const Icon = s.Icon;
+                      const isLatest = i === 0;
                       return (
-                        <div key={i} className="flex items-start space-x-4 relative">
+                        <div key={ver._id || i} className="flex items-start space-x-4 relative">
                           <div className={cn('w-10 h-10 rounded-full border-2 border-white flex items-center justify-center shrink-0 z-10', s.bg)}>
                             <Icon className={cn('w-4 h-4', s.color)} />
                           </div>
                           <div className="flex-1 bg-gray-50 rounded-xl p-3 border border-gray-100">
                             <div className="flex items-center justify-between mb-1">
-                              <span className={cn('text-xs font-black uppercase tracking-widest', s.color)}>{entry.status}</span>
-                              <span className="text-[10px] text-slate-400 font-bold">{entry.timestamp ? new Date(entry.timestamp).toLocaleString() : 'N/A'}</span>
+                              <div className="flex items-center gap-2">
+                                <span className={cn('text-xs font-black uppercase tracking-widest', s.color)}>{ver.status}</span>
+                                <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                                  v{ver.version || 1}{isLatest ? ' (latest)' : ''}
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-slate-400 font-bold">
+                                {ver.createdAt ? new Date(ver.createdAt).toLocaleDateString() : 'N/A'}
+                              </span>
                             </div>
-                            <div className="flex items-center space-x-1.5">
-                              <User className="w-3 h-3 text-slate-400" />
-                              <span className="text-xs text-slate-600 font-semibold">{entry.updatedByName || entry.changedBy || 'System'}</span>
+                            <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
+                              <div>
+                                <span className="text-slate-400">Qty: </span>
+                                <span className="font-semibold text-gray-700">{ver.quantity} {ver.unit}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400">Rate: </span>
+                                <span className="font-semibold text-gray-700">${Number(ver.unitCost).toLocaleString()}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400">Total: </span>
+                                <span className="font-bold text-blue-600">${Number(ver.totalCost).toLocaleString()}</span>
+                              </div>
                             </div>
-                            {entry.reason && (
-                              <p className="text-xs text-slate-500 italic mt-1.5">"{entry.reason}"</p>
+                            {ver.createdByName && (
+                              <div className="flex items-center space-x-1.5 mt-2">
+                                <User className="w-3 h-3 text-slate-400" />
+                                <span className="text-xs text-slate-600 font-semibold">{ver.createdByName}</span>
+                              </div>
                             )}
                           </div>
                         </div>
@@ -118,7 +144,7 @@ export const BOQHistoryModal: React.FC<BOQHistoryModalProps> = ({ isOpen, onClos
                 ) : (
                   <div className="py-10 text-center border border-dashed border-gray-200 rounded-2xl">
                     <History className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                    <p className="text-sm text-slate-500">No approval history recorded yet.</p>
+                    <p className="text-sm text-slate-500">No version history found.</p>
                   </div>
                 )}
               </div>

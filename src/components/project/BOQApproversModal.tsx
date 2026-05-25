@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Users, Loader2, Check, Search, UserCheck } from 'lucide-react';
+import { X, Users, Loader2, Check, Search, UserCheck, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
@@ -18,8 +18,9 @@ interface BOQApproversModalProps {
 export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
   isOpen, onClose, onSuccess, item, projectId,
 }) => {
-  const [users, setUsers] = useState<any[]>([]);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [approvers, setApprovers] = useState<any[]>([]);
+  // Only one approver can be selected at a time (matches mobile flow)
+  const [selectedApproverId, setSelectedApproverId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
@@ -28,34 +29,43 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
   useEffect(() => {
     if (!isOpen || !item) return;
     setSearch('');
-    const currentApprovers: string[] = (item.approvers || []).map((a: any) => a._id || a);
-    setSelected(new Set(currentApprovers));
+    setSelectedApproverId(null);
     setLoading(true);
-    api.get('/users')
-      .then(r => setUsers(r.data?.users || r.data || []))
-      .catch(() => toast.error('Failed to load users'))
+    // ✅ FIXED: Use the correct BOQ-approvers endpoint (returns only users with boq:approve permission)
+    // Previously was calling GET /users which returns ALL users in the system.
+    api.get(`/projects/${projectId}/boq-approvers`)
+      .then(r => setApprovers(Array.isArray(r.data) ? r.data : []))
+      .catch(() => toast.error('Failed to load approvers'))
       .finally(() => setLoading(false));
-  }, [isOpen, item]);
+  }, [isOpen, item, projectId]);
 
-  const toggle = (userId: string) => {
-    setSelected(prev => {
-      const next = new Set(prev);
-      next.has(userId) ? next.delete(userId) : next.add(userId);
-      return next;
-    });
-  };
-
-  const handleSave = async () => {
+  // ✅ FIXED: Correct "Send for Approval" flow — matches mobile's confirmSendForApproval()
+  // Was previously: PATCH /projects/:id/boq/:itemId with { approvers: [...] } — WRONG
+  //   - `approvers` field doesn't exist in the BOQ schema (silently ignored by MongoDB)
+  //   - Never changed item status to "Pending"
+  //   - Never set requestedApproverId
+  //
+  // Now: PATCH /projects/:id/boq/bulk-status with { itemIds: [item._id], status: 'Pending', requestedApproverId }
+  //   - Marks item as Pending ✅
+  //   - Records requestedApprover + requestedApproverName on the item ✅
+  //   - Matches exact mobile behavior ✅
+  const handleSendForApproval = async () => {
+    if (!selectedApproverId) {
+      toast.error('Please select an approver');
+      return;
+    }
     setSaving(true);
     try {
-      await api.patch(`/projects/${projectId}/boq/${item._id}`, {
-        approvers: Array.from(selected),
+      await api.patch(`/projects/${projectId}/boq/bulk-status`, {
+        itemIds: [item._id],
+        status: 'Pending',
+        requestedApproverId: selectedApproverId,
       });
-      toast.success('Approvers updated');
+      toast.success('Item sent for approval');
       onSuccess();
       onClose();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to update approvers');
+      toast.error(error.response?.data?.message || 'Failed to send for approval');
     } finally {
       setSaving(false);
     }
@@ -63,7 +73,7 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
 
   if (!item) return null;
 
-  const filtered = users.filter(u =>
+  const filtered = approvers.filter(u =>
     u.name?.toLowerCase().includes(search.toLowerCase()) ||
     u.email?.toLowerCase().includes(search.toLowerCase())
   );
@@ -90,7 +100,7 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
                     <UserCheck className="w-5 h-5 text-purple-600" />
                   </div>
                   <div>
-                    <h2 className="text-base font-bold text-gray-900">Assign Approvers</h2>
+                    <h2 className="text-base font-bold text-gray-900">Send for Approval</h2>
                     <p className="text-xs text-slate-500 mt-0.5 truncate max-w-[240px]">{item.itemDescription}</p>
                   </div>
                 </div>
@@ -100,11 +110,19 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
               </div>
 
               <div className="p-6 space-y-4">
+                {/* Info banner */}
+                <div className="flex items-start gap-3 p-3 bg-purple-50 border border-purple-100 rounded-xl">
+                  <Send className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
+                  <p className="text-xs text-purple-700 leading-relaxed">
+                    Select an approver. The item status will change to <span className="font-bold">Pending</span> and the selected person will be notified.
+                  </p>
+                </div>
+
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
                     type="text"
-                    placeholder="Search users..."
+                    placeholder="Search approvers..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 pl-10 pr-4 text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
@@ -116,17 +134,21 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
                     <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
                   </div>
                 ) : (
-                  <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
                     {filtered.length === 0 && (
-                      <p className="text-sm text-slate-400 text-center py-6">No users found.</p>
+                      <p className="text-sm text-slate-400 text-center py-6">
+                        {approvers.length === 0
+                          ? 'No users have BOQ approve permission.'
+                          : 'No approvers match your search.'}
+                      </p>
                     )}
                     {filtered.map(user => {
-                      const isSelected = selected.has(user._id);
+                      const isSelected = selectedApproverId === user._id;
                       return (
                         <button
                           key={user._id}
                           type="button"
-                          onClick={() => toggle(user._id)}
+                          onClick={() => setSelectedApproverId(isSelected ? null : user._id)}
                           className={cn(
                             'w-full flex items-center space-x-3 p-3 rounded-xl border transition-all text-left',
                             isSelected
@@ -144,9 +166,14 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
                             <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
                             <p className="text-[10px] text-slate-500 truncate">{user.email}</p>
                           </div>
-                          {user.role?.name && (
+                          {user.roleName && (
                             <span className="text-[10px] font-bold text-slate-400 bg-gray-100 px-2 py-0.5 rounded-md shrink-0">
-                              {user.role.name}
+                              {user.roleName}
+                            </span>
+                          )}
+                          {user.isProjectMember && (
+                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md shrink-0">
+                              Member
                             </span>
                           )}
                         </button>
@@ -155,9 +182,9 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
                   </div>
                 )}
 
-                {selected.size > 0 && (
+                {selectedApproverId && (
                   <p className="text-xs text-purple-600 font-semibold text-center">
-                    {selected.size} approver{selected.size > 1 ? 's' : ''} selected
+                    1 approver selected — item will be set to Pending
                   </p>
                 )}
               </div>
@@ -170,12 +197,12 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
                   Cancel
                 </button>
                 <button
-                  onClick={handleSave}
-                  disabled={saving}
+                  onClick={handleSendForApproval}
+                  disabled={saving || !selectedApproverId}
                   className="flex items-center space-x-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50 shadow-sm shadow-purple-600/20"
                 >
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
-                  <span>Save Approvers</span>
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  <span>Send for Approval</span>
                 </button>
               </div>
             </div>

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -79,8 +79,8 @@ export const OverviewDashboard = () => {
     {
       name: 'Total Budget',
       value: totalBudget >= 1_000_000
-        ? `₹${(totalBudget / 1_000_000).toFixed(1)}M`
-        : `₹${(totalBudget / 1_000).toFixed(0)}K`,
+        ? `$${(totalBudget / 1_000_000).toFixed(1)}M`
+        : `$${(totalBudget / 1_000).toFixed(0)}K`,
       icon: DollarSign,
       color: 'text-emerald-600',
       bg: 'bg-emerald-100',
@@ -317,7 +317,7 @@ export const OverviewDashboard = () => {
                 <div key={p._id} className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-gray-900 truncate max-w-[140px]">{p.name}</span>
                   <span className="text-xs font-black text-emerald-600 shrink-0">
-                    ₹{budget >= 1_000_000 ? `${(budget / 1_000_000).toFixed(1)}M` : `${(budget / 1_000).toFixed(0)}K`}
+                    ${budget >= 1_000_000 ? `${(budget / 1_000_000).toFixed(1)}M` : `${(budget / 1_000).toFixed(0)}K`}
                   </span>
                 </div>
               );
