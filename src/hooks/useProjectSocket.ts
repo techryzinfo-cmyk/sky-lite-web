@@ -1,51 +1,52 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSocket } from '@/context/SocketContext';
-import { useToast } from '@/context/ToastContext';
 
 export const useProjectSocket = (projectId: string, onEvent?: (event: string, data: any) => void) => {
-  const { socket, joinProject, leaveProject } = useSocket();
-  const toast = useToast();
+  const { socket } = useSocket();
+  // Use a ref so the event handler always sees the latest callback without recreating listeners
+  const onEventRef = useRef(onEvent);
+  onEventRef.current = onEvent;
 
   useEffect(() => {
-    if (socket && projectId) {
-      joinProject(projectId);
+    if (!socket || !projectId) return;
 
-      const events = [
-        'plans:updated',
-        'issue:created',
-        'issue:updated',
-        'snag:created',
-        'snag:updated',
-        'material:updated',
-        'boq:updated',
-        'budget:updated',
-        'milestones:updated'
-      ];
+    const join = () => socket.emit('join:project', projectId);
 
-      const handleEvent = (event: string, data: any) => {
-        console.log(`Socket event received: ${event}`, data);
-        if (onEvent) onEvent(event, data);
-        
-        // Show context-aware toasts
-        if (event.includes('created')) {
-          toast.success(`New ${event.split(':')[0]} reported in this project`);
-        } else if (event.includes('updated')) {
-          toast.info(`Project ${event.split(':')[0]} has been updated`);
-        }
+    // Join immediately if the socket is already connected
+    if (socket.connected) join();
+
+    // Re-join after every reconnect — socket.io auto-reconnects but the server
+    // forgets which rooms each client was in, so we must re-emit join:project.
+    socket.on('connect', join);
+
+    const events = [
+      'plans:updated',
+      'issue:created',
+      'issue:updated',
+      'snag:created',
+      'snag:updated',
+      'material:updated',
+      'boq:updated',
+      'budget:updated',
+      'milestones:updated',
+    ];
+
+    // Named handlers so we can remove exactly these, not all listeners for the event
+    const handlers: Record<string, (data: any) => void> = {};
+    events.forEach(event => {
+      const handler = (data: any) => {
+        if (onEventRef.current) onEventRef.current(event, data);
       };
+      handlers[event] = handler;
+      socket.on(event, handler);
+    });
 
-      events.forEach(event => {
-        socket.on(event, (data) => handleEvent(event, data));
-      });
-
-      return () => {
-        events.forEach(event => {
-          socket.off(event);
-        });
-        leaveProject(projectId);
-      };
-    }
-  }, [socket, projectId, joinProject, leaveProject, toast]);
+    return () => {
+      socket.off('connect', join);
+      events.forEach(event => socket.off(event, handlers[event]));
+      socket.emit('leave:project', projectId);
+    };
+  }, [socket, projectId]);
 };
