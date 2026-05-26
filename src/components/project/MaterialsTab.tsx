@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -179,7 +179,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
     }
   };
 
-  const handleUpdateRequestStatus = async (requestId: string, status: 'Approved' | 'Rejected') => {
+  const handleUpdateRequestStatus = async (requestId: string, status: 'Approved' | 'Rejected' | 'Fulfilled') => {
     setUpdatingRequestId(requestId);
     try {
       await api.patch(`/material-requests/${requestId}`, { status });

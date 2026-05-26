@@ -21,7 +21,7 @@ import { TimelineTab } from '@/components/project/TimelineTab';
 import { ChatTab } from '@/components/project/ChatTab';
 import { useProjectSocket } from '@/hooks/useProjectSocket';
 import {
-  Info, FileText, IndianRupee, Package, Files, Map,
+  Info, FileText, DollarSign, Package, Files, Map,
   AlertCircle, ShieldAlert, Calendar,
   TrendingUp, GanttChart, ClipboardList, CreditCard,
   Loader2, ChevronLeft, Pencil, MessageSquare,
@@ -35,7 +35,7 @@ import { useToast } from '@/context/ToastContext';
 const tabs = [
   { id: 'details',      name: 'Details',      icon: Info },
   { id: 'boq',         name: 'BOQ',           icon: FileText },
-  { id: 'budget',      name: 'Budget',         icon: IndianRupee },
+  { id: 'budget',      name: 'Budget',         icon: DollarSign },
   { id: 'materials',   name: 'Materials',      icon: Package },
   { id: 'documents',   name: 'Documents',      icon: Files },
   { id: 'plans',       name: 'Plans',          icon: Map },
@@ -247,7 +247,7 @@ function ProjectWorkspaceInner() {
                   <p className="text-sm text-blue-800">
                     Site survey assigned to{' '}
                     <span className="font-bold">
-                      {project.siteSurveyor?.name || 'Surveyor'}
+                      {(project.siteSurveyor as any)?.name || 'Surveyor'}
                     </span>
                   </p>
                 </div>
@@ -276,7 +276,7 @@ function ProjectWorkspaceInner() {
                       <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-100">
                         <span className="text-sm text-slate-500">Current Budget</span>
                         <span className="text-sm font-bold text-emerald-600">
-                          ₹{(project.budgetHistory?.[project.budgetHistory.length - 1]?.amount || 0).toLocaleString()}
+                          ${(project.budgetHistory?.[project.budgetHistory.length - 1]?.amount || 0).toLocaleString()}
                         </span>
                       </div>
                       <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-100">
