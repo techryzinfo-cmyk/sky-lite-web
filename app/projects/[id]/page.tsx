@@ -1,5 +1,7 @@
 'use client';
 
+import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
+
 import React, { useState, useEffect, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Shell } from '@/components/layout/Shell';
@@ -84,31 +86,17 @@ function ProjectWorkspaceInner() {
     return () => leaveProject(id as string);
   }, [id]);
 
-  if (loading) {
-    return (
-      <Shell>
-        <div className="flex flex-col items-center justify-center py-20">
-          <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-          <p className="text-slate-500 font-medium">Loading workspace...</p>
-        </div>
-      </Shell>
-    );
-  }
-
-  if (!project) {
-    return (
-      <Shell>
-        <div className="text-center py-20">
-          <h2 className="text-2xl font-bold text-gray-900">Project not found</h2>
-          <button onClick={() => router.push('/projects')} className="text-blue-600 mt-4 font-medium hover:text-blue-700">Back to Projects</button>
-        </div>
-      </Shell>
-    );
-  }
-
   return (
     <Shell>
-      <div className="space-y-0">
+      <SkeletonLoader loading={loading} preset="detail">
+        {!project && !loading ? (
+          <div className="text-center py-20">
+            <h2 className="text-2xl font-bold text-gray-900">Project not found</h2>
+            <button onClick={() => router.push('/projects')} className="text-blue-600 mt-4 font-medium hover:text-blue-700">Back to Projects</button>
+          </div>
+        ) : project ? (
+          <>
+          <div className="space-y-0">
         {/* Compact header card */}
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm px-5 py-3">
           {/* Top row: back + name + status + actions */}
@@ -392,7 +380,7 @@ function ProjectWorkspaceInner() {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         onSuccess={fetchProject}
-        initialData={project}
+        initialData={project || undefined}
         projectId={id as string}
       />
 
@@ -408,8 +396,11 @@ function ProjectWorkspaceInner() {
         onClose={() => setIsTeamModalOpen(false)}
         onSuccess={fetchProject}
         projectId={id as string}
-        currentMembers={project.members || []}
+        currentMembers={project?.members || []}
       />
+      </>
+      ) : null}
+      </SkeletonLoader>
     </Shell>
   );
 }

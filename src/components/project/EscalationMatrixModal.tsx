@@ -1,5 +1,7 @@
 'use client';
 
+import { SkeletonLoader } from '../ui/SkeletonLoader';
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, GitBranch, Loader2, Plus, Trash2, Save } from 'lucide-react';
@@ -161,11 +163,7 @@ export const EscalationMatrixModal: React.FC<EscalationMatrixModalProps> = ({ is
               </div>
 
               <div className="overflow-y-auto flex-1 p-6">
-                {loading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
-                  </div>
-                ) : (
+                <SkeletonLoader loading={loading} preset="modal">
                   <div className="space-y-4">
                     {rules.map((rule, i) => (
                       <div
@@ -228,7 +226,7 @@ export const EscalationMatrixModal: React.FC<EscalationMatrixModalProps> = ({ is
                       </p>
                     </div>
                   </div>
-                )}
+                </SkeletonLoader>
               </div>
 
               <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end space-x-3 shrink-0">

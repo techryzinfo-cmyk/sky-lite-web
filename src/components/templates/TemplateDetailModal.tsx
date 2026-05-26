@@ -1,4 +1,6 @@
-﻿'use client';
+'use client';
+
+import { SkeletonLoader } from '../ui/SkeletonLoader';
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -67,13 +69,9 @@ export const TemplateDetailModal: React.FC<TemplateDetailModalProps> = ({
 
               {/* Body */}
               <div className="overflow-y-auto flex-1 custom-scrollbar">
-                {loading ? (
-                  <div className="flex flex-col items-center justify-center py-20">
-                    <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-3" />
-                    <p className="text-slate-500 text-sm font-medium">Loading details...</p>
-                  </div>
-                ) : template ? (
-                  <div className="p-6 space-y-6">
+                <SkeletonLoader loading={loading} preset="modal">
+                  {template ? (
+                    <div className="p-6 space-y-6">
 
                     {/* Hero card */}
                     <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6">
@@ -172,6 +170,7 @@ export const TemplateDetailModal: React.FC<TemplateDetailModalProps> = ({
 
                   </div>
                 ) : null}
+                </SkeletonLoader>
               </div>
 
               {/* Footer */}

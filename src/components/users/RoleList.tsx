@@ -1,5 +1,7 @@
 'use client';
 
+import { SkeletonLoader } from '../ui/SkeletonLoader';
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Shield,
@@ -76,18 +78,12 @@ export const RoleList = () => {
     setIsModalOpen(true);
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-40">
-        <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
-        <p className="text-slate-500 font-medium">Loading permission matrices...</p>
-      </div>
-    );
-  }
+  // Loading state handled by Skeleton wrapper
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <SkeletonLoader loading={loading} preset="list">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3 text-slate-500">
           <Info className="w-4 h-4" />
           <p className="text-sm">Manage Role-Based Access Control (RBAC) across all projects.</p>
@@ -190,5 +186,6 @@ export const RoleList = () => {
         initialData={editingRole}
       />
     </div>
+    </SkeletonLoader>
   );
 };

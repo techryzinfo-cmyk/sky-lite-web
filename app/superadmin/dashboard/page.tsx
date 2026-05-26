@@ -1,4 +1,5 @@
 'use client';
+import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Users, Building2, ShieldCheck, Activity, Search, Plus, Loader2, LogOut, Settings, X, Eye, EyeOff, Trash2, MoreVertical } from 'lucide-react';
@@ -91,12 +92,7 @@ export default function SuperAdminDashboard() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#F8FAFF] flex flex-col items-center justify-center p-4">
-        <Loader2 className="w-12 h-12 text-red-500 animate-spin mb-4" />
-        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Accessing System Core...</p>
-      </div>
-    );
+    return <SkeletonLoader loading={true} preset="dashboard"><div /></SkeletonLoader>;
   }
 
   const filteredAdmins = admins.filter(a =>

@@ -1,4 +1,6 @@
-﻿'use client';
+'use client';
+
+import { SkeletonLoader } from '../ui/SkeletonLoader';
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -87,13 +89,9 @@ export const BOQHistoryModal: React.FC<BOQHistoryModalProps> = ({ isOpen, onClos
                   );})()}
                 </div>
 
-                {loading ? (
-                  <div className="flex flex-col items-center py-10">
-                    <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-3" />
-                    <p className="text-sm text-slate-500">Loading version history...</p>
-                  </div>
-                ) : versions.length > 0 ? (
-                  <div className="relative space-y-4">
+                <SkeletonLoader loading={loading} preset="modal">
+                  {versions.length > 0 ? (
+                    <div className="relative space-y-4">
                     <div className="absolute left-5 top-2 bottom-2 w-px bg-gray-200" />
                     {versions.map((ver: any, i: number) => {
                       const s = getStatusStyle(ver.status);
@@ -147,6 +145,7 @@ export const BOQHistoryModal: React.FC<BOQHistoryModalProps> = ({ isOpen, onClos
                     <p className="text-sm text-slate-500">No version history found.</p>
                   </div>
                 )}
+                </SkeletonLoader>
               </div>
 
               <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">

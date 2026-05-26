@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { SkeletonLoader } from '../ui/SkeletonLoader';
 import {
   Package,
   ShoppingCart,
@@ -412,12 +413,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
           </GlassCard>
 
           {/* Inventory Table */}
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-              <p className="text-slate-500 font-medium">Syncing inventory...</p>
-            </div>
-          ) : (
+          <SkeletonLoader loading={loading} preset="table">{(!loading && materials.length > 0) || !loading ? (
             <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
               <table className="w-full text-left border-collapse min-w-[800px]">
                 <thead>
@@ -541,7 +537,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                 </tbody>
               </table>
             </div>
-          )}
+          ) : null}</SkeletonLoader>
         </div>
       )}
 
@@ -595,10 +591,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
           )}
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-              <p className="text-slate-500 font-medium">Loading requests...</p>
-            </div>
+            <SkeletonLoader loading={true} preset="card-grid"><div /></SkeletonLoader>
           ) : requests.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {requests.map((request) => (
@@ -733,10 +726,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
           </GlassCard>
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-              <p className="text-slate-500 font-medium">Loading receipts...</p>
-            </div>
+            <SkeletonLoader loading={true} preset="table"><div /></SkeletonLoader>
           ) : receipts.length > 0 ? (
             <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
               <table className="w-full text-left border-collapse min-w-[1000px]">
@@ -846,10 +836,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
           </GlassCard>
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-              <p className="text-slate-500 font-medium">Loading POs...</p>
-            </div>
+            <SkeletonLoader loading={true} preset="card-grid"><div /></SkeletonLoader>
           ) : purchases.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {purchases.map((po) => (
@@ -931,10 +918,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
           </GlassCard>
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-              <p className="text-slate-500 font-medium">Loading usage logs...</p>
-            </div>
+            <SkeletonLoader loading={true} preset="table"><div /></SkeletonLoader>
           ) : usageLogs.length > 0 ? (
             <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
               <table className="w-full text-left border-collapse">
@@ -1000,10 +984,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
           </GlassCard>
 
           {activityLoading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-              <p className="text-slate-500 font-medium">Loading activity...</p>
-            </div>
+            <SkeletonLoader loading={true} preset="list"><div /></SkeletonLoader>
           ) : activityFeed.length > 0 ? (
             <div className="space-y-3">
               {activityFeed.map((entry) => {

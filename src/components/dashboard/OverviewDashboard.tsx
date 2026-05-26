@@ -1,4 +1,6 @@
-﻿'use client';
+'use client';
+
+import { SkeletonLoader } from '../ui/SkeletonLoader';
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -109,19 +111,12 @@ export const OverviewDashboard = () => {
     return acc;
   }, {});
 
-  if (loading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[1, 2, 3, 4].map(i => (
-          <div key={i} className="h-32 rounded-3xl bg-gray-50 animate-pulse border border-gray-200" />
-        ))}
-      </div>
-    );
-  }
+  // Loading state handled by Skeleton wrapper
 
   return (
-    <div className="space-y-8">
-      {/* Stats Grid */}
+    <SkeletonLoader loading={loading} preset="dashboard">
+      <div className="space-y-8">
+        {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, i) => (
           <GlassCard key={stat.name} className="p-6 border-gray-200 group hover:border-blue-500/30 transition-all" gradient>
@@ -456,5 +451,6 @@ export const OverviewDashboard = () => {
         </GlassCard>
       </div>
     </div>
+    </SkeletonLoader>
   );
 };

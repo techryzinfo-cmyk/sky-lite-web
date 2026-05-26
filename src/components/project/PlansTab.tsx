@@ -1,5 +1,7 @@
 'use client';
 
+import { SkeletonLoader } from '../ui/SkeletonLoader';
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -116,14 +118,7 @@ export const PlansTab: React.FC<PlansTabProps> = ({ projectId }) => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-        <p className="text-slate-500 font-medium">Syncing plan room...</p>
-      </div>
-    );
-  }
+  // Loading state handled by Skeleton wrapper
 
   if (selectedFolderId) {
     const selectedFolder = folders.find(f => f._id === selectedFolderId);
@@ -140,8 +135,9 @@ export const PlansTab: React.FC<PlansTabProps> = ({ projectId }) => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <SkeletonLoader loading={loading} preset="list">
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h3 className="text-xl font-bold text-gray-900">Technical Plans & Drawings</h3>
           <p className="text-sm text-slate-500 mt-1">Manage project architectural and structural drawings.</p>
@@ -306,5 +302,6 @@ export const PlansTab: React.FC<PlansTabProps> = ({ projectId }) => {
         </div>
       )}
     </div>
+    </SkeletonLoader>
   );
 };

@@ -1,5 +1,7 @@
 'use client';
 
+import { SkeletonLoader } from '../ui/SkeletonLoader';
+
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, Loader2, Map, Search, UserCheck, Check } from 'lucide-react';
@@ -112,12 +114,9 @@ export const SendForSurveyModal: React.FC<Props> = ({ isOpen, onClose, onSuccess
               </div>
 
               {/* User list */}
+              <SkeletonLoader loading={loading} preset="modal">
               <div className="px-6 pb-2 max-h-64 overflow-y-auto space-y-1.5">
-                {loading ? (
-                  <div className="flex items-center justify-center py-10">
-                    <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
-                  </div>
-                ) : filtered.length === 0 ? (
+                {filtered.length === 0 && !loading ? (
                   <div className="text-center py-10 text-sm text-slate-400">
                     {users.length === 0
                       ? 'No users with site survey permission found.'
@@ -153,6 +152,7 @@ export const SendForSurveyModal: React.FC<Props> = ({ isOpen, onClose, onSuccess
                   })
                 )}
               </div>
+              </SkeletonLoader>
 
               {/* Footer */}
               <div className="flex gap-3 px-6 py-4 border-t border-gray-100">

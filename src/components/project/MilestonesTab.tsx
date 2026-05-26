@@ -1,5 +1,7 @@
 'use client';
 
+import { SkeletonLoader } from '../ui/SkeletonLoader';
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -338,20 +340,14 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
   };
 
   // ── Loading ────────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-        <p className="text-slate-500 font-medium">Tracking milestones...</p>
-      </div>
-    );
-  }
+  // Loading state handled by Skeleton wrapper
 
   const inputCls = "w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all";
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <SkeletonLoader loading={loading} preset="list">
+      <div className="space-y-6">
+        {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h3 className="text-xl font-bold text-gray-900">Project Milestones</h3>
@@ -1004,5 +1000,6 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
         )}
       </AnimatePresence>
     </div>
+    </SkeletonLoader>
   );
 };

@@ -1,5 +1,7 @@
 'use client';
 
+import { SkeletonLoader } from './SkeletonLoader';
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, Check, Loader2, Users } from 'lucide-react';
@@ -108,13 +110,9 @@ export const UserPickerModal: React.FC<UserPickerModalProps> = ({
                   />
                 </div>
 
-                {loading ? (
-                  <div className="flex items-center justify-center py-10">
-                    <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-                  </div>
-                ) : (
+                <SkeletonLoader loading={loading} preset="modal">
                   <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-1">
-                    {filtered.length === 0 && (
+                    {filtered.length === 0 && !loading && (
                       <p className="text-sm text-slate-400 text-center py-6">No users found.</p>
                     )}
                     {filtered.map(user => {
@@ -148,7 +146,7 @@ export const UserPickerModal: React.FC<UserPickerModalProps> = ({
                       );
                     })}
                   </div>
-                )}
+                </SkeletonLoader>
 
                 {selected.size > 0 && (
                   <p className={cn('text-xs font-semibold text-center', accent.count)}>

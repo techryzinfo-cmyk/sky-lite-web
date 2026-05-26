@@ -1,4 +1,6 @@
-﻿'use client';
+'use client';
+
+import { SkeletonLoader } from '../ui/SkeletonLoader';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -209,18 +211,12 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24">
-        <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-3" />
-        <p className="text-slate-500 font-medium">Loading financial data...</p>
-      </div>
-    );
-  }
+  // Loading state handled by Skeleton wrapper
 
   return (
-    <div className="space-y-6">
-      {/* Balance Summary */}
+    <SkeletonLoader loading={loading} preset="table">
+      <div className="space-y-6">
+        {/* Balance Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="md:col-span-1 bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col items-center justify-center">
           <div className="flex items-center space-x-2 mb-1">
@@ -472,5 +468,6 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
         </div>
       )}
     </div>
+    </SkeletonLoader>
   );
 };

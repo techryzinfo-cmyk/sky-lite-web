@@ -1,4 +1,6 @@
-﻿'use client';
+'use client';
+
+import { SkeletonLoader } from './SkeletonLoader';
 
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -236,11 +238,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                 {step === 'category' && (
                   <div className="space-y-4">
                     <p className="text-sm text-slate-500">Choose a project category to get started.</p>
-                    {loadingModal ? (
-                      <div className="flex items-center justify-center py-16">
-                        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-                      </div>
-                    ) : (
+                    <SkeletonLoader loading={loadingModal} preset="modal">
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         {categories.map((cat, i) => {
                           const colors = [
@@ -263,13 +261,13 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                             </button>
                           );
                         })}
-                        {categories.length === 0 && (
+                        {categories.length === 0 && !loadingModal && (
                           <div className="col-span-full text-center py-12 text-slate-400">
                             No categories available
                           </div>
                         )}
                       </div>
-                    )}
+                    </SkeletonLoader>
                   </div>
                 )}
 
