@@ -139,7 +139,7 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
     return acc;
   }, {});
 
-  const totalBOQAmount = items.reduce((s, i) => s + (i.totalCost || 0), 0);
+  const totalBOQAmount = items.reduce((s, i) => s + ((i as any).effectiveTotalCost !== undefined ? (i as any).effectiveTotalCost : (i.totalCost || 0)), 0);
   const pendingCount   = items.filter(i => i.status === 'Pending').length;
   const approvedCount  = items.filter(i => i.status === 'Approved').length;
   const existingGroups = [...new Set(items.map(i => i.groupName))];
@@ -234,7 +234,7 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
   // ──────────────────────────────────────────────────────────────────────────
   if (selectedGroupName && groupedItems[selectedGroupName]) {
     const detailItems    = groupedItems[selectedGroupName];
-    const detailTotal    = detailItems.reduce((s, i) => s + (i.totalCost || 0), 0);
+    const detailTotal    = detailItems.reduce((s, i) => s + ((i as any).effectiveTotalCost !== undefined ? (i as any).effectiveTotalCost : (i.totalCost || 0)), 0);
     const detailVersion  = Math.max(...detailItems.map(i => (i as any).version || 1));
     const groupStatus    = getGroupStatus(detailItems);
     const approvedItems  = detailItems.filter(i => i.status === 'Approved');
@@ -385,9 +385,8 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
                       ${Number(item.unitCost).toLocaleString('en-IN')}
                     </td>
 
-                    {/* Total Cost */}
                     <td className="px-4 py-3.5 text-right font-bold text-blue-700">
-                      ${Number(item.totalCost || 0).toLocaleString('en-IN')}
+                      ${Number((item as any).effectiveTotalCost !== undefined ? (item as any).effectiveTotalCost : (item.totalCost || 0)).toLocaleString('en-IN')}
                     </td>
 
                     {/* Status */}
@@ -530,7 +529,7 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
                   {[
                     { label: 'Quantity',  value: `${Number(item.quantity).toLocaleString('en-IN')} ${item.unit || ''}`, mono: false },
                     { label: 'Unit Cost', value: `$${Number(item.unitCost).toLocaleString('en-IN')}`, mono: false },
-                    { label: 'Total Cost',value: `$${Number(item.totalCost || 0).toLocaleString('en-IN')}`, highlight: true },
+                    { label: 'Total Cost',value: `$${Number((item as any).effectiveTotalCost !== undefined ? (item as any).effectiveTotalCost : (item.totalCost || 0)).toLocaleString('en-IN')}`, highlight: true },
                   ].map(({ label, value, highlight }) => (
                     <div key={label} className={cn('px-3 py-2.5 text-center', highlight ? 'bg-blue-50' : 'bg-white')}>
                       <p className={cn('text-[9px] uppercase tracking-wider mb-0.5', highlight ? 'text-blue-400' : 'text-slate-400')}>{label}</p>
