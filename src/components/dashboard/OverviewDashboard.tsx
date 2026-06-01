@@ -25,7 +25,7 @@ import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 
 export const OverviewDashboard = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [projects, setProjects] = useState<any[]>([]);
   const [milestones, setMilestones] = useState<any[]>([]);
   const [issues, setIssues] = useState<any[]>([]);
@@ -33,6 +33,14 @@ export const OverviewDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Wait for auth state to resolve before making any API calls.
+    // Firing before isAuthenticated is ready causes: 401 → no refresh token → error loop.
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
     const fetchData = async () => {
       try {
         const res = await api.get('/projects');
@@ -63,7 +71,7 @@ export const OverviewDashboard = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [isAuthenticated, authLoading]);
 
   const totalBudget = projects.reduce((acc, p) => acc + (p.budgetHistory?.[p.budgetHistory?.length - 1]?.amount || 0), 0);
   const completedMs = milestones.filter(m => m.status === 'Completed').length;

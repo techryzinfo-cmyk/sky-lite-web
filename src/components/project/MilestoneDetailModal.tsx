@@ -26,7 +26,15 @@ const getStatusStyle = (s: string) => {
 };
 
 interface Member { _id: string; name: string; }
-interface MaterialOption { _id: string; name: string; unit: string; balance: number; }
+interface MaterialOption {
+  _id: string;
+  name: string;
+  unit: string;
+  balance?: number;
+  currentStock?: number;
+  totalReceived?: number;
+  totalConsumed?: number;
+}
 interface MaterialRow { materialId: string; quantity: string; }
 
 interface SubmitForm {
@@ -42,6 +50,13 @@ const emptySubmitForm = (): SubmitForm => ({
   open: false, note: '', photoFile: null, photoPreview: null,
   uploadingPhoto: false, materials: [],
 });
+
+const getAvailableStock = (mat: any): number => {
+  if (!mat) return 0;
+  return mat.balance !== undefined
+    ? mat.balance
+    : (mat.currentStock !== undefined ? mat.currentStock : ((mat.totalReceived || 0) - (mat.totalConsumed || 0)));
+};
 
 interface Props {
   isOpen: boolean;
@@ -149,14 +164,14 @@ export const MilestoneDetailModal: React.FC<Props> = ({
       for (const r of validMaterials) {
         const mat = materials.find((m: any) => m._id === r.materialId);
         if (mat) {
-          const avail = mat.balance ?? 0;
+          const avail = getAvailableStock(mat);
           if (avail <= 0) {
-            toast.error(`"${mat.name}" is out of stock`);
+            toast.error(`Insufficient stock available for ${mat.name}.`);
             setSubmitting(null);
             return;
           }
           if (Number(r.quantity) > avail) {
-            toast.error(`Insufficient stock for "${mat.name}" — only ${avail} ${mat.unit} available`);
+            toast.error(`Insufficient stock available for ${mat.name}. Only ${avail} ${mat.unit} available.`);
             setSubmitting(null);
             return;
           }
@@ -522,50 +537,51 @@ export const MilestoneDetailModal: React.FC<Props> = ({
                                 )}
 
                                 {(form.materials ?? []).map((row, rowIdx) => {
-                                  const selMat = materials.find((m: any) => m._id === row.materialId);
-                                  const balance = selMat ? (selMat.balance ?? 0) : undefined;
+                                  const selMat = materials.find((m) => m._id === row.materialId);
+                                  const balance = selMat ? getAvailableStock(selMat) : undefined;
                                   const outOfStock = balance !== undefined && balance <= 0;
                                   const exceeded = !outOfStock && balance !== undefined && Number(row.quantity) > balance;
                                   const inputBad = outOfStock || exceeded;
                                   return (
-                                  <div key={rowIdx} className="flex items-start gap-2">
-                                    <select
-                                      value={row.materialId}
-                                      onChange={e => updateMaterialRow(i, rowIdx, 'materialId', e.target.value)}
-                                      className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                                    >
-                                      <option value="">— Select material —</option>
-                                      {materials.map((m: any) => (
-                                        <option key={m._id} value={m._id}>
-                                          {m.name} ({m.unit}) — {Math.max(0, m.balance ?? 0)} available
-                                        </option>
-                                      ))}
-                                    </select>
-                                    <div className="flex flex-col items-end gap-0.5">
-                                      <input
-                                        type="number"
-                                        min={0}
-                                        max={balance !== undefined ? Math.max(0, balance) : undefined}
-                                        value={row.quantity}
-                                        disabled={outOfStock}
-                                        onChange={e => updateMaterialRow(i, rowIdx, 'quantity', e.target.value)}
-                                        placeholder={outOfStock ? '—' : 'Qty'}
-                                        className={`w-24 bg-white border rounded-xl px-3 py-2 text-sm text-right text-gray-900 focus:outline-none focus:ring-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                                          inputBad
-                                            ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500'
-                                            : 'border-gray-200 focus:ring-blue-500/20 focus:border-blue-500'
-                                        }`}
-                                      />
-                                      {outOfStock && <span className="text-[10px] text-red-500 font-medium">Out of stock</span>}
-                                      {exceeded && <span className="text-[10px] text-red-500 font-medium">Max {balance}</span>}
+                                    <div key={rowIdx} className="flex items-start gap-2">
+                                      <select
+                                        value={row.materialId}
+                                        onChange={e => updateMaterialRow(i, rowIdx, 'materialId', e.target.value)}
+                                        className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                      >
+                                        <option value="">— Select material —</option>
+                                        {materials.map((m) => (
+                                          <option key={m._id} value={m._id}>
+                                            {m.name} ({m.unit}) — {Math.max(0, getAvailableStock(m))} available
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <div className="flex flex-col items-end gap-0.5">
+                                        <input
+                                          type="number"
+                                          min={0}
+                                          max={balance !== undefined ? Math.max(0, balance) : undefined}
+                                          value={row.quantity}
+                                          disabled={outOfStock}
+                                          onChange={e => updateMaterialRow(i, rowIdx, 'quantity', e.target.value)}
+                                          placeholder={outOfStock ? '—' : 'Qty'}
+                                          className={`w-24 bg-white border rounded-xl px-3 py-2 text-sm text-right text-gray-900 focus:outline-none focus:ring-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                                            inputBad
+                                              ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500'
+                                              : 'border-gray-200 focus:ring-blue-500/20 focus:border-blue-500'
+                                          }`}
+                                        />
+                                        {outOfStock && <span className="text-[10px] text-red-500 font-medium">Out of stock</span>}
+                                        {exceeded && <span className="text-[10px] text-red-500 font-medium">Max {balance}</span>}
+                                      </div>
+                                      <button type="button" onClick={() => removeMaterialRow(i, rowIdx)} className="p-2 mt-0.5 text-slate-300 hover:text-red-500 transition-colors">
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
                                     </div>
-                                    <button type="button" onClick={() => removeMaterialRow(i, rowIdx)} className="p-2 mt-0.5 text-slate-300 hover:text-red-500 transition-colors">
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </div>
                                   );
                                 })}
                               </div>
+
 
                               {/* Action buttons */}
                               <div className="flex gap-2 pt-1">

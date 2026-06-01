@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -31,7 +31,9 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
     totalAmount: 0,
     advancePaid: 0,
     deliveryDate: '',
-    terms: ''
+    terms: '',
+    billNumber: '',
+    commonNote: ''
   });
 
   const toast = useToast();
@@ -70,18 +72,21 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
         poNumber: formData.poNumber,
         advancePayment: formData.advancePaid,
         items: formData.items.map(({ materialId, quantity, unitPrice }) => ({ materialId, quantity, unitPrice })),
+        billNumber: formData.billNumber,
+        commonNote: formData.commonNote
       });
-      toast.success('Purchase Order created successfully!');
+      toast.success('Material purchase logged successfully!');
       onSuccess();
       onClose();
       setFormData({
         vendorName: '', vendorEmail: '', vendorPhone: '',
         poNumber: `PO-${Math.floor(100000 + Math.random() * 900000)}`,
         items: [{ materialId: '', quantity: 0, unit: '', unitPrice: 0 }],
-        totalAmount: 0, advancePaid: 0, deliveryDate: '', terms: ''
+        totalAmount: 0, advancePaid: 0, deliveryDate: '', terms: '',
+        billNumber: '', commonNote: ''
       });
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to create PO');
+      toast.error(error.response?.data?.message || 'Failed to create material purchase');
     } finally {
       setIsLoading(false);
     }
@@ -112,9 +117,9 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
                     <div className="p-3 rounded-2xl bg-gray-50 border border-gray-200">
                       <ShoppingCart className="w-6 h-6 text-blue-600" />
                     </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-gray-900">Create Purchase Order</h2>
-                      <p className="text-xs text-slate-500 mt-0.5">Formal procurement request to vendor.</p>
+                     <div>
+                      <h2 className="text-xl font-bold text-gray-900">Create Material Purchase</h2>
+                      <p className="text-xs text-slate-500 mt-0.5">Formal procurement request for project supplies.</p>
                     </div>
                   </div>
                   <button onClick={onClose} className="p-2 text-slate-400 hover:text-gray-900 bg-gray-50 rounded-xl transition-colors">
@@ -123,7 +128,7 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-slate-600 ml-1">Vendor Name</label>
                       <input
@@ -133,6 +138,16 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
                         onChange={(e) => setFormData({ ...formData, vendorName: e.target.value })}
                         className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"
                         placeholder="e.g. UltraTech Cement"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-600 ml-1">Bill / Invoice Number</label>
+                      <input
+                        type="text"
+                        value={formData.billNumber}
+                        onChange={(e) => setFormData({ ...formData, billNumber: e.target.value })}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"
+                        placeholder="e.g. BILL-987"
                       />
                     </div>
                     <div className="space-y-2">
@@ -259,6 +274,17 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
                     </div>
                   </div>
 
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-600 ml-1">Common Note / Description</label>
+                    <textarea
+                      rows={2}
+                      value={formData.commonNote}
+                      onChange={(e) => setFormData({ ...formData, commonNote: e.target.value })}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm resize-none"
+                      placeholder="e.g. Terms, descriptions, or notes..."
+                    />
+                  </div>
+
                   <div className="pt-4 flex space-x-4">
                     <button
                       type="button"
@@ -275,10 +301,10 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
                       {isLoading ? (
                         <>
                           <Loader2 className="w-5 h-5 animate-spin" />
-                          <span>Generating PO...</span>
+                          <span>Generating Purchase...</span>
                         </>
                       ) : (
-                        <span>Generate PO</span>
+                        <span>Generate Purchase</span>
                       )}
                     </button>
                   </div>

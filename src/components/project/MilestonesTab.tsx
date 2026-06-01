@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calendar, Plus, Loader2, Target, Flag, X,
   CheckCircle2, Circle, ChevronDown, ChevronUp,
-  Trash2, LayoutGrid, AlignLeft, MoreVertical, Pencil,
+  Trash2, LayoutGrid, List, AlignLeft, MoreVertical, Pencil,
   User, Clock, MessageSquare, ChevronRight, Camera, Image as ImageIcon, FileText,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -64,7 +64,7 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
   const [isSaving, setIsSaving]           = useState(false);
   const [expandedId, setExpandedId]       = useState<string | null>(null);
   const [togglingTask, setTogglingTask]   = useState<string | null>(null);
-  const [view, setView]                   = useState<'cards' | 'gantt'>('cards');
+  const [view, setView]                   = useState<'cards' | 'list' | 'gantt'>('cards');
   const [milestoneMenuId, setMilestoneMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const [isXERModalOpen, setIsXERModalOpen] = useState(false);
@@ -152,6 +152,25 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
       toast.error('End date cannot be before the start date');
       return;
     }
+
+    // Validate against milestone duration
+    const milestoneDueDate = editingMilestone?.dueDate;
+    const milestoneStartDate = editingMilestone?.createdAt || new Date().toISOString();
+
+    if (milestoneDueDate) {
+      const mDueDateStr = new Date(milestoneDueDate).toISOString().slice(0, 10);
+      const mStartDateStr = new Date(milestoneStartDate).toISOString().slice(0, 10);
+
+      if (taskForm.startDate && taskForm.startDate < mStartDateStr) {
+        toast.error(`Task start date cannot be before milestone start date (${new Date(milestoneStartDate).toLocaleDateString()})`);
+        return;
+      }
+      if (taskForm.endDate && taskForm.endDate > mDueDateStr) {
+        toast.error(`Task end date cannot be after milestone due date (${new Date(milestoneDueDate).toLocaleDateString()})`);
+        return;
+      }
+    }
+
     setFormData(prev => ({
       ...prev,
       tasks: [...prev.tasks, {
@@ -259,6 +278,25 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
     }
     const ms = milestones.find(m => m._id === editingTask.milestoneId);
     if (!ms) return;
+
+    // Validate against milestone duration
+    const milestoneDueDate = ms.dueDate;
+    const milestoneStartDate = ms.createdAt;
+
+    if (milestoneDueDate) {
+      const mDueDateStr = new Date(milestoneDueDate).toISOString().slice(0, 10);
+      const mStartDateStr = new Date(milestoneStartDate).toISOString().slice(0, 10);
+
+      if (startDate && startDate < mStartDateStr) {
+        toast.error(`Task start date cannot be before milestone start date (${new Date(milestoneStartDate).toLocaleDateString()})`);
+        return;
+      }
+      if (endDate && endDate > mDueDateStr) {
+        toast.error(`Task end date cannot be after milestone due date (${new Date(milestoneDueDate).toLocaleDateString()})`);
+        return;
+      }
+    }
+
     setIsSavingEditTask(true);
     const updatedTasks = ms.tasks.map((t: any, i: number) => {
       if (i !== editingTask.taskIndex) return t;
@@ -358,6 +396,9 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
             <button onClick={() => setView('cards')} className={cn('p-1.5 rounded-lg transition-all', view === 'cards' ? 'bg-white shadow text-blue-600' : 'text-slate-400 hover:text-gray-700')}>
               <LayoutGrid className="w-4 h-4" />
             </button>
+            <button onClick={() => setView('list')} className={cn('p-1.5 rounded-lg transition-all', view === 'list' ? 'bg-white shadow text-blue-600' : 'text-slate-400 hover:text-gray-700')}>
+              <List className="w-4 h-4" />
+            </button>
             <button onClick={() => setView('gantt')} className={cn('p-1.5 rounded-lg transition-all', view === 'gantt' ? 'bg-white shadow text-blue-600' : 'text-slate-400 hover:text-gray-700')}>
               <AlignLeft className="w-4 h-4" />
             </button>
@@ -433,6 +474,264 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
           </GlassCard>
         );
       })()}
+
+      {/* ── List view ── */}
+      {view === 'list' && (
+        <div className="space-y-6">
+          {/* Mobile Stacked Cards (< md) */}
+          <div className="grid grid-cols-1 gap-4 md:hidden">
+            {milestones.map((milestone) => {
+              const completedTasks = milestone.tasks?.filter((t: any) => t.isCompleted).length || 0;
+              const totalTasks     = milestone.tasks?.length || 0;
+              const progress       = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : (milestone.status === 'Completed' ? 100 : 0);
+              const isExpanded     = expandedId === milestone._id;
+              return (
+                <GlassCard key={milestone._id} className="p-4 border-gray-200" gradient>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center space-x-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+                        <Flag className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-bold text-gray-900 leading-tight truncate">{milestone.name}</h4>
+                        <p className="text-[10px] text-slate-500 mt-0.5 whitespace-nowrap">
+                          Due: {milestone.dueDate ? new Date(milestone.dueDate).toLocaleDateString() : 'TBD'}
+                        </p>
+                      </div>
+                    </div>
+                    <select
+                      value={milestone.status || 'Pending'}
+                      onChange={e => handleStatusChange(milestone, e.target.value as MilestoneStatus)}
+                      className={cn('px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border cursor-pointer focus:outline-none appearance-none text-center shrink-0', getStatusStyle(milestone.status || 'Pending'))}
+                    >
+                      {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase">
+                      <span>{completedTasks}/{totalTasks} Tasks</span>
+                      <span>{progress}%</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-200">
+                      <div className={cn('h-full rounded-full', milestone.status === 'Completed' ? 'bg-emerald-500' : 'bg-blue-500')} style={{ width: `${progress}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                    <button
+                      onClick={() => setExpandedId(isExpanded ? null : milestone._id)}
+                      className="text-xs font-bold text-blue-600 flex items-center gap-1"
+                    >
+                      <span>{isExpanded ? 'Hide Checklist' : 'Show Checklist'}</span>
+                      {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
+
+                    <div className="flex items-center space-x-1.5">
+                      <button onClick={() => openEditModal(milestone)} className="p-1.5 rounded-lg text-slate-400 hover:text-gray-900 hover:bg-gray-100 transition-all border border-gray-200 bg-white">
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => handleDelete(milestone._id, milestone.name)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all border border-gray-200 bg-white">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => router.push(`/projects/${projectId}/milestones/${milestone._id}`)} className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 border border-blue-100 bg-blue-50/50">
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {isExpanded && totalTasks > 0 && (
+                    <div className="mt-3 pt-3 border-t border-dashed border-gray-200 space-y-2">
+                      {milestone.tasks.map((task: any, i: number) => {
+                        const key = `${milestone._id}-${i}`;
+                        const isToggling = togglingTask === key;
+                        const assignee   = memberName(task.assignedTo);
+                        return (
+                          <div key={i} className={cn('rounded-xl border p-2.5 text-xs', task.isCompleted ? 'bg-emerald-50/50 border-emerald-100' : 'bg-white border-gray-100')}>
+                            <div className="flex items-start gap-2">
+                              <button onClick={() => initiateToggle(milestone, i)} disabled={isToggling} className="mt-0.5 shrink-0">
+                                {isToggling ? <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin" /> : task.isCompleted ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <Circle className="w-3.5 h-3.5 text-gray-300" />}
+                              </button>
+                              <div className="flex-1 min-w-0">
+                                <p className={cn('font-semibold', task.isCompleted ? 'line-through text-slate-400' : 'text-gray-800')}>{task.title}</p>
+                                {assignee && <p className="text-[10px] text-slate-400 mt-0.5">Assignee: {assignee}</p>}
+                              </div>
+                              {!task.isCompleted && (
+                                <button onClick={() => openEditTask(milestone, i)} className="text-slate-300 hover:text-blue-500 shrink-0">
+                                  <Pencil className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </GlassCard>
+              );
+            })}
+          </div>
+
+          {/* Desktop Table View (hidden on mobile, visible md+) */}
+          <div className="hidden md:block overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+            <table className="w-full text-left border-collapse min-w-[800px]">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  <th className="w-8"></th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Milestone Name</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Due Date</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tasks</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Progress</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Status</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {milestones.map((milestone) => {
+                  const completedTasks = milestone.tasks?.filter((t: any) => t.isCompleted).length || 0;
+                  const totalTasks     = milestone.tasks?.length || 0;
+                  const progress       = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : (milestone.status === 'Completed' ? 100 : 0);
+                  const isExpanded     = expandedId === milestone._id;
+                  return (
+                    <React.Fragment key={milestone._id}>
+                      <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors group">
+                        <td className="pl-4">
+                          <button
+                            onClick={() => setExpandedId(isExpanded ? null : milestone._id)}
+                            className="p-1 rounded hover:bg-gray-100 text-slate-400 transition-transform"
+                          >
+                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </button>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+                              <Flag className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-gray-900 truncate">{milestone.name}</p>
+                              <p className="text-[10px] text-slate-500 truncate max-w-[240px] mt-0.5">{milestone.description}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-medium text-slate-600 whitespace-nowrap">
+                          {milestone.dueDate ? new Date(milestone.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'TBD'}
+                        </td>
+                        <td className="px-6 py-4 text-sm font-bold text-slate-700 whitespace-nowrap">
+                          {completedTasks}/{totalTasks}
+                        </td>
+                        <td className="px-6 py-4 w-40">
+                          <div className="flex items-center space-x-2">
+                            <div className="h-1.5 w-20 bg-gray-100 rounded-full overflow-hidden border border-gray-200">
+                              <div className={cn('h-full rounded-full', milestone.status === 'Completed' ? 'bg-emerald-500' : 'bg-blue-500')} style={{ width: `${progress}%` }} />
+                            </div>
+                            <span className="text-xs font-black text-slate-700">{progress}%</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <select
+                            value={milestone.status || 'Pending'}
+                            onChange={e => handleStatusChange(milestone, e.target.value as MilestoneStatus)}
+                            className={cn('px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border cursor-pointer focus:outline-none appearance-none text-center', getStatusStyle(milestone.status || 'Pending'))}
+                          >
+                            {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end space-x-1">
+                            <button
+                              onClick={() => openEditModal(milestone)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-gray-900 hover:bg-gray-100 transition-all"
+                              title="Edit Milestone"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(milestone._id, milestone.name)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                              title="Delete Milestone"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => router.push(`/projects/${projectId}/milestones/${milestone._id}`)}
+                              className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 border border-blue-100 transition-all"
+                              title="View details"
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+
+                      {/* Expanded Tasks Row */}
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan={7} className="bg-gray-50/50 p-6 border-b border-gray-100">
+                            <div className="space-y-3">
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 pl-2">Task Checklist</p>
+                              {totalTasks === 0 ? (
+                                <p className="text-xs text-slate-400 italic pl-2">No tasks added to this milestone.</p>
+                              ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  {milestone.tasks.map((task: any, i: number) => {
+                                    const key = `${milestone._id}-${i}`;
+                                    const isToggling = togglingTask === key;
+                                    const assignee   = memberName(task.assignedTo);
+                                    return (
+                                      <div key={i} className={cn('rounded-xl border bg-white p-3 shadow-sm transition-all hover:border-blue-200', task.isCompleted ? 'bg-emerald-50/20 border-emerald-100' : 'border-gray-100')}>
+                                        <div className="flex items-start gap-3">
+                                          <button onClick={() => initiateToggle(milestone, i)} disabled={isToggling} className="mt-0.5 shrink-0">
+                                            {isToggling ? <Loader2 className="w-4 h-4 text-blue-500 animate-spin" /> : task.isCompleted ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Circle className="w-4 h-4 text-gray-300 hover:text-blue-400" />}
+                                          </button>
+                                          <div className="flex-1 min-w-0">
+                                            <p className={cn('text-sm font-semibold', task.isCompleted ? 'line-through text-slate-400' : 'text-gray-800')}>{task.title}</p>
+                                            {task.description && <p className="text-xs text-slate-400 truncate mt-0.5">{task.description}</p>}
+                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-[10px] text-slate-400">
+                                              {(task.startDate || task.endDate) && (
+                                                <span className="flex items-center gap-1">
+                                                  <Clock className="w-3 h-3" />
+                                                  {task.startDate ? new Date(task.startDate).toLocaleDateString() : '—'}
+                                                  {task.endDate ? ` → ${new Date(task.endDate).toLocaleDateString()}` : ''}
+                                                </span>
+                                              )}
+                                              {assignee && (
+                                                <span className="flex items-center gap-1">
+                                                  <User className="w-3 h-3" />{assignee}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                          {!task.isCompleted && (
+                                            <button onClick={() => openEditTask(milestone, i)} className="p-1.5 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all shrink-0">
+                                              <Pencil className="w-3.5 h-3.5" />
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+                {milestones.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-20 text-center text-slate-400 italic bg-white">
+                      No milestones set for this project.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* ── Card view ── */}
       {view === 'cards' && (
