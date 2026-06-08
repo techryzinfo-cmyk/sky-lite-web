@@ -1,5 +1,7 @@
 'use client';
 
+import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
+
 import React, { useState, useEffect, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Shell } from '@/components/layout/Shell';
@@ -17,6 +19,8 @@ import { SendForSurveyModal } from '@/components/project/SendForSurveyModal';
 import { DPRTab } from '@/components/project/DPRTab';
 import { MilestonesTab } from '@/components/project/MilestonesTab';
 import { TransactionsTab } from '@/components/project/TransactionsTab';
+import { HandoverTab } from '@/components/project/HandoverTab';
+import { AuditTab } from '@/components/project/AuditTab';
 import { TimelineTab } from '@/components/project/TimelineTab';
 import { ChatTab } from '@/components/project/ChatTab';
 import { useProjectSocket } from '@/hooks/useProjectSocket';
@@ -24,7 +28,8 @@ import {
   Info, FileText, DollarSign, Package, Files, Map,
   AlertCircle, ShieldAlert, Calendar,
   TrendingUp, GanttChart, ClipboardList, CreditCard,
-  Loader2, ChevronLeft, Pencil, MessageSquare,
+  Loader2, ChevronLeft, Pencil, MessageSquare, Users,
+  ClipboardCheck, History
 } from 'lucide-react';
 import api from '@/lib/api';
 import { Project } from '@/types';
@@ -33,23 +38,38 @@ import { useSocket } from '@/context/SocketContext';
 import { useToast } from '@/context/ToastContext';
 
 const tabs = [
-  { id: 'details',      name: 'Details',      icon: Info },
-  { id: 'boq',         name: 'BOQ',           icon: FileText },
-  { id: 'budget',      name: 'Budget',         icon: DollarSign },
-  { id: 'materials',   name: 'Materials',      icon: Package },
-  { id: 'documents',   name: 'Documents',      icon: Files },
-  { id: 'plans',       name: 'Plans',          icon: Map },
-  { id: 'issues',      name: 'Issues & Snags', icon: AlertCircle },
-  { id: 'risks',       name: 'Risks',          icon: ShieldAlert },
-  { id: 'milestones',  name: 'Milestones',     icon: Calendar },
-  { id: 'progress',    name: 'Progress',       icon: TrendingUp },
-  { id: 'timeline',    name: 'Timeline',       icon: GanttChart },
-  { id: 'survey',      name: 'Site Survey',    icon: ClipboardList },
-  { id: 'transactions', name: 'Transactions',   icon: CreditCard },
-  { id: 'chat',        name: 'Chat',           icon: MessageSquare },
+  { id: 'details',      name: 'Details',        icon: Info },
+  { id: 'boq',         name: 'BOQ',             icon: FileText },
+  { id: 'budget',      name: 'Budget',           icon: DollarSign },
+  { id: 'materials',   name: 'Materials',        icon: Package },
+  { id: 'documents',   name: 'Documents',        icon: Files },
+  { id: 'plans',       name: 'Plans',            icon: Map },
+  { id: 'issues',      name: 'Issues & Snags',   icon: AlertCircle },
+  { id: 'risks',       name: 'Risks',            icon: ShieldAlert },
+  { id: 'milestones',  name: 'Milestones',       icon: Calendar },
+  { id: 'progress',    name: 'Progress',         icon: TrendingUp },
+  { id: 'timeline',    name: 'Timeline',         icon: GanttChart },
+  { id: 'survey',      name: 'Site Survey',      icon: ClipboardList },
+  { id: 'transactions', name: 'Transactions',    icon: CreditCard },
+  { id: 'chat',        name: 'Chat',             icon: MessageSquare },
+  { id: 'handover',     name: 'Handover',         icon: ClipboardCheck },
+  { id: 'audit',        name: 'Audit Trail',      icon: History },
 ];
 
-const IMPLEMENTED = new Set(['details','boq','budget','materials','plans','documents','issues','risks','milestones','survey','progress','transactions','timeline','chat']);
+const IMPLEMENTED = new Set(['details','boq','budget','materials','plans','documents','issues','risks','milestones','survey','progress','transactions','timeline','chat','handover','audit']);
+
+// Status → badge color mapping (read-only, never a dropdown)
+const statusBadgeColor: Record<string, string> = {
+  'Initialized':        'bg-blue-100 text-blue-700 border-blue-200',
+  'Planning':           'bg-purple-100 text-purple-700 border-purple-200',
+  'Site Survey':        'bg-cyan-100 text-cyan-700 border-cyan-200',
+  'In Progress':        'bg-emerald-100 text-emerald-700 border-emerald-200',
+  'Under Snagging':     'bg-amber-100 text-amber-700 border-amber-200',
+  'Snagging Completed': 'bg-orange-100 text-orange-700 border-orange-200',
+  'Completed':          'bg-green-100 text-green-700 border-green-200',
+  'On Hold':            'bg-gray-100 text-slate-600 border-gray-200',
+  'Cancelled':          'bg-red-100 text-red-700 border-red-200',
+};
 
 function ProjectWorkspaceInner() {
   const { id } = useParams();
@@ -84,332 +104,353 @@ function ProjectWorkspaceInner() {
     return () => leaveProject(id as string);
   }, [id]);
 
-  if (loading) {
-    return (
-      <Shell>
-        <div className="flex flex-col items-center justify-center py-20">
-          <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-          <p className="text-slate-500 font-medium">Loading workspace...</p>
-        </div>
-      </Shell>
-    );
-  }
-
-  if (!project) {
-    return (
-      <Shell>
-        <div className="text-center py-20">
-          <h2 className="text-2xl font-bold text-gray-900">Project not found</h2>
-          <button onClick={() => router.push('/projects')} className="text-blue-600 mt-4 font-medium hover:text-blue-700">Back to Projects</button>
-        </div>
-      </Shell>
-    );
-  }
-
   return (
     <Shell>
-      <div className="space-y-0">
-        {/* Compact header card */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm px-5 py-3">
-          {/* Top row: back + name + status + actions */}
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <button
-                onClick={() => router.push('/projects')}
-                className="p-1.5 bg-gray-50 border border-gray-200 rounded-lg text-slate-400 hover:text-gray-900 hover:bg-gray-100 transition-colors shrink-0"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
+      <SkeletonLoader loading={loading} preset="detail">
+        {!project && !loading ? (
+          <div className="text-center py-20">
+            <h2 className="text-2xl font-bold text-gray-900">Project not found</h2>
+            <button onClick={() => router.push('/projects')} className="text-blue-600 mt-4 font-medium hover:text-blue-700">Back to Projects</button>
+          </div>
+        ) : project ? (
+          <>
+          <div className="space-y-0">
+            {/* ── Compact header card ── */}
+            <div className="bg-white border border-gray-200 rounded-2xl shadow-sm px-5 py-3">
 
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-base font-bold text-gray-900 truncate leading-tight">{project.name}</h1>
-                  <select
-                    value={project.status}
-                    onChange={async (e) => {
-                      try {
-                        await api.patch(`/projects/${id}`, { status: e.target.value });
-                        toast.success('Status updated');
-                        fetchProject();
-                      } catch {
-                        toast.error('Failed to update status');
-                      }
-                    }}
-                    className="bg-blue-50 border border-blue-200 rounded-md px-2 py-0.5 text-[9px] font-black text-blue-700 uppercase tracking-widest focus:outline-none cursor-pointer shrink-0 leading-tight"
+              {/* Top row: back + name + STATUS BADGE (read-only) + actions */}
+              {/*
+               * FIX (Issue 3 — responsiveness):
+               * Use flex-wrap so status badge + edit button drop to next line on XS.
+               * Status is now a READ-ONLY badge, not a <select>, eliminating overlap.
+               * FIX (Issue 3 — auto status):
+               * Removed the <select> status editor. Status is derived from backend data only.
+               * To change status, use the Edit modal (intentional, controlled flow).
+               */}
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                {/* Left: back button + name + status badge */}
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <button
+                    onClick={() => router.push('/projects')}
+                    className="p-1.5 bg-gray-50 border border-gray-200 rounded-lg text-slate-400 hover:text-gray-900 hover:bg-gray-100 transition-colors shrink-0"
                   >
-                    {['Initialized','Planning','Site Survey','In Progress','Under Snagging','Snagging Completed','Completed','On Hold','Cancelled'].map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-[10px] font-mono text-slate-400">{(id as string).slice(-6).toUpperCase()}</span>
-                  <span className="text-slate-300">·</span>
-                  <span className="text-[10px] text-slate-400">{project.members?.length || 0} members</span>
-                  {project.clientName && (
-                    <>
-                      <span className="text-slate-300">·</span>
-                      <span className="text-[10px] text-slate-400 truncate max-w-[120px]">{project.clientName}</span>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
 
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => setIsEditModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-slate-600 hover:bg-gray-100 hover:text-gray-900 transition-all"
-              >
-                <Pencil className="w-3 h-3" />
-                <span>Edit</span>
-              </button>
-              <button
-                onClick={() => {
-                  const data = {
-                    project: { name: project.name, status: project.status, description: project.description, clientName: project.clientName, startDate: project.startDate, endDate: project.endDate },
-                    budget: project.budgetHistory?.at(-1)?.amount,
-                    members: project.members?.length,
-                    exportedAt: new Date().toISOString(),
-                  };
-                  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                  const url = URL.createObjectURL(blob);
-                  const a = window.document.createElement('a');
-                  a.href = url;
-                  a.download = `${project.name.replace(/\s+/g, '_')}_report.json`;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                  toast.success('Report exported');
-                }}
-                className="px-3 py-1.5 bg-blue-600 rounded-lg text-xs font-bold text-white hover:bg-blue-500 shadow-sm shadow-blue-600/20 transition-all"
-              >
-                Export
-              </button>
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="border-t border-gray-100 mt-3 -mx-5" />
-
-          {/* Tab bar — underline style */}
-          <div className="flex overflow-x-auto scrollbar-hide -mb-3 mt-0">
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold whitespace-nowrap transition-all relative shrink-0 border-b-2",
-                    isActive
-                      ? "text-blue-600 border-blue-600"
-                      : "text-slate-500 border-transparent hover:text-gray-700 hover:border-gray-300"
-                  )}
-                >
-                  <tab.icon className={cn("w-3.5 h-3.5", isActive ? "text-blue-600" : "text-slate-400")} />
-                  {tab.name}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Tab Content */}
-        <div className="mt-4">
-          {activeTab === 'details' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Site Survey banner */}
-              {project.needSiteSurvey && project.status !== 'Site Survey' && !project.siteSurveyor && (
-                <div className="lg:col-span-3 flex items-center justify-between gap-4 px-5 py-4 bg-amber-50 border border-amber-200 rounded-2xl">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
-                      <Map className="w-4 h-4 text-amber-600" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h1 className="text-base font-bold text-gray-900 truncate leading-tight max-w-[200px] sm:max-w-none">
+                        {project.name}
+                      </h1>
+                      {/* READ-ONLY status badge — derived from backend, never manually editable inline */}
+                      <span className={cn(
+                        'px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest border shrink-0 leading-tight',
+                        statusBadgeColor[project.status] || 'bg-blue-100 text-blue-700 border-blue-200'
+                      )}>
+                        {project.status}
+                      </span>
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-amber-900">Site survey required</p>
-                      <p className="text-xs text-amber-600">This project needs a site survey before work begins. Assign a surveyor to proceed.</p>
+                    <div className="flex items-center flex-wrap gap-x-1.5 gap-y-0.5 mt-0.5">
+                      <span className="text-[10px] font-mono text-slate-400">{(id as string).slice(-6).toUpperCase()}</span>
+                      <span className="text-slate-300">·</span>
+                      <span className="text-[10px] text-slate-400">{project.members?.length || 0} members</span>
+                      {project.clientName && (
+                        <>
+                          <span className="text-slate-300">·</span>
+                          <span className="text-[10px] text-slate-400 truncate max-w-[120px]">{project.clientName}</span>
+                        </>
+                      )}
                     </div>
                   </div>
+                </div>
+
+                {/* Right: action buttons — shrink-0 prevents overlap */}
+                <div className="flex items-center gap-2 shrink-0">
                   <button
-                    onClick={() => setIsSurveyAssignOpen(true)}
-                    className="shrink-0 flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm"
+                    onClick={() => setIsEditModalOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-slate-600 hover:bg-gray-100 hover:text-gray-900 transition-all"
                   >
-                    <Map className="w-3.5 h-3.5" />
-                    Send for Site Survey
+                    <Pencil className="w-3 h-3" />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const data = {
+                        project: { name: project.name, status: project.status, description: project.description, clientName: project.clientName, startDate: project.startDate, endDate: project.endDate },
+                        budget: project.budgetHistory?.at(-1)?.amount,
+                        members: project.members?.length,
+                        exportedAt: new Date().toISOString(),
+                      };
+                      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = window.document.createElement('a');
+                      a.href = url;
+                      a.download = `${project.name.replace(/\s+/g, '_')}_report.json`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                      toast.success('Report exported');
+                    }}
+                    className="px-3 py-1.5 bg-blue-600 rounded-lg text-xs font-bold text-white hover:bg-blue-500 shadow-sm shadow-blue-600/20 transition-all"
+                  >
+                    Export
                   </button>
                 </div>
-              )}
-
-              {/* Surveyor assigned badge */}
-              {project.siteSurveyor && (
-                <div className="lg:col-span-3 flex items-center gap-3 px-5 py-3 bg-blue-50 border border-blue-100 rounded-2xl">
-                  <Map className="w-4 h-4 text-blue-600 shrink-0" />
-                  <p className="text-sm text-blue-800">
-                    Site survey assigned to{' '}
-                    <span className="font-bold">
-                      {(project.siteSurveyor as any)?.name || 'Surveyor'}
-                    </span>
-                  </p>
-                </div>
-              )}
-
-              <div className="lg:col-span-2 space-y-5">
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
-                  <h3 className="text-lg font-bold text-gray-900 mb-5">About Project</h3>
-                  <p className="text-slate-500 leading-relaxed">
-                    {project.description || 'No description provided.'}
-                  </p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-                    <div className="space-y-3">
-                      {[
-                        { label: 'Client', value: project.clientName || 'N/A' },
-                        { label: 'Timeline', value: `${project.startDate ? new Date(project.startDate).toLocaleDateString() : 'TBD'} — ${project.endDate ? new Date(project.endDate).toLocaleDateString() : 'TBD'}` },
-                      ].map(({ label, value }) => (
-                        <div key={label} className="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-100">
-                          <span className="text-sm text-slate-500">{label}</span>
-                          <span className="text-sm font-semibold text-gray-900">{value}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-100">
-                        <span className="text-sm text-slate-500">Current Budget</span>
-                        <span className="text-sm font-bold text-emerald-600">
-                          ${(project.budgetHistory?.[project.budgetHistory.length - 1]?.amount || 0).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-100">
-                        <span className="text-sm text-slate-500">Priority</span>
-                        <span className={cn(
-                          "text-xs font-bold px-2.5 py-1 rounded-lg",
-                          project.priority === 'Urgent' ? 'bg-red-100 text-red-700' :
-                          project.priority === 'High' ? 'bg-amber-100 text-amber-700' :
-                          'bg-blue-100 text-blue-700'
-                        )}>
-                          {project.priority}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
 
-              <div className="space-y-5">
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-                  <div className="flex items-center justify-between mb-5">
-                    <h3 className="text-base font-bold text-gray-900">Project Members</h3>
+              {/* Divider */}
+              <div className="border-t border-gray-100 mt-3 -mx-5" />
+
+              {/* Tab bar — scrollable, underline style */}
+              <div className="flex overflow-x-auto scrollbar-hide -mb-3 mt-0">
+                {tabs.map((tab) => {
+                  const isActive = activeTab === tab.id;
+                  return (
                     <button
-                      onClick={() => setIsTeamModalOpen(true)}
-                      className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors"
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold whitespace-nowrap transition-all relative shrink-0 border-b-2",
+                        isActive
+                          ? "text-blue-600 border-blue-600"
+                          : "text-slate-500 border-transparent hover:text-gray-700 hover:border-gray-300"
+                      )}
                     >
-                      + Add
+                      <tab.icon className={cn("w-3.5 h-3.5", isActive ? "text-blue-600" : "text-slate-400")} />
+                      {tab.name}
                     </button>
-                  </div>
-                  <div className="space-y-3">
-                    {project.members?.map((member: any) => {
-                      const u = member.user || member;
-                      const name = u.name || member.name || 'Member';
-                      const role = typeof member.role === 'string' ? member.role : member.role?.name || 'Member';
-                      return (
-                        <div key={member._id || u._id || member} className="flex items-center space-x-3">
-                          <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-700 shrink-0">
-                            {name.charAt(0).toUpperCase()}
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Tab Content */}
+            <div className="mt-4">
+              {activeTab === 'details' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Site Survey banner */}
+                  {project.needSiteSurvey && project.status !== 'Site Survey' && !project.siteSurveyor && (
+                    <div className="lg:col-span-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-5 py-4 bg-amber-50 border border-amber-200 rounded-2xl">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
+                          <Map className="w-4 h-4 text-amber-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-amber-900">Site survey required</p>
+                          <p className="text-xs text-amber-600">This project needs a site survey before work begins. Assign a surveyor to proceed.</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setIsSurveyAssignOpen(true)}
+                        className="shrink-0 flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm"
+                      >
+                        <Map className="w-3.5 h-3.5" />
+                        Send for Site Survey
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Surveyor assigned badge */}
+                  {project.siteSurveyor && (
+                    <div className="lg:col-span-3 flex items-center gap-3 px-5 py-3 bg-blue-50 border border-blue-100 rounded-2xl">
+                      <Map className="w-4 h-4 text-blue-600 shrink-0" />
+                      <p className="text-sm text-blue-800">
+                        Site survey assigned to{' '}
+                        <span className="font-bold">
+                          {(project.siteSurveyor as any)?.name || 'Surveyor'}
+                        </span>
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="lg:col-span-2 space-y-5">
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8">
+                      <h3 className="text-lg font-bold text-gray-900 mb-5">About Project</h3>
+                      <p className="text-slate-500 leading-relaxed">
+                        {project.description || 'No description provided.'}
+                      </p>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+                        <div className="space-y-3">
+                          {[
+                            { label: 'Client', value: project.clientName || 'N/A' },
+                            { label: 'Timeline', value: `${project.startDate ? new Date(project.startDate).toLocaleDateString() : 'TBD'} — ${project.endDate ? new Date(project.endDate).toLocaleDateString() : 'TBD'}` },
+                          ].map(({ label, value }) => (
+                            <div key={label} className="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-100">
+                              <span className="text-sm text-slate-500">{label}</span>
+                              <span className="text-sm font-semibold text-gray-900">{value}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-100">
+                            <span className="text-sm text-slate-500">Current Budget</span>
+                            <span className="text-sm font-bold text-emerald-600">
+                              ${(project.budgetHistory?.[project.budgetHistory.length - 1]?.amount || 0).toLocaleString()}
+                            </span>
                           </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900">{name}</p>
-                            <p className="text-[10px] text-slate-500 uppercase tracking-wider">{role}</p>
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-100">
+                            <span className="text-sm text-slate-500">Priority</span>
+                            <span className={cn(
+                              "text-xs font-bold px-2.5 py-1 rounded-lg",
+                              project.priority === 'Urgent' ? 'bg-red-100 text-red-700' :
+                              project.priority === 'High' ? 'bg-amber-100 text-amber-700' :
+                              'bg-blue-100 text-blue-700'
+                            )}>
+                              {project.priority}
+                            </span>
+                          </div>
+                          {/* Read-only status in details card */}
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-100">
+                            <span className="text-sm text-slate-500">Status</span>
+                            <span className={cn(
+                              'text-xs font-bold px-2.5 py-1 rounded-lg border',
+                              statusBadgeColor[project.status] || 'bg-blue-100 text-blue-700 border-blue-200'
+                            )}>
+                              {project.status}
+                            </span>
                           </div>
                         </div>
-                      );
-                    })}
-                    {(!project.members || project.members.length === 0) && (
-                      <p className="text-sm text-slate-400 text-center py-4">No members assigned.</p>
-                    )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-5">
+                    {/*
+                     * FIX (Issue 4 — member sync):
+                     * This reads project.members which is re-fetched via fetchProject()
+                     * every time TeamManagementModal calls onSuccess={fetchProject}.
+                     * Members are normalized to handle both {user, role} and flat shapes.
+                     */}
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                      <div className="flex items-center justify-between mb-5">
+                        <h3 className="text-base font-bold text-gray-900">Project Members</h3>
+                        <button
+                          onClick={() => setIsTeamModalOpen(true)}
+                          className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors"
+                        >
+                          <Users className="w-3.5 h-3.5" />
+                          + Manage
+                        </button>
+                      </div>
+                      <div className="space-y-3">
+                        {project.members?.map((member: any) => {
+                          // Normalize: member can be { user: {...}, role: '...' } or flat { name, role }
+                          const u = member.user || member;
+                          const name = u.name || member.name || 'Member';
+                          const role = typeof member.role === 'string'
+                            ? member.role
+                            : (member.role?.name || 'Member');
+                          const initials = name.charAt(0).toUpperCase();
+                          const key = member._id || u._id || name;
+                          return (
+                            <div key={key} className="flex items-center space-x-3">
+                              <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-700 shrink-0">
+                                {initials}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 truncate">{name}</p>
+                                <p className="text-[10px] text-slate-500 uppercase tracking-wider">{role}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {(!project.members || project.members.length === 0) && (
+                          <p className="text-sm text-slate-400 text-center py-4">No members assigned.</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                      <h3 className="text-base font-bold text-gray-900 mb-4">Quick Actions</h3>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { label: 'Add Snag', color: 'bg-blue-50 border-blue-100 text-blue-700 hover:bg-blue-100', tab: 'issues' },
+                          { label: 'Upload Plan', color: 'bg-purple-50 border-purple-100 text-purple-700 hover:bg-purple-100', tab: 'plans' },
+                          { label: 'Log Progress', color: 'bg-emerald-50 border-emerald-100 text-emerald-700 hover:bg-emerald-100', tab: 'progress' },
+                          { label: 'Req. Material', color: 'bg-amber-50 border-amber-100 text-amber-700 hover:bg-amber-100', tab: 'materials' },
+                        ].map(({ label, color, tab }) => (
+                          <button
+                            key={label}
+                            onClick={() => setActiveTab(tab)}
+                            className={`p-3 rounded-xl border text-xs font-bold text-center transition-all ${color}`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
+              )}
 
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-                  <h3 className="text-base font-bold text-gray-900 mb-4">Quick Actions</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { label: 'Add Snag', color: 'bg-blue-50 border-blue-100 text-blue-700 hover:bg-blue-100', tab: 'issues' },
-                      { label: 'Upload Plan', color: 'bg-purple-50 border-purple-100 text-purple-700 hover:bg-purple-100', tab: 'plans' },
-                      { label: 'Log Progress', color: 'bg-emerald-50 border-emerald-100 text-emerald-700 hover:bg-emerald-100', tab: 'progress' },
-                      { label: 'Request Material', color: 'bg-amber-50 border-amber-100 text-amber-700 hover:bg-amber-100', tab: 'materials' },
-                    ].map(({ label, color, tab }) => (
-                      <button
-                        key={label}
-                        onClick={() => setActiveTab(tab)}
-                        className={`p-3 rounded-xl border text-xs font-bold text-center transition-all ${color}`}
-                      >
-                        {label}
-                      </button>
-                    ))}
+              {activeTab === 'boq' && <BOQTab projectId={id as string} />}
+              {activeTab === 'budget' && <BudgetTab project={project} onUpdate={fetchProject} />}
+              {activeTab === 'materials' && <MaterialsTab projectId={id as string} />}
+              {activeTab === 'documents' && <DocumentsTab projectId={id as string} />}
+              {activeTab === 'plans' && <PlansTab projectId={id as string} />}
+              {activeTab === 'issues' && <IssuesTab projectId={id as string} />}
+              {activeTab === 'risks' && <RisksTab projectId={id as string} />}
+              {activeTab === 'survey' && (
+                <SurveyTab
+                  projectId={id as string}
+                  siteSurveyorId={
+                    typeof project.siteSurveyor === 'string'
+                      ? project.siteSurveyor
+                      : (project.siteSurveyor as any)?._id
+                  }
+                  projectStatus={project.status}
+                />
+              )}
+              {activeTab === 'progress' && <DPRTab projectId={id as string} />}
+              {activeTab === 'milestones' && <MilestonesTab projectId={id as string} />}
+              {activeTab === 'timeline' && <TimelineTab projectId={id as string} />}
+              {activeTab === 'transactions' && <TransactionsTab projectId={id as string} />}
+              {activeTab === 'chat' && <ChatTab projectId={id as string} />}
+              {activeTab === 'handover' && <HandoverTab projectId={id as string} project={project} onUpdate={fetchProject} />}
+              {activeTab === 'audit' && <AuditTab project={project} />}
+
+              {!IMPLEMENTED.has(activeTab) && (
+                <div className="flex flex-col items-center justify-center py-40 text-center">
+                  <div className="p-6 rounded-full bg-gray-100 mb-6">
+                    <GanttChart className="w-12 h-12 text-gray-300" />
                   </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">{tabs.find(t => t.id === activeTab)?.name} — Coming Soon</h3>
+                  <p className="text-slate-500 max-w-xs">This module is under development. Check back soon!</p>
                 </div>
-              </div>
+              )}
             </div>
-          )}
+          </div>
 
-          {activeTab === 'boq' && <BOQTab projectId={id as string} />}
-          {activeTab === 'budget' && <BudgetTab project={project} onUpdate={fetchProject} />}
-          {activeTab === 'materials' && <MaterialsTab projectId={id as string} />}
-          {activeTab === 'documents' && <DocumentsTab projectId={id as string} />}
-          {activeTab === 'plans' && <PlansTab projectId={id as string} />}
-          {activeTab === 'issues' && <IssuesTab projectId={id as string} />}
-          {activeTab === 'risks' && <RisksTab projectId={id as string} />}
-          {activeTab === 'survey' && (
-            <SurveyTab
-              projectId={id as string}
-              siteSurveyorId={
-                typeof project.siteSurveyor === 'string'
-                  ? project.siteSurveyor
-                  : (project.siteSurveyor as any)?._id
-              }
-              projectStatus={project.status}
-            />
-          )}
-          {activeTab === 'progress' && <DPRTab projectId={id as string} />}
-          {activeTab === 'milestones' && <MilestonesTab projectId={id as string} />}
-          {activeTab === 'timeline' && <TimelineTab projectId={id as string} />}
-          {activeTab === 'transactions' && <TransactionsTab projectId={id as string} />}
-          {activeTab === 'chat' && <ChatTab projectId={id as string} />}
+          <CreateProjectModal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            onSuccess={fetchProject}
+            initialData={project || undefined}
+            projectId={id as string}
+          />
 
-          {!IMPLEMENTED.has(activeTab) && (
-            <div className="flex flex-col items-center justify-center py-40 text-center">
-              <div className="p-6 rounded-full bg-gray-100 mb-6">
-                <GanttChart className="w-12 h-12 text-gray-300" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">{tabs.find(t => t.id === activeTab)?.name} — Coming Soon</h3>
-              <p className="text-slate-500 max-w-xs">This module is under development. Check back soon!</p>
-            </div>
-          )}
-        </div>
-      </div>
+          <SendForSurveyModal
+            isOpen={isSurveyAssignOpen}
+            onClose={() => setIsSurveyAssignOpen(false)}
+            onSuccess={fetchProject}
+            projectId={id as string}
+          />
 
-      <CreateProjectModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        onSuccess={fetchProject}
-        initialData={project}
-        projectId={id as string}
-      />
-
-      <SendForSurveyModal
-        isOpen={isSurveyAssignOpen}
-        onClose={() => setIsSurveyAssignOpen(false)}
-        onSuccess={fetchProject}
-        projectId={id as string}
-      />
-
-      <TeamManagementModal
-        isOpen={isTeamModalOpen}
-        onClose={() => setIsTeamModalOpen(false)}
-        onSuccess={fetchProject}
-        projectId={id as string}
-        currentMembers={project.members || []}
-      />
+          {/*
+           * TeamManagementModal — onSuccess={fetchProject} ensures that after any
+           * member is added/removed via Roles & Permission, the project is re-fetched
+           * and the Details tab member list updates automatically.
+           */}
+          <TeamManagementModal
+            isOpen={isTeamModalOpen}
+            onClose={() => setIsTeamModalOpen(false)}
+            onSuccess={fetchProject}
+            projectId={id as string}
+            currentMembers={project?.members || []}
+          />
+          </>
+        ) : null}
+      </SkeletonLoader>
     </Shell>
   );
 }

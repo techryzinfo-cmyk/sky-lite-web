@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { SkeletonLoader } from '../ui/SkeletonLoader';
 import {
   Package,
   ShoppingCart,
@@ -46,10 +47,10 @@ interface MaterialsTabProps {
 const subTabs = [
   { id: 'inventory', name: 'Inventory', icon: Package },
   { id: 'requests', name: 'Requests', icon: ClipboardList },
-  { id: 'purchase', name: 'Purchase Orders', icon: ShoppingCart },
-  { id: 'receipts', name: 'Receipts (GRN)', icon: FileCheck },
+  { id: 'purchase', name: 'Material Purchases', icon: ShoppingCart },
+  { id: 'receipts', name: 'Material Received', icon: FileCheck },
   { id: 'usage', name: 'Usage Log', icon: History },
-  { id: 'activity', name: 'Activity Log', icon: ScrollText },
+  { id: 'activity', name: 'Log History', icon: ScrollText },
 ];
 
 const PO_STATUS_COLORS: Record<string, string> = {
@@ -234,7 +235,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
     if (!window.confirm('Delete this material? This cannot be undone.')) return;
     setDeletingId(materialId);
     try {
-      await api.delete(`/projects/${projectId}/materials/${materialId}`);
+      await api.delete(`/materials/${materialId}`);
       toast.success('Material deleted');
       fetchMaterials();
     } catch { toast.error('Failed to delete material'); }
@@ -245,7 +246,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
     if (!window.confirm('Delete this request?')) return;
     setDeletingId(requestId);
     try {
-      await api.delete(`/projects/${projectId}/material-requests/${requestId}`);
+      await api.delete(`/material-requests/${requestId}`);
       toast.success('Request deleted');
       if (selectedRequest?._id === requestId) setSelectedRequest(null);
       fetchRequests();
@@ -257,7 +258,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
     if (!window.confirm('Delete this usage log? Consumed quantities will be restored to stock.')) return;
     setDeletingId(logId);
     try {
-      await api.delete(`/projects/${projectId}/material-usage/${logId}`);
+      await api.delete(`/material-usage/${logId}`);
       toast.success('Usage log deleted and stock restored');
       await Promise.all([fetchUsage(), fetchMaterials()]);
     } catch { toast.error('Failed to delete usage log'); }
@@ -265,25 +266,25 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
   };
 
   const handleDeletePO = async (purchaseId: string) => {
-    if (!window.confirm('Delete this purchase order?')) return;
+    if (!window.confirm('Delete this material purchase?')) return;
     setDeletingId(purchaseId);
     try {
-      await api.delete(`/projects/${projectId}/material-purchase/${purchaseId}`);
-      toast.success('Purchase order deleted');
+      await api.delete(`/material-purchase/${purchaseId}`);
+      toast.success('Material purchase deleted');
       setSelectedPO(null);
       fetchPurchases();
-    } catch { toast.error('Failed to delete purchase order'); }
+    } catch { toast.error('Failed to delete material purchase'); }
     finally { setDeletingId(null); }
   };
 
   const handleUpdatePOStatus = async (purchaseId: string, status: 'Approved' | 'Rejected') => {
     setUpdatingPOId(purchaseId);
     try {
-      await api.patch(`/projects/${projectId}/material-purchase/${purchaseId}`, { status });
-      toast.success(`Purchase order ${status.toLowerCase()}`);
+      await api.patch(`/material-purchase/${purchaseId}`, { status });
+      toast.success(`Material purchase ${status.toLowerCase()}`);
       setSelectedPO((po: any) => po ? { ...po, status } : po);
       fetchPurchases();
-    } catch { toast.error(`Failed to ${status.toLowerCase()} purchase order`); }
+    } catch { toast.error(`Failed to ${status.toLowerCase()} material purchase`); }
     finally { setUpdatingPOId(null); }
   };
 
@@ -331,7 +332,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
   return (
     <div className="space-y-6">
       {/* Sub-Tabs */}
-      <div className="flex space-x-2 bg-gray-100 p-1.5 rounded-2xl border border-gray-200 w-fit">
+      <div className="flex flex-wrap gap-2 bg-gray-100 p-1.5 rounded-2xl border border-gray-200 w-full sm:w-fit">
         {subTabs.map((tab) => (
           <button
             key={tab.id}
@@ -412,91 +413,73 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
           </GlassCard>
 
           {/* Inventory Table */}
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-              <p className="text-slate-500 font-medium">Syncing inventory...</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
-              <table className="w-full text-left border-collapse min-w-[800px]">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Material Name</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Unit</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Received</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Consumed</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">In Stock</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {materials.filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase())).map((material) => (
-                    <tr key={material._id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors group">
-                      <td className="px-6 py-4">
+          <SkeletonLoader loading={loading} preset="table">{(!loading && materials.length > 0) || !loading ? (
+            <div>
+              {/* Stacked Cards for Mobile (< md) */}
+              <div className="grid grid-cols-1 gap-4 md:hidden">
+                {materials.filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase())).map((material) => {
+                  const received = material.totalReceived || 0;
+                  const consumed = material.totalConsumed || 0;
+                  const rawStock = received - consumed;
+                  const stock = Math.max(0, rawStock);
+                  const overConsumed = rawStock < 0;
+                  const pct = received > 0 ? Math.max(0, Math.min(100, (stock / received) * 100)) : 0;
+                  const isLow = !overConsumed && stock <= (material.minimumStock ?? material.minStock ?? 0);
+
+                  return (
+                    <GlassCard key={material._id} className="p-4 border-gray-200" gradient>
+                      <div className="flex items-start justify-between">
                         <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 rounded-xl bg-blue-100 border border-blue-200 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-xl bg-blue-100 border border-blue-200 flex items-center justify-center shrink-0 animate-pulse-subtle">
                             <Package className="w-5 h-5 text-blue-600" />
                           </div>
                           <div>
-                            <p className="text-sm font-bold text-gray-900">{material.name}</p>
-                            <p className="text-[10px] text-slate-500 uppercase tracking-wider">Last updated: {new Date(material.updatedAt).toLocaleDateString()}</p>
+                            <p className="text-sm font-bold text-gray-900 leading-tight">{material.name}</p>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mt-1">
+                              Unit: <span className="px-1.5 py-0.5 rounded bg-gray-100 text-[9px] font-black text-slate-500 ml-1">{material.unit}</span>
+                            </p>
                           </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="px-2 py-1 rounded-md bg-gray-100 border border-gray-200 text-[10px] font-bold text-slate-500">
-                          {material.unit}
+
+                        <div className="flex flex-col items-end shrink-0">
+                          {overConsumed ? (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-red-100 border border-red-200 text-red-600 uppercase tracking-wide">Over-consumed</span>
+                          ) : (
+                            <>
+                              <span className={cn('text-sm font-black', isLow ? 'text-red-600' : 'text-gray-900')}>{stock} In Stock</span>
+                              <div className="h-1.5 w-16 bg-gray-200 rounded-full overflow-hidden mt-1.5">
+                                <div className={cn('h-full rounded-full', isLow ? 'bg-red-400' : 'bg-blue-500')} style={{ width: `${pct}%` }} />
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 mt-4 pt-3 border-t border-gray-100 bg-gray-50/50 -mx-4 px-4 py-2">
+                        <div className="flex items-center space-x-1.5">
+                          <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-500" />
+                          <span className="text-[10px] text-slate-400 font-bold uppercase">Received:</span>
+                          <span className="text-xs font-black text-emerald-600">{received}</span>
+                        </div>
+                        <div className="flex items-center space-x-1.5 justify-end">
+                          <ArrowUpRight className="w-3.5 h-3.5 text-red-500" />
+                          <span className="text-[10px] text-slate-400 font-bold uppercase">Consumed:</span>
+                          <span className="text-xs font-black text-red-600">{consumed}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-3 mt-2">
+                        <span className="text-[9px] text-slate-400 uppercase tracking-wider font-bold">
+                          Updated: {new Date(material.updatedAt).toLocaleDateString()}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end space-x-1">
-                          <ArrowDownLeft className="w-3 h-3 text-emerald-500" />
-                          <span className="text-sm font-bold text-emerald-600">{material.totalReceived || 0}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end space-x-1">
-                          <ArrowUpRight className="w-3 h-3 text-red-500" />
-                          <span className="text-sm font-bold text-red-600">{material.totalConsumed || 0}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex flex-col items-end">
-                          {(() => {
-                            const received = material.totalReceived || 0;
-                            const consumed = material.totalConsumed || 0;
-                            const rawStock = received - consumed;
-                            const stock = Math.max(0, rawStock);
-                            const overConsumed = rawStock < 0;
-                            const pct = received > 0 ? Math.max(0, Math.min(100, (stock / received) * 100)) : 0;
-                            const isLow = !overConsumed && stock <= (material.minimumStock ?? material.minStock ?? 0);
-                            return (
-                              <>
-                                {overConsumed ? (
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-red-100 border border-red-200 text-red-600 uppercase tracking-wide">Over-consumed</span>
-                                ) : (
-                                  <>
-                                    <span className={cn('text-lg font-black', isLow ? 'text-red-600' : 'text-gray-900')}>{stock}</span>
-                                    <div className="h-1 w-16 bg-gray-200 rounded-full overflow-hidden mt-1">
-                                      <div className={cn('h-full rounded-full', isLow ? 'bg-red-400' : 'bg-blue-500')} style={{ width: `${pct}%` }} />
-                                    </div>
-                                  </>
-                                )}
-                              </>
-                            );
-                          })()}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end space-x-1">
+                        <div className="flex items-center space-x-2">
                           <button
                             onClick={() => {
                               setModalMode('stock-in');
                               setSelectedMaterial(material);
                               setIsModalOpen(true);
                             }}
-                            className="p-2 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-all"
+                            className="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-all border border-emerald-100 bg-emerald-50/50"
                             title="Stock In"
                           >
                             <PlusCircle className="w-4 h-4" />
@@ -507,7 +490,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                               setSelectedMaterial(material);
                               setIsModalOpen(true);
                             }}
-                            className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-all"
+                            className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition-all border border-red-100 bg-red-50/50"
                             title="Stock Out"
                           >
                             <MinusCircle className="w-4 h-4" />
@@ -515,7 +498,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                           <button
                             onClick={() => openHistory(material)}
                             title="Usage History"
-                            className="p-2 text-slate-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                            className="p-1.5 text-slate-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all border border-gray-200 bg-white"
                           >
                             <History className="w-4 h-4" />
                           </button>
@@ -523,25 +506,143 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                             onClick={() => handleDeleteMaterial(material._id)}
                             disabled={deletingId === material._id}
                             title="Delete Material"
-                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-40"
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-40 border border-gray-200 bg-white"
                           >
                             {deletingId === material._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                           </button>
                         </div>
-                      </td>
+                      </div>
+                    </GlassCard>
+                  );
+                })}
+              </div>
+
+              {/* Desktop Table (hidden on mobile, visible md+) */}
+              <div className="hidden md:block overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+                <table className="w-full text-left border-collapse min-w-[800px]">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50">
+                      <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Material Name</th>
+                      <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Unit</th>
+                      <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Received</th>
+                      <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Consumed</th>
+                      <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">In Stock</th>
+                      <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider"></th>
                     </tr>
-                  ))}
-                  {materials.length === 0 && !loading && (
-                    <tr>
-                      <td colSpan={6} className="px-6 py-20 text-center text-slate-400 italic">
-                        No materials in inventory for this project.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {materials.filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase())).map((material) => (
+                      <tr key={material._id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors group">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 rounded-xl bg-blue-100 border border-blue-200 flex items-center justify-center">
+                              <Package className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-gray-900">{material.name}</p>
+                              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Last updated: {new Date(material.updatedAt).toLocaleDateString()}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="px-2 py-1 rounded-md bg-gray-100 border border-gray-200 text-[10px] font-bold text-slate-500">
+                            {material.unit}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end space-x-1">
+                            <ArrowDownLeft className="w-3 h-3 text-emerald-500" />
+                            <span className="text-sm font-bold text-emerald-600">{material.totalReceived || 0}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end space-x-1">
+                            <ArrowUpRight className="w-3 h-3 text-red-500" />
+                            <span className="text-sm font-bold text-red-600">{material.totalConsumed || 0}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex flex-col items-end">
+                            {(() => {
+                              const received = material.totalReceived || 0;
+                              const consumed = material.totalConsumed || 0;
+                              const rawStock = received - consumed;
+                              const stock = Math.max(0, rawStock);
+                              const overConsumed = rawStock < 0;
+                              const pct = received > 0 ? Math.max(0, Math.min(100, (stock / received) * 100)) : 0;
+                              const isLow = !overConsumed && stock <= (material.minimumStock ?? material.minStock ?? 0);
+                              return (
+                                <>
+                                  {overConsumed ? (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-red-100 border border-red-200 text-red-600 uppercase tracking-wide">Over-consumed</span>
+                                  ) : (
+                                    <>
+                                      <span className={cn('text-lg font-black', isLow ? 'text-red-600' : 'text-gray-900')}>{stock}</span>
+                                      <div className="h-1 w-16 bg-gray-200 rounded-full overflow-hidden mt-1">
+                                        <div className={cn('h-full rounded-full', isLow ? 'bg-red-400' : 'bg-blue-500')} style={{ width: `${pct}%` }} />
+                                      </div>
+                                    </>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end space-x-1">
+                            <button
+                              onClick={() => {
+                                setModalMode('stock-in');
+                                setSelectedMaterial(material);
+                                setIsModalOpen(true);
+                              }}
+                              className="p-2 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-all"
+                              title="Stock In"
+                            >
+                              <PlusCircle className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setModalMode('stock-out');
+                                setSelectedMaterial(material);
+                                setIsModalOpen(true);
+                              }}
+                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-all"
+                              title="Stock Out"
+                            >
+                              <MinusCircle className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => openHistory(material)}
+                              title="Usage History"
+                              className="p-2 text-slate-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                            >
+                              <History className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteMaterial(material._id)}
+                              disabled={deletingId === material._id}
+                              title="Delete Material"
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-40"
+                            >
+                              {deletingId === material._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {materials.length === 0 && !loading && (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-20 text-center text-slate-400 italic">
+                          No materials in inventory for this project.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          )}
+          ) : null}</SkeletonLoader>
         </div>
       )}
 
@@ -595,10 +696,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
           )}
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-              <p className="text-slate-500 font-medium">Loading requests...</p>
-            </div>
+            <SkeletonLoader loading={true} preset="card-grid"><div /></SkeletonLoader>
           ) : requests.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {requests.map((request) => (
@@ -717,7 +815,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
           <GlassCard className="p-4 border-gray-200" gradient>
             <div className="flex flex-col md:flex-row gap-4 justify-between">
               <div className="flex-1 max-w-md">
-                <h3 className="text-lg font-bold text-gray-900">Material Receipts (GRN)</h3>
+                <h3 className="text-lg font-bold text-gray-900">Material Received</h3>
                 <p className="text-xs text-slate-500">Log and verify incoming material deliveries.</p>
               </div>
               <div className="flex items-center space-x-3">
@@ -733,89 +831,170 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
           </GlassCard>
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-              <p className="text-slate-500 font-medium">Loading receipts...</p>
-            </div>
+            <SkeletonLoader loading={true} preset="table"><div /></SkeletonLoader>
           ) : receipts.length > 0 ? (
-            <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
-              <table className="w-full text-left border-collapse min-w-[1000px]">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Receipt Info</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Vendor & Docs</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Items Received</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Status</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {receipts.map((receipt) => (
-                    <tr key={receipt._id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors group">
-                      <td className="px-6 py-4">
+            <div>
+              {/* Stacked Cards for Mobile (< md) */}
+              <div className="grid grid-cols-1 gap-4 md:hidden">
+                {receipts.map((receipt) => (
+                  <GlassCard key={receipt._id} className="p-4 border-gray-200" gradient>
+                    <div className="flex justify-between items-start">
+                      <div>
                         <p className="text-sm font-bold text-gray-900">GRN-{receipt._id.slice(-6).toUpperCase()}</p>
-                        <p className="text-[10px] text-slate-500 uppercase tracking-wider">{new Date(receipt.createdAt).toLocaleDateString()}</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col space-y-1">
-                          <div className="flex items-center space-x-2">
-                            <Truck className="w-3 h-3 text-slate-400" />
-                            <span className="text-sm font-medium text-slate-600">{receipt.vendorName}</span>
-                          </div>
-                          <div className="flex items-center space-x-4 text-[10px] text-slate-500 font-bold uppercase">
-                            <span>Challan: {receipt.challanNumber}</span>
-                            {receipt.invoiceNumber && <span>Invoice: {receipt.invoiceNumber}</span>}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-wrap gap-2">
-                          {receipt.items.map((item: any, i: number) => (
-                            <span key={i} className="px-2 py-1 rounded-md bg-gray-100 border border-gray-200 text-[10px] font-bold text-slate-500">
-                              {item.materialId?.name || 'Item'}: {item.quantity} {item.unit}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className={cn(
-                          "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border",
-                          receipt.status === 'Verified' ? 'text-emerald-700 bg-emerald-100 border-emerald-200' :
-                          receipt.status === 'Rejected' ? 'text-red-700 bg-red-100 border-red-200' :
-                          'text-amber-700 bg-amber-100 border-amber-200'
-                        )}>
-                          {receipt.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end space-x-2">
-                          {receipt.status !== 'Verified' ? (
-                            <button
-                              onClick={() => handleVerifyReceipt(receipt._id)}
-                              className="flex items-center space-x-1 text-xs font-bold text-emerald-600 hover:text-emerald-500 transition-colors"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Verify</span>
-                            </button>
-                          ) : (
-                            <span className="text-xs font-bold text-emerald-600 flex items-center space-x-1">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Verified</span>
-                            </span>
-                          )}
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                          {new Date(receipt.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <span className={cn(
+                        "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border",
+                        receipt.status === 'Verified' ? 'text-emerald-700 bg-emerald-100 border-emerald-200' :
+                        receipt.status === 'Rejected' ? 'text-red-700 bg-red-100 border-red-200' :
+                        'text-amber-700 bg-amber-100 border-amber-200'
+                      )}>
+                        {receipt.status}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Truck className="w-4 h-4 text-slate-400 shrink-0" />
+                        <span className="text-sm font-bold text-slate-700 truncate">{receipt.vendorName}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-500 font-bold uppercase pl-6">
+                        <span>Challan: {receipt.challanNumber}</span>
+                        {receipt.invoiceNumber && <span>Invoice: {receipt.invoiceNumber}</span>}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-gray-100">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Items Received</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {receipt.items.map((item: any, i: number) => (
+                          <span key={i} className="px-2 py-1 rounded bg-gray-50 border border-gray-200 text-[10px] font-bold text-slate-600">
+                            {item.materialId?.name || 'Item'}: {item.quantity} {item.unit}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {receipt.commonNote && (
+                      <div className="mt-3 p-2.5 rounded-xl bg-gray-50 border border-gray-200">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5 font-bold">Notes</p>
+                        <p className="text-xs text-slate-500 italic">"{receipt.commonNote}"</p>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-100">
+                      <div>
+                        {receipt.status !== 'Verified' ? (
                           <button
-                            onClick={() => printReceipt(receipt)}
-                            title="Print Receipt"
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-gray-900 hover:bg-gray-100 transition-all"
+                            onClick={() => handleVerifyReceipt(receipt._id)}
+                            className="flex items-center space-x-1 text-xs font-bold text-emerald-600 hover:text-emerald-500 transition-colors border border-emerald-100 bg-emerald-50/50 px-2.5 py-1.5 rounded-lg"
                           >
-                            <Printer className="w-4 h-4" />
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Verify Receipt</span>
                           </button>
-                        </div>
-                      </td>
+                        ) : (
+                          <span className="text-xs font-bold text-emerald-600 flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-100">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Verified</span>
+                          </span>
+                        )}
+                      </div>
+                      
+                      <button
+                        onClick={() => printReceipt(receipt)}
+                        title="Print Receipt"
+                        className="flex items-center space-x-1 text-xs font-bold text-slate-600 hover:text-gray-900 transition-all border border-gray-200 bg-white px-2.5 py-1.5 rounded-lg"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>Print GRN</span>
+                      </button>
+                    </div>
+                  </GlassCard>
+                ))}
+              </div>
+
+              {/* Desktop Table (hidden on mobile, visible md+) */}
+              <div className="hidden md:block overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+                <table className="w-full text-left border-collapse min-w-[1000px]">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50">
+                      <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Receipt Info</th>
+                      <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Vendor & Docs</th>
+                      <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Items Received</th>
+                      <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Status</th>
+                      <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {receipts.map((receipt) => (
+                      <tr key={receipt._id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors group">
+                        <td className="px-6 py-4">
+                          <p className="text-sm font-bold text-gray-900">GRN-{receipt._id.slice(-6).toUpperCase()}</p>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-wider">{new Date(receipt.createdAt).toLocaleDateString()}</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col space-y-1">
+                            <div className="flex items-center space-x-2">
+                              <Truck className="w-3 h-3 text-slate-400" />
+                              <span className="text-sm font-medium text-slate-600">{receipt.vendorName}</span>
+                            </div>
+                            <div className="flex items-center space-x-4 text-[10px] text-slate-500 font-bold uppercase">
+                              <span>Challan: {receipt.challanNumber}</span>
+                              {receipt.invoiceNumber && <span>Invoice: {receipt.invoiceNumber}</span>}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-wrap gap-2">
+                            {receipt.items.map((item: any, i: number) => (
+                              <span key={i} className="px-2 py-1 rounded-md bg-gray-100 border border-gray-200 text-[10px] font-bold text-slate-500">
+                                {item.materialId?.name || 'Item'}: {item.quantity} {item.unit}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border",
+                            receipt.status === 'Verified' ? 'text-emerald-700 bg-emerald-100 border-emerald-200' :
+                            receipt.status === 'Rejected' ? 'text-red-700 bg-red-100 border-red-200' :
+                            'text-amber-700 bg-amber-100 border-amber-200'
+                          )}>
+                            {receipt.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end space-x-2">
+                            {receipt.status !== 'Verified' ? (
+                              <button
+                                onClick={() => handleVerifyReceipt(receipt._id)}
+                                className="flex items-center space-x-1 text-xs font-bold text-emerald-600 hover:text-emerald-500 transition-colors"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Verify</span>
+                              </button>
+                            ) : (
+                              <span className="text-xs font-bold text-emerald-600 flex items-center space-x-1">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Verified</span>
+                              </span>
+                            )}
+                            <button
+                              onClick={() => printReceipt(receipt)}
+                              title="Print Receipt"
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-gray-900 hover:bg-gray-100 transition-all"
+                            >
+                              <Printer className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -846,10 +1025,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
           </GlassCard>
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-              <p className="text-slate-500 font-medium">Loading POs...</p>
-            </div>
+            <SkeletonLoader loading={true} preset="card-grid"><div /></SkeletonLoader>
           ) : purchases.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {purchases.map((po) => (
@@ -931,10 +1107,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
           </GlassCard>
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-              <p className="text-slate-500 font-medium">Loading usage logs...</p>
-            </div>
+            <SkeletonLoader loading={true} preset="table"><div /></SkeletonLoader>
           ) : usageLogs.length > 0 ? (
             <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
               <table className="w-full text-left border-collapse">
@@ -1000,10 +1173,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
           </GlassCard>
 
           {activityLoading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-              <p className="text-slate-500 font-medium">Loading activity...</p>
-            </div>
+            <SkeletonLoader loading={true} preset="list"><div /></SkeletonLoader>
           ) : activityFeed.length > 0 ? (
             <div className="space-y-3">
               {activityFeed.map((entry) => {

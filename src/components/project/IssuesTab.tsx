@@ -1,4 +1,5 @@
 'use client';
+import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -294,10 +295,7 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
       {/* List */}
       <div className="space-y-3">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-            <p className="text-slate-500 font-medium">Syncing tracking board...</p>
-          </div>
+          <SkeletonLoader loading={true} preset="list"><div /></SkeletonLoader>
         ) : (
           <>
             {filteredIssues.map((issue) => (

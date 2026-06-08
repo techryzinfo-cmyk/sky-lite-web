@@ -1,5 +1,7 @@
 'use client';
 
+import { SkeletonLoader } from '../ui/SkeletonLoader';
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Users, Loader2, Check, Search, UserCheck, Send } from 'lucide-react';
@@ -129,13 +131,9 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
                   />
                 </div>
 
-                {loading ? (
-                  <div className="flex items-center justify-center py-10">
-                    <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
-                  </div>
-                ) : (
+                <SkeletonLoader loading={loading} preset="modal">
                   <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {filtered.length === 0 && (
+                    {filtered.length === 0 && !loading && (
                       <p className="text-sm text-slate-400 text-center py-6">
                         {approvers.length === 0
                           ? 'No users have BOQ approve permission.'
@@ -180,7 +178,7 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
                       );
                     })}
                   </div>
-                )}
+                </SkeletonLoader>
 
                 {selectedApproverId && (
                   <p className="text-xs text-purple-600 font-semibold text-center">

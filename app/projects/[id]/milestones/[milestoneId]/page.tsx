@@ -1,5 +1,7 @@
 'use client';
 
+import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -280,28 +282,21 @@ export default function MilestoneDetailPage() {
   };
 
   // ── Loading ──────────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <Shell>
-        <div className="flex flex-col items-center justify-center py-40">
-          <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-          <p className="text-slate-500 font-medium">Loading milestone...</p>
-        </div>
-      </Shell>
-    );
-  }
-
-  if (!milestone) return null;
-
-  const tasks: any[] = milestone.tasks || [];
-  const completedCount = tasks.filter((t: any) => t.isCompleted).length;
-  const progress = tasks.length > 0
-    ? Math.round((completedCount / tasks.length) * 100)
-    : milestone.status === 'Completed' ? 100 : 0;
+  if (!milestone && !loading) return null;
 
   return (
     <Shell>
-      <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+      <SkeletonLoader loading={loading} preset="detail">
+        {milestone && (() => {
+          const tasks: any[] = milestone.tasks || [];
+          const completedCount = tasks.filter((t: any) => t.isCompleted).length;
+          const progress = tasks.length > 0
+            ? Math.round((completedCount / tasks.length) * 100)
+            : milestone.status === 'Completed' ? 100 : 0;
+
+          return (
+            <>
+            <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
 
         {/* Back button */}
         <button
@@ -828,6 +823,10 @@ export default function MilestoneDetailPage() {
           </div>
         )}
       </AnimatePresence>
+      </>
+          );
+        })()}
+      </SkeletonLoader>
     </Shell>
   );
 }

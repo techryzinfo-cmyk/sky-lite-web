@@ -1,5 +1,7 @@
 'use client';
 
+import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
+
 import React, { useState, useEffect } from 'react';
 import {
   TrendingUp,
@@ -105,19 +107,9 @@ export default function FinancePage() {
       t.description?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-  if (loading) {
-    return (
-      <Shell>
-        <div className="flex flex-col items-center justify-center py-40">
-          <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
-          <p className="text-slate-500 font-medium">Loading financial overview...</p>
-        </div>
-      </Shell>
-    );
-  }
-
   return (
     <Shell>
+      <SkeletonLoader loading={loading} preset="form">
       <div className="space-y-8">
         {/* Page Header */}
         <div>
@@ -319,6 +311,7 @@ export default function FinancePage() {
           </div>
         </div>
       </div>
+      </SkeletonLoader>
     </Shell>
   );
 }

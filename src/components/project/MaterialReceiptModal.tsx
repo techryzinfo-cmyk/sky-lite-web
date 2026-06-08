@@ -219,7 +219,7 @@ export const MaterialReceiptModal: React.FC<MaterialReceiptModalProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-600 ml-1">Remark (Optional)</label>
+                  <label className="text-sm font-medium text-slate-600 ml-1">Common Note / Description</label>
                   <div className="relative group">
                     <MessageSquare className="absolute left-3 top-3 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                     <textarea

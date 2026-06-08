@@ -1,4 +1,6 @@
-﻿'use client';
+'use client';
+
+import { SkeletonLoader } from './SkeletonLoader';
 
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,6 +12,7 @@ import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
 import { uploadToCloudinary } from '@/lib/upload';
+import { cn } from '@/lib/utils';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -20,6 +23,7 @@ interface CreateProjectModalProps {
 }
 
 const inputCls = 'w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all';
+const inputErrCls = 'w-full bg-gray-50 border border-red-400 rounded-xl py-3 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-sm transition-all';
 const labelCls = 'block text-xs font-bold text-slate-600 mb-1.5 ml-0.5';
 
 const emptyForm = {
@@ -46,7 +50,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   const [categories, setCategories] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
-  const [selectedTemplate, setSelectedTemplate] = useState<any>(null); // null = custom
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [isCustom, setIsCustom] = useState(false);
   const [loadingModal, setLoadingModal] = useState(false);
 
@@ -57,9 +61,13 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const docInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Date validation ──
+  const [dateErrors, setDateErrors] = useState<{ startDate?: string; endDate?: string }>({});
+
   // ── Open effect ──
   React.useEffect(() => {
     if (!isOpen) return;
+    setDateErrors({});
     if (isEditing) {
       setStep('configure');
       setForm({
@@ -101,6 +109,33 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
     }
   };
 
+  // ── Date validation helpers ──
+  const validateDates = (startDate: string, endDate: string) => {
+    const errs: { startDate?: string; endDate?: string } = {};
+    if (endDate && !startDate) {
+      errs.startDate = 'Start date is required when end date is set';
+    } else if (startDate && endDate) {
+      const s = new Date(startDate);
+      const e = new Date(endDate);
+      if (isNaN(s.getTime())) {
+        errs.startDate = 'Invalid start date';
+      } else if (isNaN(e.getTime())) {
+        errs.endDate = 'Invalid end date';
+      } else if (e < s) {
+        errs.endDate = 'End date must be on or after start date';
+      }
+    }
+    return errs;
+  };
+
+  const handleDateChange = (field: 'startDate' | 'endDate', value: string) => {
+    const updated = field === 'startDate'
+      ? { startDate: value, endDate: form.endDate }
+      : { startDate: form.startDate, endDate: value };
+    setForm(f => ({ ...f, [field]: value }));
+    setDateErrors(validateDates(updated.startDate, updated.endDate));
+  };
+
   const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files || []);
     if (!picked.length) return;
@@ -124,7 +159,6 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   const handleSelectTemplate = (tpl: any) => {
     setSelectedTemplate(tpl);
     setIsCustom(false);
-    // Pre-fill form from template
     setForm(f => ({
       ...f,
       name: f.name || tpl.name,
@@ -143,6 +177,15 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) { toast.error('Project name is required'); return; }
+
+    // Date validation on submit
+    const errs = validateDates(form.startDate, form.endDate);
+    if (Object.keys(errs).length > 0) {
+      setDateErrors(errs);
+      toast.error('Please fix the date errors before submitting');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       if (isEditing) {
@@ -191,6 +234,8 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
       step === 'template' ? 'Select Template' :
         isEditing ? 'Update Details' : 'Configure Setup';
 
+  const hasDateErrors = Object.keys(dateErrors).length > 0;
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -209,7 +254,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
             <div className="bg-white rounded-2xl shadow-xl border border-gray-200 max-h-[90vh] overflow-y-auto custom-scrollbar">
               <div className="p-8">
 
-                {/* ── Header ── */}
+                {/* Header */}
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
                     {!isEditing && step !== 'category' && (
@@ -232,15 +277,11 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                   </button>
                 </div>
 
-                {/* ── STEP 1: Category ── */}
+                {/* STEP 1: Category */}
                 {step === 'category' && (
                   <div className="space-y-4">
                     <p className="text-sm text-slate-500">Choose a project category to get started.</p>
-                    {loadingModal ? (
-                      <div className="flex items-center justify-center py-16">
-                        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-                      </div>
-                    ) : (
+                    <SkeletonLoader loading={loadingModal} preset="modal">
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         {categories.map((cat, i) => {
                           const colors = [
@@ -263,17 +304,17 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                             </button>
                           );
                         })}
-                        {categories.length === 0 && (
+                        {categories.length === 0 && !loadingModal && (
                           <div className="col-span-full text-center py-12 text-slate-400">
                             No categories available
                           </div>
                         )}
                       </div>
-                    )}
+                    </SkeletonLoader>
                   </div>
                 )}
 
-                {/* ── STEP 2: Template ── */}
+                {/* STEP 2: Template */}
                 {step === 'template' && (
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-100 rounded-xl">
@@ -282,7 +323,6 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                     </div>
                     <p className="text-sm text-slate-500">Select a template or start with a custom setup.</p>
 
-                    {/* Custom Requirement card */}
                     <button
                       onClick={handleCustom}
                       className="w-full flex items-center gap-4 p-5 rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50 hover:bg-amber-100 transition-all text-left"
@@ -296,7 +336,6 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                       </div>
                     </button>
 
-                    {/* Template cards */}
                     {templatesForCategory.length > 0 && (
                       <div className="space-y-2">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Templates</p>
@@ -331,10 +370,9 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                   </div>
                 )}
 
-                {/* ── STEP 3: Configure Setup ── */}
+                {/* STEP 3: Configure */}
                 {step === 'configure' && (
                   <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Info card */}
                     {!isEditing && (
                       <div className="flex items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-2xl">
                         <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
@@ -397,20 +435,36 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      {/* Date fields with validation */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className={labelCls}>Start Date</label>
-                          <input type="date" value={form.startDate}
-                            onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
-                            className={inputCls}
+                          <input
+                            type="date"
+                            value={form.startDate}
+                            onChange={e => handleDateChange('startDate', e.target.value)}
+                            className={dateErrors.startDate ? inputErrCls : inputCls}
                           />
+                          {dateErrors.startDate && (
+                            <p className="mt-1 text-[11px] font-semibold text-red-500 flex items-center gap-1">
+                              <span>⚠</span> {dateErrors.startDate}
+                            </p>
+                          )}
                         </div>
                         <div>
                           <label className={labelCls}>Target End Date</label>
-                          <input type="date" value={form.endDate}
-                            onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
-                            className={inputCls}
+                          <input
+                            type="date"
+                            value={form.endDate}
+                            min={form.startDate || undefined}
+                            onChange={e => handleDateChange('endDate', e.target.value)}
+                            className={dateErrors.endDate ? inputErrCls : inputCls}
                           />
+                          {dateErrors.endDate && (
+                            <p className="mt-1 text-[11px] font-semibold text-red-500 flex items-center gap-1">
+                              <span>⚠</span> {dateErrors.endDate}
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -498,7 +552,8 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                         Cancel
                       </button>
                       <button
-                        type="submit" disabled={isSubmitting || uploadingDoc}
+                        type="submit"
+                        disabled={isSubmitting || uploadingDoc || hasDateErrors}
                         className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all disabled:opacity-50 shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
                       >
                         {isSubmitting

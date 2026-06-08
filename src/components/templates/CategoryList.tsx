@@ -1,5 +1,7 @@
 'use client';
 
+import { SkeletonLoader } from '../ui/SkeletonLoader';
+
 import React, { useState, useEffect } from 'react';
 import {
   Plus,
@@ -98,14 +100,7 @@ export const CategoryList = () => {
     setEditingName(cat.name);
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-40">
-        <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
-        <p className="text-slate-500 font-medium">Categorizing systems...</p>
-      </div>
-    );
-  }
+  // Loading state handled by Skeleton wrapper
 
   const filtered = categories.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase())
@@ -116,8 +111,9 @@ export const CategoryList = () => {
   );
 
   return (
-    <div className="space-y-6">
-      {/* Toolbar — search left, add button right */}
+    <SkeletonLoader loading={loading} preset="list">
+      <div className="space-y-6">
+        {/* Toolbar — search left, add button right */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="relative flex-1 max-w-md group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors pointer-events-none" />
@@ -255,5 +251,6 @@ export const CategoryList = () => {
         )}
       </div>
     </div>
+    </SkeletonLoader>
   );
 };

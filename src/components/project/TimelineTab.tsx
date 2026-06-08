@@ -1,5 +1,7 @@
 'use client';
 
+import { SkeletonLoader } from '../ui/SkeletonLoader';
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Loader2, GanttChart, ChevronLeft, ChevronRight, ChevronDown,
@@ -79,14 +81,7 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({ projectId }) => {
       return next;
     });
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-        <p className="text-slate-500 font-medium">Building timeline...</p>
-      </div>
-    );
-  }
+  // Loading state handled by Skeleton wrapper
 
   // Normalise milestone dates and attach per-task dates
   const normalized = milestones.map(m => {
@@ -163,8 +158,9 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({ projectId }) => {
   const todayInRange = todayOff >= 0 && todayOff < totalDays;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <SkeletonLoader loading={loading} preset="list">
+      <div className="space-y-6">
+        {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h3 className="text-xl font-bold text-gray-900">Project Timeline</h3>
@@ -472,5 +468,6 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({ projectId }) => {
         })}
       </div>
     </div>
+    </SkeletonLoader>
   );
 };

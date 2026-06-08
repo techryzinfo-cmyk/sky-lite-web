@@ -1,5 +1,7 @@
 'use client';
 
+import { SkeletonLoader } from '../ui/SkeletonLoader';
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
@@ -106,18 +108,12 @@ export const UserList = () => {
 
   const { currentPage, totalPages, paginated: pagedUsers, setCurrentPage } = usePagination(filteredUsers, 9);
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-40">
-        <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
-        <p className="text-slate-500 font-medium">Syncing directory...</p>
-      </div>
-    );
-  }
+  // Loading state handled by Skeleton wrapper
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <SkeletonLoader loading={loading} preset="list">
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="relative flex-1 max-w-md group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
           <input
@@ -286,5 +282,6 @@ export const UserList = () => {
         isLoading={isDeleting}
       />
     </div>
+    </SkeletonLoader>
   );
 };

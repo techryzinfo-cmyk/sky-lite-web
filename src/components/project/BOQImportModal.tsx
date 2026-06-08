@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -80,9 +80,7 @@ export const BOQImportModal: React.FC<BOQImportModalProps> = ({
     const formData = new FormData();
     formData.append('file', selectedFile);
     formData.append('action', action);
-    return api.post(`/projects/${projectId}/boq/import`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
+    return api.post(`/projects/${projectId}/boq/import`, formData);
   };
 
   const handleFileSelect = async (selectedFile: File) => {

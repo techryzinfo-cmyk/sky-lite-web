@@ -1,4 +1,6 @@
-﻿'use client';
+'use client';
+
+import { SkeletonLoader } from '../ui/SkeletonLoader';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -25,8 +27,8 @@ interface TransactionsTabProps {
   projectId: string;
 }
 
-type TxType = 'Incoming' | 'Outgoing' | 'Debit Note';
-type FilterType = 'All' | 'Incoming' | 'Outgoing' | 'Debit Note' | 'Purchases';
+type TxType = 'Incoming' | 'Outgoing';
+type FilterType = 'All' | 'Incoming' | 'Outgoing';
 
 interface LedgerItem {
   _id: string;
@@ -43,17 +45,14 @@ interface LedgerItem {
 const TX_TYPES: { value: TxType; label: string; description: string; color: string; bg: string; icon: React.ElementType }[] = [
   { value: 'Incoming', label: 'Incoming Funds', description: 'Money received from client or HO', color: 'text-emerald-700', bg: 'bg-emerald-50', icon: ArrowDownLeft },
   { value: 'Outgoing', label: 'Outgoing Payment', description: 'Money paid to vendor or labor', color: 'text-red-600', bg: 'bg-red-50', icon: ArrowUpRight },
-  { value: 'Debit Note', label: 'Debit Note', description: 'Record penalties or deductions', color: 'text-amber-700', bg: 'bg-amber-50', icon: AlertTriangle },
 ];
 
-const FILTERS: FilterType[] = ['All', 'Incoming', 'Outgoing', 'Debit Note', 'Purchases'];
+const FILTERS: FilterType[] = ['All', 'Incoming', 'Outgoing'];
 
 function getTxMeta(item: LedgerItem) {
-  if (item.isPurchase) return { color: 'text-purple-700', bg: 'bg-purple-50', icon: ShoppingCart, prefix: '-' };
   switch (item.type) {
     case 'Incoming': return { color: 'text-emerald-700', bg: 'bg-emerald-50', icon: ArrowDownLeft, prefix: '+' };
     case 'Outgoing': return { color: 'text-red-600', bg: 'bg-red-50', icon: ArrowUpRight, prefix: '-' };
-    case 'Debit Note': return { color: 'text-amber-700', bg: 'bg-amber-50', icon: AlertTriangle, prefix: '+' };
     default: return { color: 'text-blue-600', bg: 'bg-blue-50', icon: CreditCard, prefix: '' };
   }
 }
@@ -105,8 +104,9 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
     return () => { socket.off('transactions:updated', fetchData); };
   }, [socket, fetchData]);
 
-  const ledger: LedgerItem[] = [
-    ...transactions.map((t) => ({
+  const ledger: LedgerItem[] = transactions
+    .filter((t) => t.type === 'Incoming' || t.type === 'Outgoing')
+    .map((t) => ({
       _id: t._id,
       type: t.type,
       amount: t.amount,
@@ -115,24 +115,13 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
       description: t.description,
       date: t.date,
       paymentMethod: t.paymentMethod,
-    })),
-    ...purchases.map((p) => ({
-      _id: p._id,
-      isPurchase: true,
-      type: 'Purchase',
-      amount: p.grandTotal,
-      partyName: p.vendorName,
-      referenceNumber: p.poNumber,
-      description: p.commonNote,
-      date: p.createdAt,
-    })),
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const filtered = ledger.filter((item) => {
     const matchFilter =
       activeFilter === 'All' ||
-      (activeFilter === 'Purchases' && item.isPurchase) ||
-      (item.type === activeFilter && !item.isPurchase);
+      item.type === activeFilter;
     const matchSearch =
       !search ||
       item.partyName.toLowerCase().includes(search.toLowerCase()) ||
@@ -142,9 +131,9 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
 
   const totals = ledger.reduce(
     (acc, item) => {
-      if (item.isPurchase || item.type === 'Outgoing' || item.type === 'Purchase Payment') {
+      if (item.type === 'Outgoing') {
         acc.outgoing += item.amount;
-      } else if (item.type === 'Incoming' || item.type === 'Debit Note') {
+      } else if (item.type === 'Incoming') {
         acc.incoming += item.amount;
       }
       return acc;
@@ -209,18 +198,12 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24">
-        <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-3" />
-        <p className="text-slate-500 font-medium">Loading financial data...</p>
-      </div>
-    );
-  }
+  // Loading state handled by Skeleton wrapper
 
   return (
-    <div className="space-y-6">
-      {/* Balance Summary */}
+    <SkeletonLoader loading={loading} preset="table">
+      <div className="space-y-6">
+        {/* Balance Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="md:col-span-1 bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col items-center justify-center">
           <div className="flex items-center space-x-2 mb-1">
@@ -255,7 +238,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
 
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center space-x-2 overflow-x-auto pb-1">
+        <div className="flex items-center space-x-2 overflow-x-auto pb-1 w-full sm:w-auto">
           {FILTERS.map((f) => (
             <button
               key={f}
@@ -271,20 +254,20 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
           ))}
         </div>
 
-        <div className="flex items-center space-x-3">
-          <div className="relative">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-initial">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
               placeholder="Search records..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              className="w-full sm:w-64 pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             />
           </div>
           <button
             onClick={() => setShowTypeSheet(true)}
-            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all shadow-sm shadow-blue-600/20 shrink-0"
+            className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all shadow-sm shadow-blue-600/20 shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>Add Record</span>
@@ -313,33 +296,33 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
             {filtered.map((item) => {
               const { color, bg, icon: Icon, prefix } = getTxMeta(item);
               return (
-                <div key={item._id} className="flex items-center px-6 py-4 hover:bg-gray-50 transition-colors group">
-                  <div className={`w-11 h-11 rounded-xl ${bg} flex items-center justify-center shrink-0 mr-4`}>
-                    <Icon className={`w-5 h-5 ${color}`} />
+                <div key={item._id} className="flex items-center px-4 sm:px-6 py-4 hover:bg-gray-50 transition-colors group">
+                  <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl ${bg} flex items-center justify-center shrink-0 mr-3 sm:mr-4`}>
+                    <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${color}`} />
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-gray-900 truncate">{item.partyName}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <p className="text-xs sm:text-sm font-bold text-gray-900 truncate">{item.partyName}</p>
+                    <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">
                       {item.type}
                       {item.paymentMethod && !item.isPurchase && ` · ${item.paymentMethod}`}
                       {' · '}
                       {new Date(item.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </p>
                     {item.description && (
-                      <p className="text-xs text-slate-400 mt-0.5 truncate">{item.description}</p>
+                      <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 truncate">{item.description}</p>
                     )}
                   </div>
 
-                  <div className="flex items-center space-x-4 ml-4">
-                    <p className={`text-base font-black ${color} tabular-nums`}>
+                  <div className="flex items-center space-x-2 sm:space-x-4 ml-3 sm:ml-4">
+                    <p className={`text-sm sm:text-base font-black ${color} tabular-nums whitespace-nowrap`}>
                       {prefix}${item.amount?.toLocaleString()}
                     </p>
                     <button
                       onClick={() => { setDeleteIsPurchase(!!item.isPurchase); setDeleteTarget(item._id); }}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all shrink-0"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </button>
                   </div>
                 </div>
@@ -472,5 +455,6 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
         </div>
       )}
     </div>
+    </SkeletonLoader>
   );
 };

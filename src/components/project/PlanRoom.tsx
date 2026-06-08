@@ -121,102 +121,118 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
         </div>
 
         <div className="grid grid-cols-1 gap-4">
-          {folder.documents?.map((doc: any) => (
-            <div key={doc._id} className="p-4 rounded-2xl bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all group/item">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-slate-400 border border-gray-200 group-hover/item:border-blue-400 transition-all">
-                    <FileIconSvg className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-gray-900 group-hover/item:text-blue-600 transition-colors">{doc.name}</h4>
-                    <div className="flex items-center space-x-3 mt-1">
-                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                        {new Date(doc.uploadedAt).toLocaleDateString()}
-                      </span>
-                      <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                      <span className="text-[10px] text-slate-500 font-bold">{(doc.size / 1024 / 1024).toFixed(2)} MB</span>
-                      <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                      <span className={cn(
-                        "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border",
-                        getStatusBadge(doc.approvalStatus)
-                      )}>
-                        {doc.approvalStatus || 'Draft'}
-                      </span>
+          {folder.documents?.map((doc: any) => {
+            const latestVersion = doc.versions && doc.versions.length > 0
+              ? doc.versions[doc.versions.length - 1]
+              : null;
+            const mappedDoc = {
+              ...doc,
+              url: latestVersion?.url || doc.url,
+              uploadedAt: latestVersion?.uploadedAt || doc.uploadedAt || new Date(),
+              size: latestVersion?.size || doc.size || 0,
+              approvalStatus: latestVersion?.approvalStatus || doc.approvalStatus || 'Draft',
+              approvals: latestVersion?.approvals || doc.approvals || [],
+              versionId: latestVersion?._id,
+              versionNumber: latestVersion?.versionNumber
+            };
+
+            return (
+              <div key={mappedDoc._id} className="p-4 rounded-2xl bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all group/item">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-slate-400 border border-gray-200 group-hover/item:border-blue-400 transition-all">
+                      <FileIconSvg className="w-6 h-6" />
                     </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  {doc.approvalStatus === 'Draft' && isAdmin && (
-                    <button
-                      onClick={() => setApproverDocId(doc._id)}
-                      className="p-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 transition-all"
-                      title="Send for Approval"
-                    >
-                      <Send className="w-4 h-4" />
-                    </button>
-                  )}
-
-                  {doc.approvalStatus === 'Pending' && (
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => handleAction(doc._id, 'respond', { response: 'Approved' })}
-                        className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 hover:bg-emerald-100 transition-all"
-                        title="Approve"
-                      >
-                        <CheckCircle2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleAction(doc._id, 'respond', { response: 'Rejected' })}
-                        className="p-2 rounded-xl bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 transition-all"
-                        title="Reject"
-                      >
-                        <XCircle className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="h-8 w-px bg-gray-200 mx-2" />
-
-                  <button
-                    onClick={() => setViewingDoc(doc)}
-                    className="p-2 rounded-xl bg-gray-50 border border-gray-200 text-slate-400 hover:text-gray-900 hover:bg-gray-100 transition-all"
-                    title="View Document"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </button>
-
-                  {isAdmin && (
-                    <button
-                      onClick={() => handleAction(doc._id, 'deleteDocument')}
-                      className="p-2 rounded-xl bg-gray-50 border border-gray-200 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {doc.approvals?.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-100 flex items-center space-x-6">
-                  {doc.approvals.map((app: any, i: number) => (
-                    <div key={i} className="flex items-center space-x-2">
-                      <div className={cn(
-                        "w-6 h-6 rounded-lg flex items-center justify-center text-[10px]",
-                        app.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' :
-                        app.status === 'Rejected' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'
-                      )}>
-                        {app.status === 'Approved' ? <UserCheck className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-900 group-hover/item:text-blue-600 transition-colors">{mappedDoc.name}</h4>
+                      <div className="flex items-center space-x-3 mt-1">
+                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                          {new Date(mappedDoc.uploadedAt).toLocaleDateString()}
+                        </span>
+                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                        <span className="text-[10px] text-slate-500 font-bold">{(mappedDoc.size / 1024 / 1024).toFixed(2)} MB</span>
+                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border",
+                          getStatusBadge(mappedDoc.approvalStatus)
+                        )}>
+                          {mappedDoc.approvalStatus}
+                        </span>
                       </div>
-                      <span className="text-[10px] font-bold text-slate-500">{app.userName}</span>
                     </div>
-                  ))}
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    {mappedDoc.approvalStatus === 'Draft' && isAdmin && (
+                      <button
+                        onClick={() => setApproverDocId(mappedDoc._id)}
+                        className="p-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 transition-all"
+                        title="Send for Approval"
+                      >
+                        <Send className="w-4 h-4" />
+                      </button>
+                    )}
+
+                    {mappedDoc.approvalStatus === 'Pending' && (
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleAction(mappedDoc._id, 'respond', { response: 'Approved', versionId: mappedDoc.versionId })}
+                          className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 hover:bg-emerald-100 transition-all"
+                          title="Approve"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleAction(mappedDoc._id, 'respond', { response: 'Rejected', versionId: mappedDoc.versionId })}
+                          className="p-2 rounded-xl bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 transition-all"
+                          title="Reject"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="h-8 w-px bg-gray-200 mx-2" />
+
+                    <button
+                      onClick={() => setViewingDoc(mappedDoc)}
+                      className="p-2 rounded-xl bg-gray-50 border border-gray-200 text-slate-400 hover:text-gray-900 hover:bg-gray-100 transition-all"
+                      title="View Document"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+
+                    {isAdmin && (
+                      <button
+                        onClick={() => handleAction(mappedDoc._id, 'deleteDocument')}
+                        className="p-2 rounded-xl bg-gray-50 border border-gray-200 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
-          ))}
+
+                {mappedDoc.approvals?.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-gray-100 flex items-center space-x-6">
+                    {mappedDoc.approvals.map((app: any, i: number) => (
+                      <div key={i} className="flex items-center space-x-2">
+                        <div className={cn(
+                          "w-6 h-6 rounded-lg flex items-center justify-center text-[10px]",
+                          app.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' :
+                          app.status === 'Rejected' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'
+                        )}>
+                          {app.status === 'Approved' ? <UserCheck className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-500">{app.userName}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
           {(!folder.documents || folder.documents.length === 0) && (
             <div className="py-20 flex flex-col items-center justify-center text-center">

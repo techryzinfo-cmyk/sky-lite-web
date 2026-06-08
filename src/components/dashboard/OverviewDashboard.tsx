@@ -1,4 +1,6 @@
-﻿'use client';
+'use client';
+
+import { SkeletonLoader } from '../ui/SkeletonLoader';
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -23,7 +25,7 @@ import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 
 export const OverviewDashboard = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [projects, setProjects] = useState<any[]>([]);
   const [milestones, setMilestones] = useState<any[]>([]);
   const [issues, setIssues] = useState<any[]>([]);
@@ -31,6 +33,14 @@ export const OverviewDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Wait for auth state to resolve before making any API calls.
+    // Firing before isAuthenticated is ready causes: 401 → no refresh token → error loop.
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
     const fetchData = async () => {
       try {
         const res = await api.get('/projects');
@@ -61,7 +71,7 @@ export const OverviewDashboard = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [isAuthenticated, authLoading]);
 
   const totalBudget = projects.reduce((acc, p) => acc + (p.budgetHistory?.[p.budgetHistory?.length - 1]?.amount || 0), 0);
   const completedMs = milestones.filter(m => m.status === 'Completed').length;
@@ -109,19 +119,12 @@ export const OverviewDashboard = () => {
     return acc;
   }, {});
 
-  if (loading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[1, 2, 3, 4].map(i => (
-          <div key={i} className="h-32 rounded-3xl bg-gray-50 animate-pulse border border-gray-200" />
-        ))}
-      </div>
-    );
-  }
+  // Loading state handled by Skeleton wrapper
 
   return (
-    <div className="space-y-8">
-      {/* Stats Grid */}
+    <SkeletonLoader loading={loading} preset="dashboard">
+      <div className="space-y-8">
+        {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, i) => (
           <GlassCard key={stat.name} className="p-6 border-gray-200 group hover:border-blue-500/30 transition-all" gradient>
@@ -456,5 +459,6 @@ export const OverviewDashboard = () => {
         </GlassCard>
       </div>
     </div>
+    </SkeletonLoader>
   );
 };

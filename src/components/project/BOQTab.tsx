@@ -1,4 +1,6 @@
-﻿'use client';
+'use client';
+
+import { SkeletonLoader } from '../ui/SkeletonLoader';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -70,36 +72,7 @@ const StatCard = ({
   </div>
 );
 
-// ─── Loading Skeleton ────────────────────────────────────────────────────────
-const Skeleton = () => (
-  <div className="space-y-6">
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 animate-pulse">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-200 rounded-xl sm:rounded-2xl" />
-            <div className="flex-1">
-              <div className="h-2.5 bg-gray-200 rounded mb-2 w-2/3" />
-              <div className="h-6 bg-gray-200 rounded w-3/4" />
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden animate-pulse">
-      <div className="h-12 bg-gray-100 border-b border-gray-200" />
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-gray-100">
-          <div className="h-4 bg-gray-200 rounded flex-1" />
-          <div className="h-4 bg-gray-200 rounded w-16" />
-          <div className="h-4 bg-gray-200 rounded w-24" />
-          <div className="h-6 bg-gray-200 rounded-full w-20" />
-        </div>
-      ))}
-    </div>
-  </div>
-);
-
+// Custom skeleton removed in favor of boneyard-js
 // ─── Helper to get group's overall status ────────────────────────────────────
 const getGroupStatus = (groupItems: BOQItem[]): StatusKey => {
   if (groupItems.every(i => i.status === 'Approved')) return 'Approved';
@@ -166,7 +139,7 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
     return acc;
   }, {});
 
-  const totalBOQAmount = items.reduce((s, i) => s + (i.totalCost || 0), 0);
+  const totalBOQAmount = items.reduce((s, i) => s + ((i as any).effectiveTotalCost !== undefined ? (i as any).effectiveTotalCost : (i.totalCost || 0)), 0);
   const pendingCount   = items.filter(i => i.status === 'Pending').length;
   const approvedCount  = items.filter(i => i.status === 'Approved').length;
   const existingGroups = [...new Set(items.map(i => i.groupName))];
@@ -254,17 +227,14 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
     URL.revokeObjectURL(url);
   };
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // LOADING
-  // ──────────────────────────────────────────────────────────────────────────
-  if (loading) return <Skeleton />;
+  // Loading state handled by Skeleton wrapper
 
   // ──────────────────────────────────────────────────────────────────────────
   // DETAIL VIEW — group drill-down
   // ──────────────────────────────────────────────────────────────────────────
   if (selectedGroupName && groupedItems[selectedGroupName]) {
     const detailItems    = groupedItems[selectedGroupName];
-    const detailTotal    = detailItems.reduce((s, i) => s + (i.totalCost || 0), 0);
+    const detailTotal    = detailItems.reduce((s, i) => s + ((i as any).effectiveTotalCost !== undefined ? (i as any).effectiveTotalCost : (i.totalCost || 0)), 0);
     const detailVersion  = Math.max(...detailItems.map(i => (i as any).version || 1));
     const groupStatus    = getGroupStatus(detailItems);
     const approvedItems  = detailItems.filter(i => i.status === 'Approved');
@@ -273,7 +243,8 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
     const allApproved    = groupStatus === 'Approved';
 
     return (
-      <div className="space-y-5 pb-20 sm:pb-6">
+      <SkeletonLoader loading={loading} preset="table">
+        <div className="space-y-5 pb-20 sm:pb-6">
 
         {/* ── Breadcrumb ── */}
         <nav className="flex items-center gap-1.5 text-sm">
@@ -414,9 +385,8 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
                       ${Number(item.unitCost).toLocaleString('en-IN')}
                     </td>
 
-                    {/* Total Cost */}
                     <td className="px-4 py-3.5 text-right font-bold text-blue-700">
-                      ${Number(item.totalCost || 0).toLocaleString('en-IN')}
+                      ${Number((item as any).effectiveTotalCost !== undefined ? (item as any).effectiveTotalCost : (item.totalCost || 0)).toLocaleString('en-IN')}
                     </td>
 
                     {/* Status */}
@@ -559,7 +529,7 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
                   {[
                     { label: 'Quantity',  value: `${Number(item.quantity).toLocaleString('en-IN')} ${item.unit || ''}`, mono: false },
                     { label: 'Unit Cost', value: `$${Number(item.unitCost).toLocaleString('en-IN')}`, mono: false },
-                    { label: 'Total Cost',value: `$${Number(item.totalCost || 0).toLocaleString('en-IN')}`, highlight: true },
+                    { label: 'Total Cost',value: `$${Number((item as any).effectiveTotalCost !== undefined ? (item as any).effectiveTotalCost : (item.totalCost || 0)).toLocaleString('en-IN')}`, highlight: true },
                   ].map(({ label, value, highlight }) => (
                     <div key={label} className={cn('px-3 py-2.5 text-center', highlight ? 'bg-blue-50' : 'bg-white')}>
                       <p className={cn('text-[9px] uppercase tracking-wider mb-0.5', highlight ? 'text-blue-400' : 'text-slate-400')}>{label}</p>
@@ -688,6 +658,7 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
         <BOQHistoryModal isOpen={!!historyItem} onClose={() => setHistoryItem(null)} item={historyItem} projectId={projectId} />
         <BOQApproversModal isOpen={!!approversItem} onClose={() => setApproversItem(null)} onSuccess={fetchBOQ} item={approversItem} projectId={projectId} />
       </div>
+      </SkeletonLoader>
     );
   }
 
@@ -695,7 +666,8 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
   // LIST VIEW — BOQ Group overview
   // ──────────────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-5 sm:space-y-6">
+    <SkeletonLoader loading={loading} preset="table">
+      <div className="space-y-5 sm:space-y-6">
 
       {/* ── Stat cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -1042,5 +1014,6 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
       <BOQHistoryModal isOpen={!!historyItem} onClose={() => setHistoryItem(null)} item={historyItem} projectId={projectId} />
       <BOQApproversModal isOpen={!!approversItem} onClose={() => setApproversItem(null)} onSuccess={fetchBOQ} item={approversItem} projectId={projectId} />
     </div>
+    </SkeletonLoader>
   );
 };

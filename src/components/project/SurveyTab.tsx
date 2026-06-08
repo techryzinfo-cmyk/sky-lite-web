@@ -1,5 +1,7 @@
 'use client';
 
+import { SkeletonLoader } from '../ui/SkeletonLoader';
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -99,14 +101,7 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId, siteSurveyorId,
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-        <p className="text-slate-500 font-medium">Loading terrain data...</p>
-      </div>
-    );
-  }
+  // Loading state handled by Skeleton wrapper
 
   if (forbidden) {
     return (
@@ -121,8 +116,9 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId, siteSurveyorId,
   }
 
   return (
-    <div className="space-y-6">
-      {/* Reminder banner for assigned surveyor */}
+    <SkeletonLoader loading={loading} preset="list">
+      <div className="space-y-6">
+        {/* Reminder banner for assigned surveyor */}
       {showReminder && (
         <div className="flex items-start gap-4 px-5 py-4 bg-amber-50 border border-amber-200 rounded-2xl">
           <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0 mt-0.5">
@@ -254,5 +250,6 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId, siteSurveyorId,
         survey={selectedSurvey}
       />
     </div>
+    </SkeletonLoader>
   );
 };
