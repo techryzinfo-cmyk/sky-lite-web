@@ -64,13 +64,18 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${token}`;
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh token failed, logout user
+        // Refresh token failed — clear regular user session
         if (typeof window !== 'undefined') {
           localStorage.removeItem('token');
           localStorage.removeItem('refreshToken');
           localStorage.removeItem('user');
           Cookies.remove('token');
-          window.location.href = '/login';
+          // Don't redirect if already on /login or if a superadmin session is active
+          const onLoginPage = window.location.pathname === '/login';
+          const hasSaToken = !!sessionStorage.getItem('saToken');
+          if (!onLoginPage && !hasSaToken) {
+            window.location.href = '/login';
+          }
         }
         return Promise.reject(refreshError);
       }

@@ -7,6 +7,7 @@ import { Eye, EyeOff, Lock, Mail, Loader2, ArrowLeft, CheckCircle2 } from 'lucid
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import api from '@/lib/api';
+import axios from 'axios';
 
 function LoginForm() {
   const [email, setEmail] = useState('');
@@ -43,8 +44,20 @@ function LoginForm() {
     try {
       await login({ email, password });
       toast.success('Welcome back!');
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Login failed. Please check your credentials.');
+    } catch {
+      // Regular login failed — try superadmin credentials (no withCredentials, use Bearer token)
+      try {
+        const saRes = await axios.post(
+          `${process.env.NEXT_PUBLIC_API_URL}/superadmin/auth/login`,
+          { email, password }
+        );
+        sessionStorage.setItem('saToken', saRes.data.saToken);
+        toast.success('SuperAdmin access granted');
+        window.location.href = '/superadmin/dashboard';
+      } catch (saError: any) {
+        const msg = saError.response?.data?.message || 'Invalid credentials.';
+        toast.error(msg);
+      }
     } finally {
       setIsLoading(false);
     }

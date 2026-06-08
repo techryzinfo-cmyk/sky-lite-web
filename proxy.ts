@@ -5,14 +5,19 @@ export function proxy(request: NextRequest) {
   const token = request.cookies.get('token')?.value;
   const { pathname } = request.nextUrl;
 
-  // Define public routes
-  const isPublicRoute = pathname === '/login' || pathname === '/register' || pathname === '/onboarding' || pathname === '/';
+  // Define public routes (superadmin routes handle their own auth)
+  const isPublicRoute =
+    pathname === '/login' ||
+    pathname === '/register' ||
+    pathname === '/onboarding' ||
+    pathname === '/' ||
+    pathname.startsWith('/superadmin');
 
   if (!token && !isPublicRoute) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  if (token && (pathname === '/login' || pathname === '/register')) {
+  if (token && (pathname === '/login' || pathname === '/register') && !pathname.startsWith('/superadmin')) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 

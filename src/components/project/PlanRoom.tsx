@@ -231,6 +231,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
         isOpen={!!viewingDoc}
         onClose={() => setViewingDoc(null)}
         document={viewingDoc}
+        projectId={projectId}
       />
 
       <UserPickerModal

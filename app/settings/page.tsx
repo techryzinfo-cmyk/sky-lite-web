@@ -7,9 +7,9 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import api from '@/lib/api';
 import {
-  Building2, Bell, Shield, Trash2, Save, Loader2,
+  Building2, Bell, Trash2, Save, Loader2,
   Globe, Mail, Phone, ToggleLeft, ToggleRight, AlertTriangle,
-  Palette, Download,
+  Palette, Download, CreditCard, Star, Crown, Zap, CheckCircle2, XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +27,9 @@ export default function SettingsPage() {
 
   const [orgForm, setOrgForm] = useState({ name: '', website: '', phone: '', email: '' });
   const [savingOrg, setSavingOrg] = useState(false);
+
+  const [subData, setSubData] = useState<any>(null);
+  const [subLoading, setSubLoading] = useState(true);
 
   const [notifs, setNotifs] = useState({
     issueAlerts: true,
@@ -66,6 +69,8 @@ export default function SettingsPage() {
         setOrgForm(f => ({ ...f, name: typeof user.organization === 'string' ? user.organization : user.organization?.name || '' }));
       }
     });
+
+    api.get('/organization/subscription').then(r => setSubData(r.data)).catch(() => {}).finally(() => setSubLoading(false));
   }, [user]);
 
   const handleSaveOrg = async (e: React.FormEvent) => {
@@ -162,6 +167,164 @@ export default function SettingsPage() {
               </button>
             </div>
           </form>
+        </Section>
+
+        {/* Plan & Billing */}
+        <Section
+          title="Plan & Billing"
+          description="Your current subscription plan and usage."
+          icon={CreditCard}
+          iconBg="bg-amber-50 border-amber-200"
+          iconColor="text-amber-600"
+        >
+          {subLoading ? (
+            <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-amber-500" /></div>
+          ) : (() => {
+            const sub = subData?.subscription;
+            const usage = subData?.usage || {};
+            const plan = sub?.plan || 'Silver';
+            const status = sub?.status || 'Trial';
+            const limits = sub?.limits || {};
+            const maxP = limits.maxProjects ?? 10;
+            const maxU = limits.maxUsers ?? 20;
+            const trialEnd = sub?.trialEndsAt ? new Date(sub.trialEndsAt) : null;
+            const isTrialExpired = subData?.isTrialExpired;
+
+            const PLAN_STYLES: Record<string, { color: string; bg: string; border: string; icon: React.ElementType; gradient: string }> = {
+              Silver:   { color: 'text-slate-600',  bg: 'bg-slate-50',   border: 'border-slate-200', icon: Star,  gradient: 'from-slate-400 to-slate-600' },
+              Gold:     { color: 'text-amber-700',  bg: 'bg-amber-50',   border: 'border-amber-200', icon: Crown, gradient: 'from-amber-400 to-amber-600' },
+              Platinum: { color: 'text-blue-700',   bg: 'bg-blue-50',    border: 'border-blue-200',  icon: Zap,   gradient: 'from-blue-400 to-blue-600' },
+            };
+            const pm = PLAN_STYLES[plan] ?? PLAN_STYLES.Silver;
+            const PlanIcon = pm.icon;
+
+            const FEATURES_BY_PLAN: Record<string, { label: string; included: boolean }[]> = {
+              Silver: [
+                { label: 'Projects (up to 10)',         included: true },
+                { label: 'Users (up to 20)',             included: true },
+                { label: 'Milestones, Materials, BOQ',   included: true },
+                { label: 'BOQ Import (XLS/XER)',         included: false },
+                { label: 'Interior project type',        included: false },
+                { label: 'Custom roles',                 included: false },
+                { label: 'Export reports',               included: false },
+                { label: 'Arabic / RTL UI',              included: false },
+              ],
+              Gold: [
+                { label: 'Projects (up to 50)',          included: true },
+                { label: 'Users (up to 100)',             included: true },
+                { label: 'Milestones, Materials, BOQ',   included: true },
+                { label: 'BOQ Import (XLS/XER)',         included: true },
+                { label: 'Interior project type',        included: true },
+                { label: 'Custom roles',                 included: true },
+                { label: 'Export reports',               included: true },
+                { label: 'Arabic / RTL UI',              included: false },
+              ],
+              Platinum: [
+                { label: 'Unlimited projects & users',   included: true },
+                { label: 'Milestones, Materials, BOQ',   included: true },
+                { label: 'BOQ Import (XLS/XER)',         included: true },
+                { label: 'Interior project type',        included: true },
+                { label: 'Custom roles',                 included: true },
+                { label: 'Export reports',               included: true },
+                { label: 'Arabic / RTL UI',              included: true },
+                { label: 'API access + Dedicated support', included: true },
+              ],
+            };
+
+            return (
+              <div className="space-y-5">
+                {/* Current plan card */}
+                {isTrialExpired && (
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-semibold">
+                    <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                    Your free trial has expired. Contact your administrator to upgrade your plan and restore full access.
+                  </div>
+                )}
+                {status === 'Suspended' && (
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-semibold">
+                    <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                    Your organization account is currently suspended. Please contact support.
+                  </div>
+                )}
+
+                <div className={cn('flex items-center justify-between p-5 rounded-2xl border-2', pm.bg, pm.border)}>
+                  <div className="flex items-center gap-4">
+                    <div className={cn('w-14 h-14 rounded-2xl bg-gradient-to-br flex items-center justify-center', pm.gradient)}>
+                      <PlanIcon className="w-7 h-7 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-0.5">Current Plan</p>
+                      <p className={cn('text-2xl font-black', pm.color)}>{plan}</p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className={cn(
+                          'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold',
+                          status === 'Active'    ? 'bg-emerald-100 text-emerald-700' :
+                          status === 'Trial'     ? 'bg-purple-100 text-purple-700'  :
+                          status === 'Suspended' ? 'bg-red-100 text-red-700'        :
+                          'bg-gray-100 text-gray-600'
+                        )}>
+                          <span className={cn('w-1 h-1 rounded-full', status === 'Active' ? 'bg-emerald-500' : status === 'Trial' ? 'bg-purple-500' : 'bg-red-500')} />
+                          {status}
+                        </span>
+                        {status === 'Trial' && trialEnd && (
+                          <span className="text-[10px] text-slate-400">
+                            Trial ends {trialEnd.toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <a
+                    href="mailto:support@skylite.app?subject=Upgrade%20Request"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-sm font-bold text-slate-700 hover:bg-gray-50 transition-colors shadow-sm"
+                  >
+                    <Crown className="w-4 h-4 text-amber-500" />
+                    Upgrade
+                  </a>
+                </div>
+
+                {/* Usage meters */}
+                <div className="grid grid-cols-2 gap-4">
+                  {[
+                    { label: 'Projects Used',  used: usage.projects ?? 0, max: maxP },
+                    { label: 'Team Members',   used: usage.users    ?? 0, max: maxU },
+                  ].map(({ label, used, max }) => {
+                    const pct = max === null ? 0 : Math.min(100, Math.round((used / max) * 100));
+                    const isOver = max !== null && used > max;
+                    return (
+                      <div key={label} className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                        <div className="flex justify-between text-xs font-semibold text-slate-600 mb-2">
+                          <span>{label}</span>
+                          <span className={cn(isOver && 'text-red-600 font-bold')}>{used} / {max ?? '∞'}</span>
+                        </div>
+                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className={cn('h-full rounded-full transition-all', isOver ? 'bg-red-500' : pct >= 80 ? 'bg-amber-500' : 'bg-blue-500')}
+                            style={{ width: `${max === null ? 30 : pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Feature list */}
+                <div>
+                  <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">What&apos;s included in {plan}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {(FEATURES_BY_PLAN[plan] ?? []).map(f => (
+                      <div key={f.label} className="flex items-center gap-2.5 text-sm">
+                        {f.included
+                          ? <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                          : <XCircle className="w-4 h-4 text-gray-300 flex-shrink-0" />}
+                        <span className={f.included ? 'text-gray-700' : 'text-slate-400 line-through'}>{f.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </Section>
 
         {/* Notifications */}
