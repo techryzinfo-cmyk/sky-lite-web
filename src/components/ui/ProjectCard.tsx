@@ -17,7 +17,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { Project } from '@/types';
-import { GlassCard } from './GlassCard';
+import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
 
 interface ProjectCardProps {

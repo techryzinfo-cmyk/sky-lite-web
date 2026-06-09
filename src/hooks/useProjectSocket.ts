@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useSocket } from '@/context/SocketContext';
+import { useSocket } from '@/providers/SocketContext';
 
 export const useProjectSocket = (projectId: string, onEvent?: (event: string, data: any) => void) => {
   const { socket } = useSocket();
