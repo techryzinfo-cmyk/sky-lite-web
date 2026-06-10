@@ -1,4 +1,4 @@
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/providers/AuthContext';
 
 export const usePermission = (permission: string): boolean => {
   const { user } = useAuth();
