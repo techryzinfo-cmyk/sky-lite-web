@@ -54,7 +54,7 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
     setIsUpdating(true);
 
     try {
-      await api.put(`/projects/${project._id}`, {
+      await api.patch(`/projects/${project._id}`, {
         newBudget: formData.newBudget,
         budgetReason: formData.budgetReason,
       });

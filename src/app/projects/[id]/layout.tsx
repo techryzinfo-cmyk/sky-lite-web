@@ -1,65 +1,114 @@
 'use client';
 import React, { useState } from 'react';
-import { useParams, useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Shell } from '@/components/layouts/Shell';
 import { SkeletonLoader } from '@/components/skeletons/SkeletonLoader';
 import { CreateProjectModal } from '@/components/modals/CreateProjectModal';
-import { TeamManagementModal } from '@/features/projects/components/TeamManagementModal';
-import { SendForSurveyModal } from '@/features/projects/site-survey/components/SendForSurveyModal';
 import { ProjectProvider, useProjectContext } from '@/features/projects/contexts/ProjectContext';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/providers/ToastContext';
 import {
   Info, FileText, DollarSign, Package, Files, Map,
   AlertCircle, ShieldAlert, Calendar,
   TrendingUp, GanttChart, ClipboardList, CreditCard,
-  ChevronLeft, Pencil, MessageSquare, Users,
-  ClipboardCheck, History
+  ChevronLeft, Pencil, MessageSquare,
+  ClipboardCheck, History, LayoutGrid, Sofa, LayoutDashboard,
 } from 'lucide-react';
 
-const tabs = [
+// ── All tab definitions ────────────────────────────────────────
+const ALL_TABS = [
+  { id: 'dashboard',    name: 'Dashboard',      icon: LayoutDashboard },
   { id: 'details',      name: 'Details',        icon: Info },
-  { id: 'boq',         name: 'BOQ',             icon: FileText },
-  { id: 'budget',      name: 'Budget',           icon: DollarSign },
-  { id: 'materials',   name: 'Materials',        icon: Package },
-  { id: 'documents',   name: 'Documents',        icon: Files },
-  { id: 'plans',       name: 'Plans',            icon: Map },
-  { id: 'issues',      name: 'Issues & Snags',   icon: AlertCircle },
-  { id: 'risks',       name: 'Risks',            icon: ShieldAlert },
-  { id: 'milestones',  name: 'Milestones',       icon: Calendar },
-  { id: 'progress',    name: 'Progress',         icon: TrendingUp },
-  { id: 'timeline',    name: 'Timeline',         icon: GanttChart },
-  { id: 'site-survey', name: 'Site Survey',      icon: ClipboardList },
-  { id: 'transactions', name: 'Transactions',    icon: CreditCard },
-  { id: 'chat',        name: 'Chat',             icon: MessageSquare },
-  { id: 'handover',     name: 'Handover',         icon: ClipboardCheck },
-  { id: 'audit',        name: 'Audit Trail',      icon: History },
-];
+  { id: 'boq',          name: 'BOQ',            icon: FileText },
+  { id: 'milestones',   name: 'Milestones',     icon: Calendar },
+  { id: 'timeline',     name: 'Timeline',       icon: GanttChart },
+  { id: 'progress',     name: 'Progress',       icon: TrendingUp },
+  { id: 'budget',       name: 'Budget',         icon: DollarSign },
+  { id: 'transactions', name: 'Transactions',   icon: CreditCard },
+  { id: 'plans',        name: 'Plans',          icon: Map },
+  { id: 'documents',    name: 'Documents',      icon: Files },
+  { id: 'materials',    name: 'Materials',      icon: Package },
+  { id: 'site-survey',  name: 'Site Survey',    icon: ClipboardList },
+  { id: 'issues',       name: 'Issues & Snags', icon: AlertCircle },
+  { id: 'risks',        name: 'Risks',          icon: ShieldAlert },
+  { id: 'handover',     name: 'Handover',       icon: ClipboardCheck },
+  { id: 'audit',        name: 'Audit Trail',    icon: History },
+  { id: 'chat',         name: 'Chat',           icon: MessageSquare },
+  { id: 'rooms',        name: 'Rooms',          icon: LayoutGrid },
+  { id: 'ffe',          name: 'FFE',            icon: Sofa },
+] as const;
 
-const statusBadgeColor: Record<string, string> = {
-  'Initialized':        'bg-blue-100 text-blue-700 border-blue-200',
-  'Planning':           'bg-purple-100 text-purple-700 border-purple-200',
-  'Site Survey':        'bg-cyan-100 text-cyan-700 border-cyan-200',
-  'In Progress':        'bg-emerald-100 text-emerald-700 border-emerald-200',
-  'Under Snagging':     'bg-amber-100 text-amber-700 border-amber-200',
-  'Snagging Completed': 'bg-orange-100 text-orange-700 border-orange-200',
-  'Completed':          'bg-green-100 text-green-700 border-green-200',
-  'On Hold':            'bg-gray-100 text-slate-600 border-gray-200',
-  'Cancelled':          'bg-red-100 text-red-700 border-red-200',
+type TabId = typeof ALL_TABS[number]['id'];
+
+type TabGroup = {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  tabIds: TabId[];
 };
 
+// ── Group definitions (order matters — first tab in group = default landing) ──
+const TAB_GROUPS: TabGroup[] = [
+  { id: 'overview',  label: 'Overview',  icon: LayoutDashboard, tabIds: ['dashboard', 'details'] },
+  { id: 'work',      label: 'Work',      icon: Calendar,        tabIds: ['boq', 'milestones', 'timeline', 'progress'] },
+  { id: 'finance',   label: 'Finance',   icon: DollarSign,      tabIds: ['budget', 'transactions'] },
+  { id: 'site',      label: 'Site',      icon: Map,             tabIds: ['plans', 'documents', 'materials', 'site-survey'] },
+  { id: 'quality',   label: 'Quality',   icon: ShieldAlert,     tabIds: ['issues', 'risks', 'handover', 'audit'] },
+  { id: 'chat',      label: 'Chat',      icon: MessageSquare,   tabIds: ['chat'] },
+  { id: 'interior',  label: 'Interior',  icon: Sofa,            tabIds: ['rooms', 'ffe'] },
+];
+
+// ── Builds visible groups respecting project type & surveyor ──
+function buildVisibleGroups(projectType?: string, siteSurveyor?: any) {
+  const visibleIds = new Set(
+    ALL_TABS
+      .filter(t => t.id !== 'site-survey' || !!siteSurveyor)
+      .filter(t => t.id !== 'rooms' && t.id !== 'ffe' || projectType === 'Interior')
+      .map(t => t.id)
+  );
+
+  const groups = projectType === 'Interior'
+    ? TAB_GROUPS
+    : TAB_GROUPS.filter(g => g.id !== 'interior');
+
+  return groups
+    .map(g => ({
+      group: g,
+      tabs: ALL_TABS.filter(t => (g.tabIds as readonly string[]).includes(t.id) && visibleIds.has(t.id)),
+    }))
+    .filter(({ tabs }) => tabs.length > 0);
+}
+
+// ── Status badge colors ────────────────────────────────────────
+const statusBadgeColor: Record<string, string> = {
+  'Initialized':         'bg-blue-100 text-blue-700 border-blue-200',
+  'Planning':            'bg-purple-100 text-purple-700 border-purple-200',
+  'Site Survey':         'bg-cyan-100 text-cyan-700 border-cyan-200',
+  'Ongoing':             'bg-emerald-100 text-emerald-700 border-emerald-200',
+  'Under Snagging':      'bg-amber-100 text-amber-700 border-amber-200',
+  'Snagging Completed':  'bg-orange-100 text-orange-700 border-orange-200',
+  'Completed':           'bg-green-100 text-green-700 border-green-200',
+  'Pending Handover':    'bg-violet-100 text-violet-700 border-violet-200',
+  'Handover Rejected':   'bg-rose-100 text-rose-700 border-rose-200',
+  'Handover Completed':  'bg-teal-100 text-teal-700 border-teal-200',
+  'On Hold':             'bg-gray-100 text-slate-600 border-gray-200',
+  'Cancelled':           'bg-red-100 text-red-700 border-red-200',
+};
+
+// ── Inner layout ───────────────────────────────────────────────
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const { project, loading, fetchProject, projectId } = useProjectContext();
   const router = useRouter();
   const pathname = usePathname();
-  const toast = useToast();
-  
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
-  const [isSurveyAssignOpen, setIsSurveyAssignOpen] = useState(false);
 
-  // Derive active tab from pathname
-  const activeTab = tabs.find(t => pathname.endsWith(`/${t.id}`))?.id || 'details';
+  const visibleGroups = buildVisibleGroups(project?.projectType, project?.siteSurveyor);
+
+  const activeTab = (ALL_TABS as readonly { id: string }[]).find(t => pathname.endsWith(`/${t.id}`))?.id || 'dashboard';
+
+  const activeGroupEntry = visibleGroups.find(({ group }) =>
+    (group.tabIds as readonly string[]).includes(activeTab)
+  );
+  const activeGroupTabs = activeGroupEntry?.tabs ?? [];
 
   return (
     <Shell>
@@ -67,82 +116,117 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
         {!project && !loading ? (
           <div className="text-center py-20">
             <h2 className="text-2xl font-bold text-gray-900">Project not found</h2>
-            <button onClick={() => router.push('/projects')} className="text-blue-600 mt-4 font-medium hover:text-blue-700">Back to Projects</button>
+            <button
+              onClick={() => router.push('/projects')}
+              className="mt-4 text-blue-600 font-medium hover:text-blue-700"
+            >
+              Back to Projects
+            </button>
           </div>
         ) : project ? (
           <>
-          <div className="space-y-0">
-            <div className="bg-white border border-gray-200 rounded-2xl shadow-sm px-5 py-3 mb-4">
-              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <button
-                    onClick={() => router.push('/projects')}
-                    className="p-1.5 bg-gray-50 border border-gray-200 rounded-lg text-slate-400 hover:text-gray-900 hover:bg-gray-100 transition-colors shrink-0"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
+            <div className="space-y-0">
+              {/* ── Navigation card ── */}
+              <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden mb-4">
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h1 className="text-base font-bold text-gray-900 truncate leading-tight max-w-[200px] sm:max-w-none">
-                        {project.name}
-                      </h1>
-                      <span className={cn(
-                        'px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest border shrink-0 leading-tight',
-                        statusBadgeColor[project.status] || 'bg-blue-100 text-blue-700 border-blue-200'
-                      )}>
-                        {project.status}
+                {/* Row 1: Back · Name · Status · Edit */}
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <button
+                      onClick={() => router.push('/projects')}
+                      className="p-1.5 rounded-lg bg-gray-50 border border-gray-200 text-slate-400 hover:text-gray-900 hover:bg-gray-100 transition-colors shrink-0"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <h1 className="text-sm font-bold text-gray-900 truncate max-w-[180px] sm:max-w-xs md:max-w-none">
+                      {project.name}
+                    </h1>
+                    <span className={cn(
+                      'shrink-0 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest border',
+                      statusBadgeColor[project.status] || 'bg-blue-100 text-blue-700 border-blue-200'
+                    )}>
+                      {project.status}
+                    </span>
+                    {project.projectType && (
+                      <span className="hidden md:inline shrink-0 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest border bg-gray-100 text-slate-500 border-gray-200">
+                        {project.projectType}
                       </span>
-                    </div>
+                    )}
                   </div>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => setIsEditModalOpen(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-slate-600 hover:bg-gray-100 hover:text-gray-900 transition-all"
+                    title="Edit project"
+                    className="shrink-0 p-2 rounded-lg bg-gray-50 border border-gray-200 text-slate-400 hover:text-gray-900 hover:bg-gray-100 transition-colors"
                   >
-                    <Pencil className="w-3 h-3" />
-                    <span>Edit</span>
+                    <Pencil className="w-3.5 h-3.5" />
                   </button>
                 </div>
+
+                {/* Divider */}
+                <div className="h-px bg-gray-100" />
+
+                {/* Row 2: Primary group tabs */}
+                <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide px-3 py-2">
+                  {visibleGroups.map(({ group, tabs }) => {
+                    const isGroupActive = (group.tabIds as readonly string[]).includes(activeTab);
+                    const GroupIcon = group.icon;
+                    return (
+                      <button
+                        key={group.id}
+                        onClick={() => router.push(`/projects/${projectId}/${tabs[0].id}`)}
+                        className={cn(
+                          'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all shrink-0',
+                          isGroupActive
+                            ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
+                            : 'text-slate-500 hover:bg-gray-100 hover:text-gray-800'
+                        )}
+                      >
+                        <GroupIcon className="w-3.5 h-3.5 shrink-0" />
+                        <span className="hidden sm:inline">{group.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Row 3: Sub-tabs (only when active group has multiple tabs) */}
+                {activeGroupTabs.length > 1 && (
+                  <>
+                    <div className="h-px bg-gray-100" />
+                    <div className="flex items-center gap-0 overflow-x-auto scrollbar-hide px-3 bg-gray-50/70">
+                      {activeGroupTabs.map((tab) => {
+                        const isActive = activeTab === tab.id;
+                        const TabIcon = tab.icon;
+                        return (
+                          <button
+                            key={tab.id}
+                            onClick={() => router.push(`/projects/${projectId}/${tab.id}`)}
+                            className={cn(
+                              'flex items-center gap-1.5 px-3 py-2 text-xs font-semibold whitespace-nowrap transition-all border-b-2 shrink-0',
+                              isActive
+                                ? 'text-blue-600 border-blue-600'
+                                : 'text-slate-400 border-transparent hover:text-gray-600 hover:border-gray-300'
+                            )}
+                          >
+                            <TabIcon className={cn('w-3 h-3', isActive ? 'text-blue-600' : 'text-slate-400')} />
+                            {tab.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
 
-              <div className="border-t border-gray-100 mt-3 -mx-5" />
-
-              <div className="flex overflow-x-auto scrollbar-hide -mb-3 mt-0">
-                {tabs.map((tab) => {
-                  const isActive = activeTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => router.push(`/projects/${projectId}/${tab.id}`)}
-                      className={cn(
-                        "flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold whitespace-nowrap transition-all relative shrink-0 border-b-2",
-                        isActive
-                          ? "text-blue-600 border-blue-600"
-                          : "text-slate-500 border-transparent hover:text-gray-700 hover:border-gray-300"
-                      )}
-                    >
-                      <tab.icon className={cn("w-3.5 h-3.5", isActive ? "text-blue-600" : "text-slate-400")} />
-                      {tab.name}
-                    </button>
-                  );
-                })}
-              </div>
+              {children}
             </div>
 
-            {children}
-            
-          </div>
-
-          <CreateProjectModal
-            isOpen={isEditModalOpen}
-            onClose={() => setIsEditModalOpen(false)}
-            onSuccess={fetchProject}
-            initialData={project || undefined}
-            projectId={projectId}
-          />
+            <CreateProjectModal
+              isOpen={isEditModalOpen}
+              onClose={() => setIsEditModalOpen(false)}
+              onSuccess={fetchProject}
+              initialData={project || undefined}
+              projectId={projectId}
+            />
           </>
         ) : null}
       </SkeletonLoader>

@@ -64,17 +64,30 @@ export default function FinancePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [projectsRes, txRes] = await Promise.allSettled([
-          api.get('/projects'),
-          api.get('/transactions'),
-        ]);
+        const projectsRes = await api.get('/projects');
+        const projectList: any[] = Array.isArray(projectsRes.data)
+          ? projectsRes.data
+          : projectsRes.data?.projects ?? projectsRes.data?.data ?? [];
+        setProjects(projectList);
 
-        if (projectsRes.status === 'fulfilled') {
-          setProjects(projectsRes.value.data);
-        }
-        if (txRes.status === 'fulfilled') {
-          setTransactions(txRes.value.data);
-        }
+        const txResults = await Promise.allSettled(
+          projectList.map((p: any) =>
+            api.get(`/projects/${p._id}/transactions`).then(res => ({
+              projectId: p._id,
+              projectName: p.name,
+              data: Array.isArray(res.data) ? res.data : [],
+            }))
+          )
+        );
+
+        const allTx: LedgerItem[] = txResults
+          .filter(r => r.status === 'fulfilled')
+          .flatMap(r => {
+            const { projectId, projectName, data } = (r as PromiseFulfilledResult<any>).value;
+            return data.map((t: any) => ({ ...t, projectId, projectName }));
+          });
+
+        setTransactions(allTx);
       } catch {
         toast.error('Failed to load financial data');
       } finally {
@@ -113,17 +126,17 @@ export default function FinancePage() {
       <div className="space-y-8">
         {/* Page Header */}
         <div>
-          <h1 className="text-3xl font-black text-gray-900">Finance Overview</h1>
-          <p className="text-slate-500 mt-1">Platform-wide financial summary across all projects.</p>
+          <h1 className="text-3xl font-black text-gray-900">Organisation Finance</h1>
+          <p className="text-slate-500 mt-1">Consolidated financial summary across all {projects.length > 0 ? `${projects.length} ` : ''}organisation projects.</p>
         </div>
 
         {/* Top-level KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: 'Total Budget', value: totalBudget, icon: Wallet, color: 'text-blue-600', bg: 'bg-blue-50', prefix: '₹' },
-            { label: 'Total Incoming', value: totalIncoming, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', prefix: '₹' },
-            { label: 'Total Outgoing', value: totalOutgoing, icon: TrendingDown, color: 'text-red-600', bg: 'bg-red-50', prefix: '₹' },
-            { label: 'Net Balance', value: netBalance, icon: CreditCard, color: netBalance >= 0 ? 'text-emerald-600' : 'text-red-600', bg: netBalance >= 0 ? 'bg-emerald-50' : 'bg-red-50', prefix: '₹' },
+            { label: 'Total Budget', value: totalBudget, icon: Wallet, color: 'text-blue-600', bg: 'bg-blue-50', prefix: '$' },
+            { label: 'Total Incoming', value: totalIncoming, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', prefix: '$' },
+            { label: 'Total Outgoing', value: totalOutgoing, icon: TrendingDown, color: 'text-red-600', bg: 'bg-red-50', prefix: '$' },
+            { label: 'Net Balance', value: netBalance, icon: CreditCard, color: netBalance >= 0 ? 'text-emerald-600' : 'text-red-600', bg: netBalance >= 0 ? 'bg-emerald-50' : 'bg-red-50', prefix: '$' },
           ].map((stat, i) => (
             <GlassCard key={i} className="p-6 border-gray-200" gradient>
               <div className="flex items-center justify-between mb-4">
@@ -195,7 +208,7 @@ export default function FinancePage() {
                     return (
                       <g key={ti}>
                         <line x1={PAD_L} y1={y} x2={W - PAD_R} y2={y} stroke="#e5e7eb" strokeWidth={tick === 0 ? 1 : 1} strokeDasharray={tick === 0 ? '0' : '3 3'} />
-                        <text x={PAD_L - 4} y={y + 4} textAnchor="end" fontSize="9" fill="#94a3b8" fontWeight="700">₹{fmt(tick)}</text>
+                        <text x={PAD_L - 4} y={y + 4} textAnchor="end" fontSize="9" fill="#94a3b8" fontWeight="700">${fmt(tick)}</text>
                       </g>
                     );
                   })}
@@ -220,9 +233,9 @@ export default function FinancePage() {
         })()}
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Project Breakdown */}
+          {/* Budget by Project */}
           <div className="lg:col-span-2 space-y-4">
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Project Breakdown</h3>
+            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Budget Allocation by Project</h3>
             <div className="space-y-3">
               {summaries.length === 0 ? (
                 <div className="py-12 text-center border border-dashed border-gray-200 rounded-2xl">
@@ -237,7 +250,7 @@ export default function FinancePage() {
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-sm font-bold text-gray-900 truncate pr-2">{p.name}</p>
                       <span className={cn('text-xs font-black shrink-0', p.balance >= 0 ? 'text-emerald-600' : 'text-red-600')}>
-                        {p.balance >= 0 ? '+' : ''}₹{p.balance.toLocaleString()}
+                        {p.balance >= 0 ? '+' : ''}${p.balance.toLocaleString()}
                       </span>
                     </div>
                     <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden border border-gray-200 mb-2">
@@ -247,8 +260,8 @@ export default function FinancePage() {
                       />
                     </div>
                     <div className="flex items-center justify-between text-[10px] font-bold text-slate-500">
-                      <span>Spent: ₹{spent.toLocaleString()}</span>
-                      <span>Budget: ₹{p.budget.toLocaleString()}</span>
+                      <span>Spent: ${spent.toLocaleString()}</span>
+                      <span>Budget: ${p.budget.toLocaleString()}</span>
                     </div>
                   </GlassCard>
                 );
@@ -301,7 +314,7 @@ export default function FinancePage() {
                         </div>
                       </div>
                       <span className={cn('text-sm font-black', meta.color)}>
-                        {meta.prefix}₹{tx.amount?.toLocaleString()}
+                        {meta.prefix}${tx.amount?.toLocaleString()}
                       </span>
                     </div>
                   );

@@ -36,9 +36,11 @@ interface SurveyTabProps {
   projectId: string;
   siteSurveyorId?: string;
   projectStatus?: string;
+  projectType?: 'Construction' | 'Interior';
 }
 
-export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId, siteSurveyorId, projectStatus }) => {
+export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId, siteSurveyorId, projectStatus, projectType = 'Construction' }) => {
+  const isInterior = projectType === 'Interior';
   const [surveys, setSurveys] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -141,8 +143,8 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId, siteSurveyorId,
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h3 className="text-xl font-bold text-gray-900">Site Surveys & Audits</h3>
-          <p className="text-sm text-slate-500 mt-1">Pre-construction assessments and site verification reports.</p>
+          <h3 className="text-xl font-bold text-gray-900">{isInterior ? 'Interior Space Surveys' : 'Site Surveys & Audits'}</h3>
+          <p className="text-sm text-slate-500 mt-1">{isInterior ? 'Space condition, room details and design assessments.' : 'Pre-construction assessments and site verification reports.'}</p>
         </div>
         {canAddSurvey ? (
           <button
@@ -242,6 +244,7 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId, siteSurveyorId,
         onClose={() => setIsModalOpen(false)}
         onSuccess={fetchSurveys}
         projectId={projectId}
+        projectType={projectType}
       />
 
       <SurveyDetailModal

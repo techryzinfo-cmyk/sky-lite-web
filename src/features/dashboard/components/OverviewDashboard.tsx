@@ -80,7 +80,7 @@ export const OverviewDashboard = () => {
   const stats = [
     {
       name: 'Active Projects',
-      value: projects.filter(p => p.status === 'In Progress' || p.status === 'Planning').length.toString(),
+      value: projects.filter(p => p.status === 'Ongoing' || p.status === 'Planning').length.toString(),
       icon: Briefcase,
       color: 'text-blue-600',
       bg: 'bg-blue-100',
@@ -178,8 +178,10 @@ export const OverviewDashboard = () => {
                       transition={{ delay: i * 0.1, duration: 0.8 }}
                       className={cn(
                         "h-full rounded-full",
-                        status === 'Execution' ? "bg-blue-500" :
-                          status === 'Completed' ? "bg-emerald-500" : "bg-gray-300"
+                        status === 'Ongoing' ? "bg-blue-500" :
+                        status === 'Completed' || status === 'Handover Completed' ? "bg-emerald-500" :
+                        status === 'Cancelled' ? "bg-red-400" :
+                        status === 'On Hold' ? "bg-gray-400" : "bg-blue-300"
                       )}
                     />
                   </div>

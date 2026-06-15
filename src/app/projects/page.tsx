@@ -381,18 +381,21 @@ export default function ProjectsPage() {
     return matchesSearch && matchesStatus;
   });
  
-  const statuses = ['All', 'Initialized', 'Planning', 'Site Survey', 'In Progress', 'Under Snagging', 'Snagging Completed', 'Completed', 'On Hold', 'Cancelled'];
- 
+  const statuses = ['All', 'Initialized', 'Planning', 'Site Survey', 'Ongoing', 'Under Snagging', 'Snagging Completed', 'Completed', 'Pending Handover', 'Handover Rejected', 'Handover Completed', 'On Hold', 'Cancelled'];
+
   const statusColorMap: Record<string, string> = {
-    'In Progress':        'text-emerald-700 bg-emerald-100 border-emerald-200',
-    'Completed':          'text-green-700 bg-green-100 border-green-200',
-    'Planning':           'text-purple-700 bg-purple-100 border-purple-200',
-    'On Hold':            'text-slate-600 bg-gray-100 border-gray-200',
-    'Cancelled':          'text-red-700 bg-red-100 border-red-200',
-    'Initialized':        'text-blue-700 bg-blue-100 border-blue-200',
-    'Site Survey':        'text-cyan-700 bg-cyan-100 border-cyan-200',
-    'Under Snagging':     'text-amber-700 bg-amber-100 border-amber-200',
-    'Snagging Completed': 'text-orange-700 bg-orange-100 border-orange-200',
+    'Ongoing':             'text-emerald-700 bg-emerald-100 border-emerald-200',
+    'Completed':           'text-green-700 bg-green-100 border-green-200',
+    'Planning':            'text-purple-700 bg-purple-100 border-purple-200',
+    'On Hold':             'text-slate-600 bg-gray-100 border-gray-200',
+    'Cancelled':           'text-red-700 bg-red-100 border-red-200',
+    'Initialized':         'text-blue-700 bg-blue-100 border-blue-200',
+    'Site Survey':         'text-cyan-700 bg-cyan-100 border-cyan-200',
+    'Under Snagging':      'text-amber-700 bg-amber-100 border-amber-200',
+    'Snagging Completed':  'text-orange-700 bg-orange-100 border-orange-200',
+    'Pending Handover':    'text-violet-700 bg-violet-100 border-violet-200',
+    'Handover Rejected':   'text-rose-700 bg-rose-100 border-rose-200',
+    'Handover Completed':  'text-teal-700 bg-teal-100 border-teal-200',
   };
  
   return (

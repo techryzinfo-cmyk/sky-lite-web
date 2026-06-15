@@ -1,20 +1,11 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  X,
-  ZoomIn,
-  ZoomOut,
-  Undo2,
-  Redo2,
-  MapPin,
-  Mic,
-  StopCircle,
-  ImageIcon,
-  Video,
-  Camera,
-  Loader2,
+  X, ZoomIn, ZoomOut, MapPin, Mic, StopCircle, ImageIcon,
+  Loader2, MessageSquare, Trash2, CheckCircle2, RotateCcw,
+  ChevronRight, PanelRightClose, PanelRightOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/providers/ToastContext';
@@ -29,119 +20,99 @@ interface DocumentViewerProps {
   projectId?: string;
 }
 
-interface PinAnnotation {
+interface Annotation {
   _id: string;
   text: string;
   x: number;
   y: number;
-  position?: {
-    x: number;
-    y: number;
-  };
+  position?: { x: number; y: number };
   imageUri?: string;
-  videoUri?: string;
   voiceNoteUri?: string;
   createdBy?: string;
+  createdByName?: string;
+  createdAt?: string;
   [key: string]: any;
 }
 
 export const DocumentViewer: React.FC<DocumentViewerProps> = ({
-  isOpen,
-  onClose,
-  document,
-  projectId,
+  isOpen, onClose, document, projectId,
 }) => {
-  const [zoom, setZoom] = useState(100);
-  const [pinMode, setPinMode] = useState(false);
-  const [annotations, setAnnotations] = useState<PinAnnotation[]>([]);
-  const [hoveredPin, setHoveredPin] = useState<string | null>(null);
-  const [activePin, setActivePin] = useState<string | null>(null);
-  const [pendingPos, setPendingPos] = useState<{ x: number; y: number } | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [modalText, setModalText] = useState('');
-  const [modalImageUri, setModalImageUri] = useState('');
-  const [modalVideoUri, setModalVideoUri] = useState('');
-  const [modalVoiceUri, setModalVoiceUri] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [zoom, setZoom]                     = useState(100);
+  const [pinMode, setPinMode]               = useState(false);
+  const [annotations, setAnnotations]       = useState<Annotation[]>([]);
+  const [activePin, setActivePin]           = useState<string | null>(null);
+  const [pendingPos, setPendingPos]         = useState<{ x: number; y: number } | null>(null);
+  const [newText, setNewText]               = useState('');
+  const [newImageUri, setNewImageUri]       = useState('');
+  const [newVoiceUri, setNewVoiceUri]       = useState('');
+  const [isSaving, setIsSaving]             = useState(false);
+  const [isRecording, setIsRecording]       = useState(false);
+  const [isUploadingImg, setIsUploadingImg] = useState(false);
+  const [panelOpen, setPanelOpen]           = useState(true);
 
-  const imageRef = useRef<HTMLImageElement>(null);
+  const imageRef         = useRef<HTMLImageElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const videoInputRef = useRef<HTMLInputElement>(null);
+  const audioChunksRef   = useRef<Blob[]>([]);
+  const imgInputRef      = useRef<HTMLInputElement>(null);
+  const textInputRef     = useRef<HTMLInputElement>(null);
 
   const toast = useToast();
   const { user } = useAuth();
   const isAdmin = user?.role?.name === 'Admin';
 
-  useEffect(() => {
-    if (!isOpen || !projectId || !document?._id) return;
-    loadAnnotations();
-  }, [isOpen, projectId, document?._id]);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setZoom(100);
-      setPinMode(false);
-      setAnnotations([]);
-      setHoveredPin(null);
-      setActivePin(null);
-      setPendingPos(null);
-      setShowModal(false);
-      resetModal();
-    }
-  }, [isOpen]);
-
-  const loadAnnotations = async () => {
+  const loadAnnotations = useCallback(async () => {
     if (!projectId || !document?._id) return;
     try {
       const res = await api.get(`/projects/${projectId}/annotations?document=${document._id}`);
-      setAnnotations(
-        (res.data || []).map((a: any) => ({
-          ...a,
-          x: a.position?.x ?? a.x ?? 0,
-          y: a.position?.y ?? a.y ?? 0,
-        }))
-      );
-    } catch {
-      // silent
+      setAnnotations((res.data || []).map((a: any) => ({
+        ...a,
+        x: a.position?.x ?? a.x ?? 0,
+        y: a.position?.y ?? a.y ?? 0,
+      })));
+    } catch { /* silent — annotations are optional */ }
+  }, [projectId, document?._id]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setZoom(100);
+      setPinMode(false);
+      setActivePin(null);
+      setPendingPos(null);
+      setNewText('');
+      setNewImageUri('');
+      setNewVoiceUri('');
+      loadAnnotations();
     }
-  };
+  }, [isOpen, loadAnnotations]);
 
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!pinMode || !imageRef.current) return;
+    e.stopPropagation();
     const rect = imageRef.current.getBoundingClientRect();
     const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
     setPendingPos({ x, y });
     setPinMode(false);
-    setShowModal(true);
+    setPanelOpen(true);
+    setTimeout(() => textInputRef.current?.focus(), 80);
   };
 
-  const handleSaveAnnotation = async () => {
+  const handleSave = async () => {
     if (!pendingPos || !projectId) return;
-    const text = modalText.trim() || '(No text)';
     setIsSaving(true);
     try {
       const res = await api.post(`/projects/${projectId}/annotations`, {
         document: document._id,
         documentName: document.name,
-        text,
+        text: newText.trim() || '(No note)',
         position: pendingPos,
-        imageUri: modalImageUri || undefined,
-        videoUri: modalVideoUri || undefined,
-        voiceNoteUri: modalVoiceUri || undefined,
+        imageUri: newImageUri || undefined,
+        voiceNoteUri: newVoiceUri || undefined,
       });
       const saved = res.data;
-      setAnnotations(prev => [
-        { ...saved, x: saved.position?.x ?? 0, y: saved.position?.y ?? 0 },
-        ...prev,
-      ]);
+      setAnnotations(prev => [{ ...saved, x: saved.position?.x ?? 0, y: saved.position?.y ?? 0 }, ...prev]);
       toast.success('Annotation saved');
-      resetModal();
+      setNewText(''); setNewImageUri(''); setNewVoiceUri(''); setPendingPos(null);
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to save annotation');
     } finally {
@@ -149,33 +120,16 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     }
   };
 
-  const handleDeleteAnnotation = async (annotationId: string, e?: React.MouseEvent) => {
+  const handleDelete = async (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (!projectId) return;
     try {
-      await api.delete(`/projects/${projectId}/annotations/${annotationId}`);
-      setAnnotations(prev => prev.filter(a => a._id !== annotationId));
-      if (activePin === annotationId) setActivePin(null);
+      await api.delete(`/projects/${projectId}/annotations/${id}`);
+      setAnnotations(prev => prev.filter(a => a._id !== id));
+      if (activePin === id) setActivePin(null);
     } catch {
       toast.error('Failed to delete annotation');
     }
-  };
-
-  const handleUndo = () => {
-    const last = annotations[0];
-    if (!last) return;
-    const canDelete = isAdmin || last.createdBy === (user as any)?._id;
-    if (!canDelete) { toast.error('You cannot delete this annotation'); return; }
-    handleDeleteAnnotation(last._id);
-  };
-
-  const resetModal = () => {
-    setShowModal(false);
-    setPendingPos(null);
-    setModalText('');
-    setModalImageUri('');
-    setModalVideoUri('');
-    setModalVoiceUri('');
   };
 
   const handleStartRecording = async () => {
@@ -187,21 +141,16 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
       recorder.onstop = async () => {
         stream.getTracks().forEach(t => t.stop());
         const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const file = new File([blob], 'voice-note.webm', { type: 'audio/webm' });
         try {
-          const url = await uploadToCloudinary(file);
-          setModalVoiceUri(url);
+          const url = await uploadToCloudinary(new File([blob], 'voice.webm', { type: 'audio/webm' }));
+          setNewVoiceUri(url);
           toast.success('Voice note recorded');
-        } catch {
-          toast.error('Failed to upload voice note');
-        }
+        } catch { toast.error('Failed to upload voice note'); }
       };
       mediaRecorderRef.current = recorder;
       recorder.start();
       setIsRecording(true);
-    } catch {
-      toast.error('Microphone access denied');
-    }
+    } catch { toast.error('Microphone access denied'); }
   };
 
   const handleStopRecording = () => {
@@ -209,404 +158,388 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     setIsRecording(false);
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setIsUploadingImage(true);
+    setIsUploadingImg(true);
     try {
       const url = await uploadToCloudinary(file);
-      setModalImageUri(url);
-    } catch {
-      toast.error('Image upload failed');
-    } finally {
-      setIsUploadingImage(false);
-      e.target.value = '';
-    }
+      setNewImageUri(url);
+    } catch { toast.error('Image upload failed'); }
+    finally { setIsUploadingImg(false); e.target.value = ''; }
   };
 
-  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploadingVideo(true);
-    try {
-      const url = await uploadToCloudinary(file);
-      setModalVideoUri(url);
-    } catch {
-      toast.error('Video upload failed');
-    } finally {
-      setIsUploadingVideo(false);
-      e.target.value = '';
-    }
-  };
-
-  if (!isOpen) return null;
-
+  // ── AnimatePresence wraps the conditional — this eliminates the flicker ──
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-        {/* Backdrop */}
+      {isOpen && (
         <motion.div
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="absolute inset-0 bg-black/60 backdrop-blur-md"
-        />
-
-        {/* Main viewer */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative z-10 bg-white rounded-3xl overflow-hidden flex flex-col shadow-2xl w-full max-w-2xl"
-          style={{ maxHeight: '90vh' }}
+          key="doc-viewer-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          className="fixed inset-0 z-[100] flex items-center justify-center p-3"
         >
-          {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-            <h3 className="text-sm font-bold text-gray-900 truncate max-w-[260px]">
-              {document?.name}
-            </h3>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-full hover:bg-gray-100 text-slate-400 hover:text-gray-700 transition-all"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={onClose} />
 
-          {/* Plan image area */}
-          <div
-            className={cn(
-              'relative flex-1 bg-gray-50 flex items-center justify-center overflow-auto',
-              pinMode && 'cursor-crosshair'
-            )}
-            style={{ minHeight: 340 }}
-            onClick={handleContainerClick}
+          {/* Viewer card */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97, y: 10 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="relative z-10 flex rounded-2xl overflow-hidden shadow-2xl bg-white"
+            style={{ width: '95vw', maxWidth: 1120, maxHeight: '92vh', minHeight: 500 }}
+            onClick={e => e.stopPropagation()}
           >
-            {/* Scaled image + pins wrapper */}
-            <div
-              style={{
-                transform: `scale(${zoom / 100})`,
-                transformOrigin: 'center center',
-                transition: 'transform 0.2s ease-out',
-                position: 'relative',
-                display: 'inline-block',
-              }}
-            >
-              {document?.url ? (
-                <img
-                  ref={imageRef}
-                  src={document.url}
-                  alt={document.name}
-                  className="max-w-full object-contain rounded-xl select-none"
-                  style={{ maxHeight: '55vh', display: 'block' }}
-                  draggable={false}
-                />
-              ) : (
-                <div
-                  ref={imageRef as any}
-                  className="w-72 h-64 flex items-center justify-center text-slate-300"
-                >
-                  <FileIconSvg className="w-20 h-20" />
-                </div>
-              )}
+            {/* ════ LEFT: Document viewer ════ */}
+            <div className="flex flex-col flex-1 min-w-0">
 
-              {/* Annotation pins — rendered relative to the image */}
-              {annotations.map((ann, idx) => (
-                <div
-                  key={ann._id}
-                  className="absolute z-20"
-                  style={{
-                    left: `${ann.x * 100}%`,
-                    top: `${ann.y * 100}%`,
-                    transform: 'translate(-50%, -100%)',
-                    cursor: 'pointer',
-                  }}
-                  onClick={e => {
-                    e.stopPropagation();
-                    setActivePin(activePin === ann._id ? null : ann._id);
-                  }}
-                  onMouseEnter={() => setHoveredPin(ann._id)}
-                  onMouseLeave={() => setHoveredPin(null)}
-                >
-                  {/* Tooltip */}
-                  {(hoveredPin === ann._id || activePin === ann._id) && (
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 pointer-events-none z-30">
-                      <div className="bg-gray-900 text-white text-[11px] font-medium px-3 py-1.5 rounded-xl whitespace-nowrap max-w-[200px] truncate shadow-xl">
-                        {ann.text}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Delete button when pin is active */}
-                  {activePin === ann._id && (isAdmin || ann.createdBy === (user as any)?._id) && (
-                    <button
-                      className="absolute -top-6 left-1/2 -translate-x-1/2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shadow z-40 pointer-events-auto"
-                      onClick={e => handleDeleteAnnotation(ann._id, e)}
-                    >
-                      ✕
-                    </button>
-                  )}
-
-                  {/* Pin icon */}
-                  <div className="relative">
-                    <MapPin
-                      className="w-9 h-9 drop-shadow-lg"
-                      style={{ color: '#ef4444', fill: '#ef4444' }}
-                      strokeWidth={1}
-                    />
-                    <span className="absolute top-1.5 left-1/2 -translate-x-1/2 text-white text-[9px] font-black leading-none">
-                      {idx + 1}
-                    </span>
+              {/* Header bar */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-white shrink-0 gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-gray-100 text-slate-400 transition-colors shrink-0">
+                    <X className="w-4 h-4" />
+                  </button>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-gray-900 truncate">{document?.name}</p>
+                    {document?.approvalStatus && (
+                      <span className={cn(
+                        'text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border',
+                        document.approvalStatus === 'Approved' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' :
+                        document.approvalStatus === 'Rejected' ? 'text-red-700 bg-red-50 border-red-200' :
+                        document.approvalStatus === 'Pending'  ? 'text-amber-700 bg-amber-50 border-amber-200' :
+                        'text-slate-500 bg-gray-100 border-gray-200'
+                      )}>
+                        {document.approvalStatus}
+                      </span>
+                    )}
                   </div>
                 </div>
-              ))}
-            </div>
 
-            {/* Pin-mode hint banner */}
-            {pinMode && (
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg pointer-events-none z-10">
-                Tap on the plan to place a pin
-              </div>
-            )}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {/* Zoom cluster */}
+                  <div className="flex items-center gap-0.5 px-1.5 py-1 bg-gray-50 border border-gray-200 rounded-xl">
+                    <button onClick={() => setZoom(z => Math.max(25, z - 25))} className="p-1 text-slate-400 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100">
+                      <ZoomOut className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="text-[11px] font-bold text-gray-700 w-9 text-center">{zoom}%</span>
+                    <button onClick={() => setZoom(z => Math.min(300, z + 25))} className="p-1 text-slate-400 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100">
+                      <ZoomIn className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <button onClick={() => setZoom(100)} title="Reset zoom" className="p-1.5 rounded-xl border border-gray-200 text-slate-400 hover:text-gray-900 hover:bg-gray-50 transition-colors">
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
 
-            {/* Camera / screenshot button */}
-            <button className="absolute bottom-4 left-4 w-9 h-9 rounded-full bg-gray-900/60 flex items-center justify-center text-white hover:bg-gray-900/80 transition-all z-10">
-              <Camera className="w-4 h-4" />
-            </button>
-
-            {/* Version label */}
-            <span className="absolute bottom-4 right-4 text-xs font-bold text-gray-400 z-10">
-              Version 1
-            </span>
-          </div>
-
-          {/* Bottom toolbar */}
-          <div className="px-4 py-3 border-t border-gray-100 bg-white flex items-center justify-between shrink-0">
-            <div className="flex items-center space-x-2">
-              {/* Undo */}
-              <button
-                onClick={handleUndo}
-                disabled={annotations.length === 0}
-                className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-slate-400 hover:text-gray-700 disabled:opacity-30 transition-all"
-                title="Undo last annotation"
-              >
-                <Undo2 className="w-4 h-4" />
-              </button>
-
-              {/* Redo (no-op) */}
-              <button
-                disabled
-                className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-slate-400 opacity-30 transition-all"
-                title="Redo"
-              >
-                <Redo2 className="w-4 h-4" />
-              </button>
-
-              {/* Zoom in */}
-              <button
-                onClick={() => setZoom(z => Math.min(200, z + 25))}
-                className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-slate-400 hover:text-gray-700 transition-all"
-                title="Zoom in"
-              >
-                <ZoomIn className="w-4 h-4" />
-              </button>
-
-              {/* Zoom out */}
-              <button
-                onClick={() => setZoom(z => Math.max(50, z - 25))}
-                className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-slate-400 hover:text-gray-700 transition-all"
-                title="Zoom out"
-              >
-                <ZoomOut className="w-4 h-4" />
-              </button>
-
-              {/* Add pin — only when projectId is provided */}
-              {projectId && (
-                <button
-                  onClick={() => { setPinMode(p => !p); setActivePin(null); }}
-                  className={cn(
-                    'w-9 h-9 rounded-full border flex items-center justify-center transition-all',
-                    pinMode
-                      ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/20'
-                      : 'border-gray-200 text-slate-400 hover:text-gray-700 hover:border-gray-300'
-                  )}
-                  title="Add annotation pin"
-                >
-                  <MapPin className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-
-            {/* Change Version */}
-            <button
-              onClick={() => toast.success('Version management coming soon')}
-              className="px-5 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
-            >
-              Change Version
-            </button>
-          </div>
-        </motion.div>
-
-        {/* Add Annotation Modal */}
-        <AnimatePresence>
-          {showModal && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="absolute z-[120] bg-white rounded-3xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden"
-              onClick={e => e.stopPropagation()}
-            >
-              {/* Modal header */}
-              <div className="flex items-center justify-between px-6 pt-6 pb-4">
-                <h4 className="text-base font-bold text-gray-900">Add Annotation</h4>
-                <button
-                  onClick={resetModal}
-                  className="p-1.5 rounded-full hover:bg-gray-100 text-slate-400 hover:text-gray-700 transition-all"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="px-6 pb-6 space-y-4">
-                {/* Text Note */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Text Note
-                  </label>
-                  <input
-                    type="text"
-                    value={modalText}
-                    onChange={e => setModalText(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleSaveAnnotation(); }}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
-                    placeholder="Enter your note..."
-                    autoFocus
-                  />
-                </div>
-
-                {/* Voice Note */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Voice Note
-                  </label>
-                  {modalVoiceUri ? (
-                    <div className="flex items-center px-4 py-3 bg-green-50 border border-green-200 rounded-xl">
-                      <div className="w-2 h-2 bg-green-500 rounded-full mr-2 shrink-0" />
-                      <span className="text-xs font-semibold text-green-700 flex-1">Voice note recorded</span>
-                      <button
-                        onClick={() => setModalVoiceUri('')}
-                        className="text-red-400 hover:text-red-600 text-xs font-semibold ml-2"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ) : (
+                  {/* Pin mode toggle */}
+                  {projectId && (
                     <button
-                      onClick={isRecording ? handleStopRecording : handleStartRecording}
+                      onClick={() => { setPinMode(p => !p); setActivePin(null); }}
                       className={cn(
-                        'w-full flex items-center justify-center space-x-2 py-3 rounded-xl text-sm font-semibold transition-all',
-                        isRecording
-                          ? 'bg-red-50 border border-red-200 text-red-600 hover:bg-red-100'
-                          : 'bg-blue-50 border border-blue-100 text-blue-600 hover:bg-blue-100'
+                        'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all',
+                        pinMode
+                          ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                          : 'border-gray-200 text-slate-500 hover:text-gray-800 hover:border-gray-300 bg-white'
                       )}
                     >
-                      {isRecording
-                        ? <><StopCircle className="w-4 h-4" /><span>Stop Recording</span></>
-                        : <><Mic className="w-4 h-4" /><span>Record Voice</span></>
-                      }
+                      <MapPin className="w-3.5 h-3.5" />
+                      {pinMode ? 'Click to pin' : 'Add Pin'}
                     </button>
                   )}
-                </div>
 
-                {/* Image */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Image</label>
-                  {modalImageUri ? (
-                    <div className="relative rounded-xl overflow-hidden border border-gray-200">
-                      <img src={modalImageUri} alt="attached" className="w-full h-24 object-cover" />
-                      <button
-                        onClick={() => setModalImageUri('')}
-                        className="absolute top-1.5 right-1.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shadow"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => imageInputRef.current?.click()}
-                      disabled={isUploadingImage}
-                      className="w-full border-2 border-dashed border-gray-200 rounded-xl py-6 flex flex-col items-center justify-center text-slate-400 hover:border-blue-300 hover:text-blue-400 transition-all"
-                    >
-                      {isUploadingImage
-                        ? <Loader2 className="w-6 h-6 animate-spin" />
-                        : <ImageIcon className="w-6 h-6" />
-                      }
-                      <span className="text-xs font-semibold mt-1.5">
-                        {isUploadingImage ? 'Uploading...' : 'Add Image'}
-                      </span>
-                    </button>
-                  )}
-                  <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                </div>
-
-                {/* Video */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Video</label>
-                  {modalVideoUri ? (
-                    <div className="flex items-center px-4 py-3 bg-green-50 border border-green-200 rounded-xl">
-                      <div className="w-2 h-2 bg-green-500 rounded-full mr-2 shrink-0" />
-                      <span className="text-xs font-semibold text-green-700 flex-1">Video attached</span>
-                      <button
-                        onClick={() => setModalVideoUri('')}
-                        className="text-red-400 hover:text-red-600 text-xs font-semibold ml-2"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => videoInputRef.current?.click()}
-                      disabled={isUploadingVideo}
-                      className="w-full border-2 border-dashed border-gray-200 rounded-xl py-6 flex flex-col items-center justify-center text-slate-400 hover:border-blue-300 hover:text-blue-400 transition-all"
-                    >
-                      {isUploadingVideo
-                        ? <Loader2 className="w-6 h-6 animate-spin" />
-                        : <Video className="w-6 h-6" />
-                      }
-                      <span className="text-xs font-semibold mt-1.5">
-                        {isUploadingVideo ? 'Uploading...' : 'Add Video'}
-                      </span>
-                    </button>
-                  )}
-                  <input ref={videoInputRef} type="file" accept="video/*" className="hidden" onChange={handleVideoUpload} />
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center space-x-3 pt-1">
+                  {/* Annotation panel toggle */}
                   <button
-                    onClick={resetModal}
-                    className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-slate-600 hover:bg-gray-50 transition-all"
+                    onClick={() => setPanelOpen(p => !p)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-gray-200 text-slate-500 hover:text-gray-800 bg-white hover:bg-gray-50 transition-all"
+                    title={panelOpen ? 'Hide annotations' : 'Show annotations'}
                   >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSaveAnnotation}
-                    disabled={isSaving}
-                    className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-500 disabled:opacity-50 transition-all flex items-center justify-center space-x-2"
-                  >
-                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>Save</span>}
+                    {panelOpen ? <PanelRightClose className="w-3.5 h-3.5" /> : <PanelRightOpen className="w-3.5 h-3.5" />}
+                    <span className="hidden sm:inline">Notes</span>
+                    {annotations.length > 0 && (
+                      <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-black flex items-center justify-center">
+                        {annotations.length}
+                      </span>
+                    )}
                   </button>
                 </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+
+              {/* Image area */}
+              <div
+                className={cn(
+                  'flex-1 bg-[#f0f2f5] flex items-center justify-center overflow-auto relative select-none',
+                  pinMode && 'cursor-crosshair'
+                )}
+                onClick={handleContainerClick}
+              >
+                {pinMode && (
+                  <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+                    <div className="flex items-center gap-2 bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg animate-pulse">
+                      <MapPin className="w-3.5 h-3.5" />
+                      Click anywhere on the plan to place a pin
+                    </div>
+                  </div>
+                )}
+
+                <div
+                  style={{
+                    transform: `scale(${zoom / 100})`,
+                    transformOrigin: 'center center',
+                    transition: 'transform 0.12s ease-out',
+                    position: 'relative',
+                    display: 'inline-block',
+                  }}
+                >
+                  {document?.url ? (
+                    <img
+                      ref={imageRef}
+                      src={document.url}
+                      alt={document.name}
+                      className="max-w-full object-contain rounded-xl block shadow-md"
+                      style={{ maxHeight: '72vh' }}
+                      draggable={false}
+                    />
+                  ) : (
+                    <div ref={imageRef as any} className="w-80 h-64 flex items-center justify-center text-slate-300 bg-white rounded-xl border border-gray-200">
+                      <DocFileSvg className="w-20 h-20" />
+                    </div>
+                  )}
+
+                  {/* Pending pin (not yet saved) */}
+                  {pendingPos && (
+                    <div
+                      className="absolute z-30 pointer-events-none"
+                      style={{ left: `${pendingPos.x * 100}%`, top: `${pendingPos.y * 100}%`, transform: 'translate(-50%, -100%)' }}
+                    >
+                      <MapPin className="w-9 h-9 text-blue-500 drop-shadow-lg animate-bounce" style={{ fill: 'rgba(59,130,246,0.8)' }} strokeWidth={0.5} />
+                    </div>
+                  )}
+
+                  {/* Saved pins */}
+                  {annotations.map((ann, idx) => (
+                    <div
+                      key={ann._id}
+                      className="absolute z-20"
+                      style={{ left: `${ann.x * 100}%`, top: `${ann.y * 100}%`, transform: 'translate(-50%, -100%)', cursor: 'pointer' }}
+                      onClick={e => { e.stopPropagation(); setActivePin(activePin === ann._id ? null : ann._id); setPanelOpen(true); }}
+                    >
+                      {activePin === ann._id && (
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-0.5 pointer-events-none z-30">
+                          <div className="bg-gray-900 text-white text-[11px] font-medium px-2.5 py-1 rounded-lg whitespace-nowrap max-w-[200px] truncate shadow-xl">
+                            {ann.text}
+                          </div>
+                          <div className="w-2 h-2 bg-gray-900 rotate-45 mx-auto -mt-1" />
+                        </div>
+                      )}
+                      <div className="relative group/pin">
+                        <MapPin
+                          className={cn('w-8 h-8 drop-shadow-md transition-colors', activePin === ann._id ? 'text-blue-500' : 'text-red-500 group-hover/pin:text-red-400')}
+                          style={{ fill: activePin === ann._id ? 'rgba(59,130,246,0.85)' : 'rgba(239,68,68,0.85)' }}
+                          strokeWidth={0.5}
+                        />
+                        <span className="absolute top-1 left-1/2 -translate-x-1/2 text-white text-[9px] font-black leading-none">{idx + 1}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* ════ RIGHT: Annotations panel ════ */}
+            <AnimatePresence>
+              {panelOpen && (
+                <motion.div
+                  key="ann-panel"
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: 290, opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  transition={{ duration: 0.18, ease: 'easeInOut' }}
+                  className="flex flex-col border-l border-gray-100 bg-white overflow-hidden shrink-0"
+                  style={{ minWidth: 0 }}
+                >
+                  {/* Panel header */}
+                  <div className="px-4 py-3 border-b border-gray-100 shrink-0 flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span className="text-sm font-bold text-gray-900 flex-1">Annotations</span>
+                    {annotations.length > 0 && (
+                      <span className="px-2 py-0.5 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-[10px] font-black">
+                        {annotations.length}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* New annotation form */}
+                  <AnimatePresence>
+                    {pendingPos && (
+                      <motion.div
+                        key="new-ann-form"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.15 }}
+                        className="overflow-hidden shrink-0"
+                      >
+                        <div className="p-3 border-b border-blue-100 bg-blue-50/50 space-y-2.5">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
+                              <MapPin className="w-2.5 h-2.5 text-white" />
+                            </div>
+                            <p className="text-[10px] font-black text-blue-700 uppercase tracking-wider">New Pin</p>
+                            <button
+                              onClick={() => setPendingPos(null)}
+                              className="ml-auto p-0.5 rounded text-blue-400 hover:text-blue-700 transition-colors"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                          <input
+                            ref={textInputRef}
+                            type="text"
+                            value={newText}
+                            onChange={e => setNewText(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setPendingPos(null); }}
+                            className="w-full bg-white border border-blue-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+                            placeholder="Add a note..."
+                          />
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={isRecording ? handleStopRecording : handleStartRecording}
+                              title={isRecording ? 'Stop recording' : newVoiceUri ? 'Voice recorded ✓' : 'Record voice'}
+                              className={cn(
+                                'p-2 rounded-lg border transition-all shrink-0',
+                                isRecording  ? 'bg-red-50 border-red-200 text-red-600 animate-pulse' :
+                                newVoiceUri  ? 'bg-emerald-50 border-emerald-200 text-emerald-600' :
+                                               'bg-white border-gray-200 text-slate-500 hover:border-gray-300'
+                              )}
+                            >
+                              {isRecording ? <StopCircle className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                            </button>
+                            <button
+                              onClick={() => imgInputRef.current?.click()}
+                              title={newImageUri ? 'Image attached ✓' : 'Attach image'}
+                              className={cn(
+                                'p-2 rounded-lg border transition-all shrink-0',
+                                newImageUri ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white border-gray-200 text-slate-500 hover:border-gray-300'
+                              )}
+                            >
+                              {isUploadingImg ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImageIcon className="w-3.5 h-3.5" />}
+                            </button>
+                            <input ref={imgInputRef} type="file" accept="image/*" className="hidden" onChange={handleImgUpload} />
+                            <div className="flex-1" />
+                            <button
+                              onClick={handleSave}
+                              disabled={isSaving}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 disabled:opacity-50 transition-all"
+                            >
+                              {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                              Save
+                            </button>
+                          </div>
+                          {newImageUri && (
+                            <div className="relative rounded-xl overflow-hidden border border-emerald-200">
+                              <img src={newImageUri} alt="attached" className="w-full h-20 object-cover" />
+                              <button onClick={() => setNewImageUri('')} className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-bold">✕</button>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Annotation list */}
+                  <div className="flex-1 overflow-y-auto">
+                    {annotations.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 px-5 text-center">
+                        <div className="w-10 h-10 rounded-2xl bg-gray-100 flex items-center justify-center mb-3">
+                          <MapPin className="w-5 h-5 text-gray-300" />
+                        </div>
+                        <p className="text-sm font-bold text-slate-400">No annotations yet</p>
+                        <p className="text-xs text-slate-400 mt-1 leading-relaxed">Use "Add Pin" above to mark important points on this plan</p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-gray-100">
+                        {annotations.map((ann, idx) => {
+                          const canDelete = isAdmin || ann.createdBy === (user as any)?._id;
+                          const isActive = activePin === ann._id;
+                          return (
+                            <div
+                              key={ann._id}
+                              onClick={() => setActivePin(isActive ? null : ann._id)}
+                              className={cn(
+                                'p-3.5 cursor-pointer transition-colors group/ann',
+                                isActive ? 'bg-blue-50' : 'hover:bg-gray-50'
+                              )}
+                            >
+                              <div className="flex items-start gap-2.5">
+                                <span className={cn(
+                                  'w-5 h-5 rounded-full text-[9px] font-black flex items-center justify-center shrink-0 mt-0.5 transition-colors',
+                                  isActive ? 'bg-blue-600 text-white' : 'bg-red-500 text-white'
+                                )}>
+                                  {idx + 1}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-semibold text-gray-900 break-words leading-relaxed">{ann.text}</p>
+                                  {ann.createdByName && (
+                                    <p className="text-[10px] text-slate-400 mt-0.5 font-medium">{ann.createdByName}</p>
+                                  )}
+                                  {(ann.imageUri || ann.voiceNoteUri) && (
+                                    <div className="flex flex-col gap-1.5 mt-2">
+                                      {ann.imageUri && (
+                                        <img src={ann.imageUri} alt="attached" className="w-full h-16 rounded-lg object-cover border border-gray-200" />
+                                      )}
+                                      {ann.voiceNoteUri && (
+                                        <audio controls src={ann.voiceNoteUri} className="w-full h-7" />
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                                {canDelete && (
+                                  <button
+                                    onClick={e => handleDelete(ann._id, e)}
+                                    className="p-1 rounded-lg text-transparent group-hover/ann:text-slate-300 hover:!text-red-500 hover:bg-red-50 transition-all shrink-0"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Panel footer — quick add button */}
+                  {!pendingPos && projectId && (
+                    <div className="p-3 border-t border-gray-100 shrink-0">
+                      <button
+                        onClick={() => { setPinMode(p => !p); setActivePin(null); }}
+                        className={cn(
+                          'w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold border transition-all',
+                          pinMode
+                            ? 'bg-blue-600 border-blue-600 text-white'
+                            : 'border-dashed border-gray-300 text-slate-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50'
+                        )}
+                      >
+                        <MapPin className="w-3.5 h-3.5" />
+                        {pinMode ? 'Click on the plan to place a pin' : 'Place New Pin'}
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        </motion.div>
+      )}
     </AnimatePresence>
   );
 };
 
-const FileIconSvg = ({ className }: { className?: string }) => (
+const DocFileSvg = ({ className }: { className?: string }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
   </svg>

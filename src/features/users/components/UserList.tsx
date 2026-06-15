@@ -16,7 +16,7 @@ import {
   Pencil,
   Trash2,
   Phone,
-  FolderOpen,
+  Users as UsersIcon,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
@@ -113,6 +113,26 @@ export const UserList = () => {
   return (
     <SkeletonLoader loading={loading} preset="list">
       <div className="space-y-6">
+
+        {/* Org-level summary strip */}
+        {!loading && users.length > 0 && (
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-100 rounded-xl">
+              <UsersIcon className="w-4 h-4 text-blue-600" />
+              <span className="text-xs font-bold text-blue-700">{users.length} Organisation Member{users.length !== 1 ? 's' : ''}</span>
+            </div>
+            {uniqueRoles.map(role => {
+              const count = users.filter(u => (typeof u.role === 'object' ? u.role?.name : u.role) === role).length;
+              return (
+                <div key={role} className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl">
+                  <span className="text-xs font-bold text-slate-500">{role}</span>
+                  <span className="ml-1.5 text-xs font-black text-gray-900">{count}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="relative flex-1 max-w-md group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
@@ -230,10 +250,12 @@ export const UserList = () => {
                 <Clock className="w-4 h-4 shrink-0" />
                 <span className="text-sm">Joined {new Date(user.createdAt).toLocaleDateString()}</span>
               </div>
-              {user.projects?.length > 0 && (
+              {typeof user.role === 'object' && user.role?.permissions?.length > 0 && (
                 <div className="flex items-center space-x-3 text-slate-500">
-                  <FolderOpen className="w-4 h-4 shrink-0" />
-                  <span className="text-sm">{user.projects.length} project{user.projects.length !== 1 ? 's' : ''}</span>
+                  <Shield className="w-4 h-4 shrink-0 text-blue-400" />
+                  <span className="text-sm">
+                    {user.role.permissions.includes('*') ? 'Full access' : `${user.role.permissions.length} permissions`}
+                  </span>
                 </div>
               )}
             </div>

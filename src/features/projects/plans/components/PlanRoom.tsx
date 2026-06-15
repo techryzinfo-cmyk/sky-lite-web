@@ -1,20 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  ArrowLeft,
-  Upload,
-  FileText,
-  Trash2,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  Eye,
-  Send,
-  Loader2,
-  UserCheck,
+  ArrowLeft, Upload, FileText, Trash2, CheckCircle2, XCircle,
+  Clock, Eye, Send, Loader2, UserCheck, MessageSquare, PenLine,
 } from 'lucide-react';
-import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
 import api from '@/services/api.client';
 import { uploadToCloudinary } from '@/lib/upload';
@@ -30,218 +20,297 @@ interface PlanRoomProps {
   onUpdate: () => void;
 }
 
+const STATUS_STYLES: Record<string, string> = {
+  Approved : 'text-emerald-700 bg-emerald-50  border-emerald-200',
+  Rejected : 'text-red-700    bg-red-50       border-red-200',
+  Pending  : 'text-amber-700  bg-amber-50     border-amber-200',
+  Draft    : 'text-slate-500  bg-gray-100     border-gray-200',
+};
+
 export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, onUpdate }) => {
-  const [isUploading, setIsUploading] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [viewingDoc, setViewingDoc] = useState<any>(null);
-  const [approverDocId, setApproverDocId] = useState<string | null>(null);
-  const toast = useToast();
+  const [isUploading, setIsUploading]             = useState(false);
+  const [isProcessing, setIsProcessing]           = useState(false);
+  const [viewingDoc, setViewingDoc]               = useState<any>(null);
+  const [annotationCounts, setAnnotationCounts]   = useState<Record<string, number>>({});
+  const [approverDocId, setApproverDocId]         = useState<string | null>(null);
+
+  const toast   = useToast();
   const { user } = useAuth();
   const isAdmin = user?.role?.name === 'Admin';
+
+  // Single folder-level call to get all annotation counts
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await api.get(`/projects/${projectId}/folders/${folder._id}/annotations`);
+        const counts: Record<string, number> = {};
+        (res.data || []).forEach((ann: any) => {
+          const docId = typeof ann.document === 'object' ? ann.document._id : ann.document;
+          if (docId) counts[docId] = (counts[docId] || 0) + 1;
+        });
+        setAnnotationCounts(counts);
+      } catch { /* annotations are optional */ }
+    };
+    load();
+  }, [projectId, folder._id]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setIsUploading(true);
     try {
       const url = await uploadToCloudinary(file);
       await api.put(`/projects/${projectId}/folders/${folder._id}`, {
-        url,
-        name: file.name,
-        mimeType: file.type,
-        size: file.size
+        url, name: file.name, mimeType: file.type, size: file.size,
       });
-      toast.success('Document uploaded successfully!');
+      toast.success('Plan uploaded');
       onUpdate();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Upload failed');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Upload failed');
     } finally {
       setIsUploading(false);
     }
   };
 
-  const handleAction = async (docId: string, action: string, extra = {}) => {
+  const handleAction = async (docId: string, action: string, extra: Record<string, any> = {}) => {
     setIsProcessing(true);
     try {
-      await api.patch(`/projects/${projectId}/folders/${folder._id}`, {
-        docId,
-        action,
-        ...extra
-      });
-      toast.success(`Action '${action}' successful`);
+      await api.patch(`/projects/${projectId}/folders/${folder._id}`, { docId, action, ...extra });
+      toast.success('Done');
       onUpdate();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Action failed');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Action failed');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'Approved': return 'text-emerald-700 bg-emerald-100 border-emerald-200';
-      case 'Rejected': return 'text-red-700 bg-red-100 border-red-200';
-      case 'Pending': return 'text-amber-700 bg-amber-100 border-amber-200';
-      default: return 'text-slate-500 bg-gray-100 border-gray-200';
-    }
+  const mapDoc = (doc: any) => {
+    const v = doc.versions?.at(-1);
+    return {
+      ...doc,
+      url             : v?.url             || doc.url,
+      uploadedAt      : v?.uploadedAt      || doc.uploadedAt || new Date(),
+      size            : v?.size            || doc.size       || 0,
+      approvalStatus  : v?.approvalStatus  || doc.approvalStatus || 'Draft',
+      approvals       : v?.approvals       || doc.approvals  || [],
+      versionId       : v?._id,
+      versionNumber   : v?.versionNumber,
+    };
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-5">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between gap-3">
         <button
           onClick={onBack}
-          className="flex items-center space-x-2 text-slate-500 hover:text-gray-900 transition-colors group"
+          className="flex items-center gap-2 text-slate-500 hover:text-gray-900 transition-colors group"
         >
-          <div className="p-2 rounded-xl bg-gray-50 border border-gray-200 group-hover:border-gray-300">
+          <div className="p-2 rounded-xl bg-gray-50 border border-gray-200 group-hover:border-blue-300 group-hover:bg-blue-50 transition-all">
             <ArrowLeft className="w-4 h-4" />
           </div>
-          <span className="font-bold text-sm">Back to Folders</span>
+          <span className="font-bold text-sm">All Folders</span>
         </button>
 
-        <div className="flex items-center space-x-3">
-          <label className="flex items-center space-x-2 px-4 py-2 bg-blue-600 border border-blue-600 rounded-xl text-sm font-bold text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20 transition-all cursor-pointer">
-            {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-            <span>{isUploading ? 'Uploading...' : 'Upload Plan'}</span>
-            <input type="file" className="hidden" onChange={handleUpload} disabled={isUploading} />
-          </label>
+        <label className={cn(
+          'flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border transition-all shadow-sm cursor-pointer',
+          isUploading
+            ? 'bg-gray-50 border-gray-200 text-slate-400 pointer-events-none'
+            : 'bg-blue-600 border-blue-600 text-white hover:bg-blue-500 shadow-blue-600/25'
+        )}>
+          {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+          <span>{isUploading ? 'Uploading…' : 'Upload Plan'}</span>
+          <input type="file" className="hidden" onChange={handleUpload} disabled={isUploading} />
+        </label>
+      </div>
+
+      {/* ── Folder info bar ── */}
+      <div className="flex items-center gap-4 px-5 py-4 rounded-2xl bg-white border border-gray-200 shadow-sm">
+        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
+          <FileText className="w-6 h-6 text-blue-600" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-lg font-black text-gray-900 truncate">{folder.name}</h3>
+          <p className="text-xs text-slate-400 font-medium mt-0.5">
+            {folder.documents?.length || 0} plan{folder.documents?.length !== 1 ? 's' : ''}
+            {Object.keys(annotationCounts).length > 0 && (
+              <> · <span className="text-blue-600 font-bold">{Object.values(annotationCounts).reduce((a, b) => a + b, 0)} annotations</span></>
+            )}
+          </p>
         </div>
       </div>
 
-      <GlassCard className="p-8 border-gray-200" gradient>
-        <div className="flex items-center space-x-4 mb-8">
-          <div className="p-4 rounded-2xl bg-blue-100 border border-blue-200">
-            <FileText className="w-8 h-8 text-blue-600" />
-          </div>
-          <div>
-            <h3 className="text-2xl font-bold text-gray-900">{folder.name}</h3>
-            <p className="text-sm text-slate-500">{folder.documents?.length || 0} Documents total</p>
-          </div>
-        </div>
+      {/* ── Document list ── */}
+      <div className="space-y-3">
+        {folder.documents?.map((raw: any) => {
+          const doc          = mapDoc(raw);
+          const annCount     = annotationCounts[doc._id] || 0;
+          const statusStyle  = STATUS_STYLES[doc.approvalStatus] || STATUS_STYLES.Draft;
 
-        <div className="grid grid-cols-1 gap-4">
-          {folder.documents?.map((doc: any) => {
-            const latestVersion = doc.versions && doc.versions.length > 0
-              ? doc.versions[doc.versions.length - 1]
-              : null;
-            const mappedDoc = {
-              ...doc,
-              url: latestVersion?.url || doc.url,
-              uploadedAt: latestVersion?.uploadedAt || doc.uploadedAt || new Date(),
-              size: latestVersion?.size || doc.size || 0,
-              approvalStatus: latestVersion?.approvalStatus || doc.approvalStatus || 'Draft',
-              approvals: latestVersion?.approvals || doc.approvals || [],
-              versionId: latestVersion?._id,
-              versionNumber: latestVersion?.versionNumber
-            };
+          return (
+            <div
+              key={doc._id}
+              className="bg-white border border-gray-200 rounded-2xl hover:border-blue-200 hover:shadow-sm transition-all group/doc"
+            >
+              <div className="flex items-center gap-4 px-5 py-4">
+                {/* File icon */}
+                <div className="w-11 h-11 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center shrink-0 group-hover/doc:border-blue-200 transition-colors">
+                  <FileIconSvg className="w-5 h-5 text-slate-400" />
+                </div>
 
-            return (
-              <div key={mappedDoc._id} className="p-4 rounded-2xl bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all group/item">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-slate-400 border border-gray-200 group-hover/item:border-blue-400 transition-all">
-                      <FileIconSvg className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-gray-900 group-hover/item:text-blue-600 transition-colors">{mappedDoc.name}</h4>
-                      <div className="flex items-center space-x-3 mt-1">
-                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                          {new Date(mappedDoc.uploadedAt).toLocaleDateString()}
-                        </span>
-                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                        <span className="text-[10px] text-slate-500 font-bold">{(mappedDoc.size / 1024 / 1024).toFixed(2)} MB</span>
-                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                        <span className={cn(
-                          "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border",
-                          getStatusBadge(mappedDoc.approvalStatus)
-                        )}>
-                          {mappedDoc.approvalStatus}
-                        </span>
-                      </div>
-                    </div>
+                {/* File info */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="text-sm font-bold text-gray-900 truncate group-hover/doc:text-blue-700 transition-colors">
+                      {doc.name}
+                    </h4>
+                    <span className={cn('px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border shrink-0', statusStyle)}>
+                      {doc.approvalStatus}
+                    </span>
+                    {annCount > 0 && (
+                      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 border border-blue-100 text-[9px] font-black text-blue-700 shrink-0">
+                        <MessageSquare className="w-2.5 h-2.5" />
+                        {annCount}
+                      </span>
+                    )}
                   </div>
-
-                  <div className="flex items-center space-x-2">
-                    {mappedDoc.approvalStatus === 'Draft' && isAdmin && (
-                      <button
-                        onClick={() => setApproverDocId(mappedDoc._id)}
-                        className="p-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 transition-all"
-                        title="Send for Approval"
-                      >
-                        <Send className="w-4 h-4" />
-                      </button>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      {new Date(doc.uploadedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                    {doc.size > 0 && (
+                      <>
+                        <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                        <span className="text-[10px] text-slate-400 font-medium">
+                          {(doc.size / 1024 / 1024).toFixed(2)} MB
+                        </span>
+                      </>
                     )}
-
-                    {mappedDoc.approvalStatus === 'Pending' && (
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleAction(mappedDoc._id, 'respond', { response: 'Approved', versionId: mappedDoc.versionId })}
-                          className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 hover:bg-emerald-100 transition-all"
-                          title="Approve"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleAction(mappedDoc._id, 'respond', { response: 'Rejected', versionId: mappedDoc.versionId })}
-                          className="p-2 rounded-xl bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 transition-all"
-                          title="Reject"
-                        >
-                          <XCircle className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-
-                    <div className="h-8 w-px bg-gray-200 mx-2" />
-
-                    <button
-                      onClick={() => setViewingDoc(mappedDoc)}
-                      className="p-2 rounded-xl bg-gray-50 border border-gray-200 text-slate-400 hover:text-gray-900 hover:bg-gray-100 transition-all"
-                      title="View Document"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-
-                    {isAdmin && (
-                      <button
-                        onClick={() => handleAction(mappedDoc._id, 'deleteDocument')}
-                        className="p-2 rounded-xl bg-gray-50 border border-gray-200 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    {doc.versionNumber && (
+                      <>
+                        <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                        <span className="text-[10px] text-slate-400 font-medium">v{doc.versionNumber}</span>
+                      </>
                     )}
                   </div>
                 </div>
 
-                {mappedDoc.approvals?.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-gray-100 flex items-center space-x-6">
-                    {mappedDoc.approvals.map((app: any, i: number) => (
-                      <div key={i} className="flex items-center space-x-2">
-                        <div className={cn(
-                          "w-6 h-6 rounded-lg flex items-center justify-center text-[10px]",
-                          app.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' :
-                          app.status === 'Rejected' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'
-                        )}>
-                          {app.status === 'Approved' ? <UserCheck className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                        </div>
-                        <span className="text-[10px] font-bold text-slate-500">{app.userName}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                {/* Actions */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {/* Approval workflow */}
+                  {doc.approvalStatus === 'Draft' && isAdmin && (
+                    <button
+                      onClick={() => setApproverDocId(doc._id)}
+                      className="p-2 rounded-xl bg-gray-50 border border-gray-200 text-slate-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-all"
+                      title="Send for Approval"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  {doc.approvalStatus === 'Pending' && (
+                    <>
+                      <button
+                        onClick={() => handleAction(doc._id, 'respond', { response: 'Approved', versionId: doc.versionId })}
+                        disabled={isProcessing}
+                        className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 hover:bg-emerald-100 transition-all disabled:opacity-50"
+                        title="Approve"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleAction(doc._id, 'respond', { response: 'Rejected', versionId: doc.versionId })}
+                        disabled={isProcessing}
+                        className="p-2 rounded-xl bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 transition-all disabled:opacity-50"
+                        title="Reject"
+                      >
+                        <XCircle className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
 
-          {(!folder.documents || folder.documents.length === 0) && (
-            <div className="py-20 flex flex-col items-center justify-center text-center">
-              <Upload className="w-12 h-12 text-gray-300 mb-4" />
-              <p className="text-slate-500 italic">This folder is empty. Upload your first plan.</p>
+                  <div className="w-px h-6 bg-gray-200 mx-1" />
+
+                  {/* View */}
+                  <button
+                    onClick={() => setViewingDoc(doc)}
+                    className="p-2 rounded-xl bg-gray-50 border border-gray-200 text-slate-400 hover:text-gray-700 hover:border-gray-300 transition-all"
+                    title="View plan"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* Annotate — opens viewer in annotation mode */}
+                  {projectId && (
+                    <button
+                      onClick={() => setViewingDoc(doc)}
+                      className={cn(
+                        'flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all',
+                        annCount > 0
+                          ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
+                          : 'bg-gray-50 border-gray-200 text-slate-500 hover:border-blue-200 hover:text-blue-600 hover:bg-blue-50'
+                      )}
+                      title="Open annotations"
+                    >
+                      <PenLine className="w-3.5 h-3.5" />
+                      Annotate
+                    </button>
+                  )}
+
+                  {isAdmin && (
+                    <>
+                      <div className="w-px h-6 bg-gray-200 mx-1" />
+                      <button
+                        onClick={() => handleAction(doc._id, 'deleteDocument')}
+                        disabled={isProcessing}
+                        className="p-2 rounded-xl bg-gray-50 border border-gray-200 text-slate-400 hover:text-red-500 hover:bg-red-50 hover:border-red-200 transition-all disabled:opacity-50"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Approvals row */}
+              {doc.approvals?.length > 0 && (
+                <div className="flex items-center gap-4 px-5 pb-3 pt-0 flex-wrap">
+                  {doc.approvals.map((app: any, i: number) => (
+                    <div key={i} className="flex items-center gap-1.5">
+                      <div className={cn(
+                        'w-5 h-5 rounded-lg flex items-center justify-center',
+                        app.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' :
+                        app.status === 'Rejected' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'
+                      )}>
+                        {app.status === 'Approved' ? <UserCheck className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-400">{app.userName}</span>
+                      <span className={cn(
+                        'text-[9px] font-black uppercase tracking-widest',
+                        app.status === 'Approved' ? 'text-emerald-600' :
+                        app.status === 'Rejected' ? 'text-red-600' : 'text-amber-600'
+                      )}>{app.status}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </GlassCard>
+          );
+        })}
+
+        {(!folder.documents || folder.documents.length === 0) && (
+          <div className="py-24 flex flex-col items-center justify-center text-center border-2 border-dashed border-gray-200 rounded-3xl">
+            <div className="w-16 h-16 rounded-3xl bg-gray-50 border border-gray-200 flex items-center justify-center mb-5">
+              <Upload className="w-8 h-8 text-gray-300" />
+            </div>
+            <h4 className="text-base font-bold text-slate-500">No plans uploaded yet</h4>
+            <p className="text-sm text-slate-400 mt-1.5 max-w-xs">
+              Upload your first drawing or plan using the button above.
+            </p>
+          </div>
+        )}
+      </div>
 
       <DocumentViewer
         isOpen={!!viewingDoc}
@@ -254,9 +323,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
         isOpen={!!approverDocId}
         onClose={() => setApproverDocId(null)}
         onSelect={(userIds) => {
-          if (approverDocId) {
-            handleAction(approverDocId, 'sendForApproval', { approverIds: userIds });
-          }
+          if (approverDocId) handleAction(approverDocId, 'sendForApproval', { approverIds: userIds });
           setApproverDocId(null);
         }}
         title="Select Approvers"
@@ -270,6 +337,6 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
 
 const FileIconSvg = ({ className }: { className?: string }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
   </svg>
 );

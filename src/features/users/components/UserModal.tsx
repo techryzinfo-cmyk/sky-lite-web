@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, UserPlus, UserCog, Mail, Lock, Phone, FolderOpen, Check, ChevronDown, Search } from 'lucide-react';
+import { X, Loader2, UserPlus, UserCog, Mail, Lock, Phone, FolderOpen, Check, ChevronDown, Search, Eye, EyeOff, Copy, CheckCheck } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useToast } from '@/providers/ToastContext';
 import api from '@/services/api.client';
@@ -19,6 +19,9 @@ const inputCls = 'w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-
 
 export const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSuccess, initialData }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [createdCreds, setCreatedCreds] = useState<{ name: string; email: string; password: string } | null>(null);
+  const [showCredsPassword, setShowCredsPassword] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
   const [roles, setRoles] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProjects, setSelectedProjects] = useState<any[]>([]);
@@ -72,6 +75,12 @@ export const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSuccess
     setProjectSearch('');
   }, [isOpen, initialData]);
 
+  const copyToClipboard = (text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
+
   const toggleProject = (project: any) => {
     setSelectedProjects(prev =>
       prev.some(p => p._id === project._id)
@@ -104,13 +113,14 @@ export const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSuccess
       if (isEditing) {
         await api.patch(`/users/${initialData._id}`, payload);
         toast.success('Member updated successfully!');
+        onSuccess();
+        onClose();
       } else {
         payload.password = formData.password;
         await api.post('/users', payload);
-        toast.success('Team member onboarded successfully!');
+        setCreatedCreds({ name: formData.name, email: formData.email, password: formData.password });
+        onSuccess();
       }
-      onSuccess();
-      onClose();
     } catch (error: any) {
       toast.error(error.response?.data?.message || (isEditing ? 'Failed to update user' : 'Failed to onboard user'));
     } finally {
@@ -366,6 +376,73 @@ export const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSuccess
                     Done ({selectedProjects.length})
                   </button>
                 </div>
+              </GlassCard>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Credential reveal modal — shown after successful user creation */}
+      <AnimatePresence>
+        {createdCreds && (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-md relative z-10"
+            >
+              <GlassCard className="border-emerald-200 p-8" gradient>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200">
+                    <Check className="w-6 h-6 text-emerald-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">Member Added!</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">Share these login credentials securely.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 mb-6">
+                  {([
+                    { label: 'Full Name', value: createdCreds.name, field: 'name', secret: false },
+                    { label: 'Email', value: createdCreds.email, field: 'email', secret: false },
+                    { label: 'Password', value: createdCreds.password, field: 'password', secret: true },
+                  ] as Array<{ label: string; value: string; field: string; secret: boolean }>).map(({ label, value, field, secret }) => (
+                    <div key={field} className="flex items-center gap-3 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+                        <p className="text-sm font-semibold text-gray-900 truncate mt-0.5">
+                          {secret && !showCredsPassword ? '••••••••' : value}
+                        </p>
+                      </div>
+                      {secret && (
+                        <button type="button" onClick={() => setShowCredsPassword(v => !v)} className="p-1.5 text-slate-400 hover:text-gray-700 transition-colors">
+                          {showCredsPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      )}
+                      <button type="button" onClick={() => copyToClipboard(value, field)} className="p-1.5 text-slate-400 hover:text-blue-600 transition-colors">
+                        {copiedField === field ? <CheckCheck className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 mb-5">
+                  Save this password now. It won't be shown again.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => { setCreatedCreds(null); onClose(); }}
+                  className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all shadow-lg shadow-emerald-600/20"
+                >
+                  Done
+                </button>
               </GlassCard>
             </motion.div>
           </div>

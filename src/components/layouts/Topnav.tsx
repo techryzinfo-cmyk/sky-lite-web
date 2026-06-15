@@ -114,7 +114,6 @@ export const Topnav: React.FC<TopnavProps> = ({ onMenuClick }) => {
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, [showMenu]);
-  console.log("User - ", user)
   return (
     <header className="h-16 fixed top-0 right-0 left-0 lg:left-64 bg-white border-b border-gray-200 z-30 transition-all">
       <div className="h-full px-4 lg:px-8 flex items-center justify-between">

@@ -23,11 +23,13 @@ export const RiskModal: React.FC<RiskModalProps> = ({ isOpen, onClose, onSuccess
     category: 'Technical',
     probability: 'Medium',
     impact: 'Medium',
+    status: 'Active',
+    mitigationProgress: 0,
   });
   const toast = useToast();
 
   const reset = () =>
-    setFormData({ title: '', description: '', category: 'Technical', probability: 'Medium', impact: 'Medium' });
+    setFormData({ title: '', description: '', category: 'Technical', probability: 'Medium', impact: 'Medium', status: 'Active', mitigationProgress: 0 });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,6 +136,36 @@ export const RiskModal: React.FC<RiskModalProps> = ({ isOpen, onClose, onSuccess
                       <option value="High">High</option>
                       <option value="Very High">Very High</option>
                     </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-600 ml-1">Status</label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all"
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Critical">Critical</option>
+                      <option value="Monitored">Monitored</option>
+                      <option value="Resolved">Resolved</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-600 ml-1">
+                      Mitigation Progress — <span className="font-bold text-blue-600">{formData.mitigationProgress}%</span>
+                    </label>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={5}
+                      value={formData.mitigationProgress}
+                      onChange={(e) => setFormData({ ...formData, mitigationProgress: Number(e.target.value) })}
+                      className="w-full accent-blue-600 mt-2"
+                    />
                   </div>
                 </div>
 

@@ -85,7 +85,6 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
       setStatusFilter('All');
     }
     fetchIssues();
-    fetchEscalationMatrix();
   }, [projectId, activeType]);
 
   const handleDeleteIssue = async (e: React.MouseEvent, issueId: string) => {
@@ -177,7 +176,7 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
             </button>
           </div>
           <button
-            onClick={() => setIsEscalationOpen(true)}
+            onClick={() => { fetchEscalationMatrix(); setIsEscalationOpen(true); }}
             className="flex items-center space-x-2 px-4 py-2 bg-orange-50 border border-orange-200 rounded-xl text-sm font-bold text-orange-700 hover:bg-orange-100 transition-all"
           >
             <GitBranch className="w-4 h-4" />

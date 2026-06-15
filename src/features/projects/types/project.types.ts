@@ -6,7 +6,7 @@ export interface Project {
   clientName?: string;
   clientEmail?: string;
   clientPhone?: string;
-  status: "Initialized" | "Planning" | "Site Survey" | "In Progress" | "Under Snagging" | "Snagging Completed" | "Completed" | "On Hold" | "Cancelled";
+  status: "Initialized" | "Planning" | "Site Survey" | "Ongoing" | "Under Snagging" | "Snagging Completed" | "Completed" | "Pending Handover" | "Handover Rejected" | "Handover Completed" | "On Hold" | "Cancelled";
   priority: "Low" | "Medium" | "High" | "Urgent";
   organization: string | Organization;
   createdBy: string | User;
@@ -15,6 +15,7 @@ export interface Project {
   startDate?: string;
   endDate?: string;
   category?: string | { _id: string; name: string };
+  projectType: 'Construction' | 'Interior';
   needSiteSurvey: boolean;
   siteSurveyor?: string | User;
   surveyStatus?: string;
