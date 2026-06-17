@@ -93,14 +93,19 @@ function LoginForm() {
                   <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto mb-4">
                     <CheckCircle2 className="w-7 h-7 text-emerald-500" />
                   </div>
-                  <h2 className="text-xl font-bold text-gray-900 mb-2">Check your email</h2>
-                  <p className="text-sm text-slate-500">We've sent a password reset link to <span className="font-semibold text-gray-900">{fpEmail}</span>.</p>
-                  <p className="text-xs text-slate-400 mt-3">Didn't receive it? Check your spam folder or try again.</p>
+                  <h2 className="text-xl font-bold text-gray-900 mb-2">OTP Sent</h2>
+                  <p className="text-sm text-slate-500">We've sent a 6-digit verification code (OTP) to <span className="font-semibold text-gray-900">{fpEmail}</span>.</p>
+                  <Link
+                    href={`/reset-password?email=${encodeURIComponent(fpEmail)}`}
+                    className="mt-6 w-full inline-flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl shadow-sm shadow-blue-600/20 transition-all active:scale-[0.98]"
+                  >
+                    Enter OTP & Reset Password
+                  </Link>
                   <button
                     onClick={() => { setFpSent(false); }}
-                    className="mt-5 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors"
+                    className="mt-4 text-xs font-bold text-slate-500 hover:text-gray-900 transition-colors block mx-auto"
                   >
-                    Resend email
+                    Resend Email
                   </button>
                 </div>
               ) : (

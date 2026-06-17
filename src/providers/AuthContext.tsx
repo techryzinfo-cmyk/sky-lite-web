@@ -58,8 +58,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (data: any) => {
     try {
       await api.post('/auth/register', data);
-      // Backend register doesn't return tokens, so user needs to login
-      router.push('/login?registered=true');
     } catch (error) {
       throw error;
     }
