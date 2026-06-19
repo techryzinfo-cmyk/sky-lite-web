@@ -17,6 +17,7 @@ import {
   Plus,
   X,
   FolderOpen,
+  Check,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
@@ -24,10 +25,10 @@ import api from '@/services/api.client';
 import { uploadToCloudinary } from '@/lib/upload';
 import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
-
+ 
 const CATEGORIES = ['Contract', 'Specification', 'Report', 'RFI', 'Submittal', 'Meeting Minutes', 'Other'] as const;
 type Category = typeof CATEGORIES[number];
-
+ 
 interface Doc {
   _id: string;
   name: string;
@@ -35,8 +36,9 @@ interface Doc {
   mimeType: string;
   size: number;
   category: Category;
+  status?: 'Pending' | 'Approved' | 'Rejected';
   uploadedAt: string;
-  uploadedBy?: { name: string };
+  uploadedBy?: { name: string; user?: string };
 }
 
 function fileIcon(mimeType: string) {
@@ -133,6 +135,16 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ projectId }) => {
     }
   };
 
+  const handleAction = async (docId: string, action: 'Approved' | 'Rejected') => {
+    try {
+      await api.patch(`/projects/${projectId}/documents/${docId}/action`, { action });
+      toast.success(`Document ${action.toLowerCase()} successfully`);
+      fetchDocs();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || `Failed to ${action.toLowerCase()} document`);
+    }
+  };
+
   const filtered = activeCategory === 'All'
     ? docs
     : docs.filter(d => d.category === activeCategory);
@@ -202,16 +214,22 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ projectId }) => {
         ) : (
           <div className="divide-y divide-gray-100">
             {/* Table header */}
-            <div className="grid grid-cols-[2fr_1fr_1fr_80px_80px] gap-4 px-6 py-3 bg-gray-50 border-b border-gray-100">
-              {['Name', 'Category', 'Uploaded', 'Size', ''].map(h => (
+            <div className="grid grid-cols-[2fr_1.2fr_1.2fr_1.2fr_80px_100px] gap-4 px-6 py-3 bg-gray-50 border-b border-gray-100">
+              {['Name', 'Category', 'Status', 'Uploaded', 'Size', ''].map(h => (
                 <span key={h} className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{h}</span>
               ))}
             </div>
 
             {filtered.map(doc => {
               const Icon = fileIcon(doc.mimeType);
+              const uploaderId = doc.uploadedBy?.user || doc.uploadedBy;
+              const isUploader = uploaderId === (user?.id || user?._id);
+              
+              // Allowed to approve/reject if Admin or Project Manager, but cannot be the uploader unless Admin
+              const canManageApproval = (user?.role?.name === 'Admin' || user?.role?.name === 'Project Manager') && (!isUploader || isAdmin);
+
               return (
-                <div key={doc._id} className="grid grid-cols-[2fr_1fr_1fr_80px_80px] gap-4 px-6 py-4 items-center hover:bg-gray-50 transition-colors group">
+                <div key={doc._id} className="grid grid-cols-[2fr_1.2fr_1.2fr_1.2fr_80px_100px] gap-4 px-6 py-4 items-center hover:bg-gray-50 transition-colors group">
                   {/* Name */}
                   <div className="flex items-center space-x-3 min-w-0">
                     <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
@@ -233,6 +251,16 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ projectId }) => {
                     {doc.category}
                   </span>
 
+                  {/* Status */}
+                  <span className={cn(
+                    'px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border w-fit',
+                    doc.status === 'Approved' && 'bg-emerald-100 border-emerald-200 text-emerald-700',
+                    doc.status === 'Rejected' && 'bg-rose-100 border-rose-200 text-rose-700',
+                    (doc.status === 'Pending' || !doc.status) && 'bg-amber-100 border-amber-200 text-amber-700'
+                  )}>
+                    {doc.status || 'Pending'}
+                  </span>
+
                   {/* Date */}
                   <span className="text-xs text-slate-500">
                     {new Date(doc.uploadedAt).toLocaleDateString()}
@@ -243,6 +271,24 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ projectId }) => {
 
                   {/* Actions */}
                   <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {(doc.status === 'Pending' || !doc.status) && canManageApproval && (
+                      <>
+                        <button
+                          onClick={() => handleAction(doc._id, 'Approved')}
+                          className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-all"
+                          title="Approve"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleAction(doc._id, 'Rejected')}
+                          className="p-1.5 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50 transition-all"
+                          title="Reject"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
                     <a
                       href={doc.url}
                       target="_blank"

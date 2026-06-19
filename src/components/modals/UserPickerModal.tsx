@@ -18,6 +18,7 @@ interface UserPickerModalProps {
   initialSelected?: string[];
   confirmLabel?: string;
   accentColor?: 'blue' | 'purple' | 'emerald' | 'orange';
+  endpoint?: string;
 }
 
 const accentMap = {
@@ -28,7 +29,7 @@ const accentMap = {
 };
 
 export const UserPickerModal: React.FC<UserPickerModalProps> = ({
-  isOpen, onClose, onSelect, title, description, initialSelected = [], confirmLabel = 'Confirm', accentColor = 'blue',
+  isOpen, onClose, onSelect, title, description, initialSelected = [], confirmLabel = 'Confirm', accentColor = 'blue', endpoint,
 }) => {
   const [users, setUsers] = useState<any[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -42,11 +43,12 @@ export const UserPickerModal: React.FC<UserPickerModalProps> = ({
     setSearch('');
     setSelected(new Set(initialSelected));
     setLoading(true);
-    api.get('/users')
+    const fetchUrl = endpoint || '/users';
+    api.get(fetchUrl)
       .then(r => setUsers(r.data?.users || r.data || []))
       .catch(() => toast.error('Failed to load users'))
       .finally(() => setLoading(false));
-  }, [isOpen]);
+  }, [isOpen, endpoint]);
 
   const toggle = (userId: string) => {
     setSelected(prev => {
@@ -137,9 +139,9 @@ export const UserPickerModal: React.FC<UserPickerModalProps> = ({
                             <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
                             <p className="text-[10px] text-slate-500 truncate">{user.email}</p>
                           </div>
-                          {user.role?.name && (
+                          {(user.role?.name || user.roleName) && (
                             <span className="text-[10px] font-bold text-slate-400 bg-gray-100 px-2 py-0.5 rounded-md shrink-0">
-                              {user.role.name}
+                              {user.role?.name || user.roleName}
                             </span>
                           )}
                         </button>

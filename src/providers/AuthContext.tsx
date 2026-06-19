@@ -26,7 +26,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     const token = Cookies.get('token') || localStorage.getItem('token');
-    if (savedUser && savedUser !== 'undefined' && savedUser !== 'null' && token) {
+    
+    let isTokenExpired = false;
+    if (token) {
+      try {
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(window.atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+          if (payload.exp && payload.exp * 1000 < Date.now()) {
+            isTokenExpired = true;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse token expiration', e);
+      }
+    }
+
+    if (isTokenExpired) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      Cookies.remove('token');
+      setUser(null);
+      router.push('/login');
+    } else if (savedUser && savedUser !== 'undefined' && savedUser !== 'null' && token) {
       try {
         setUser(JSON.parse(savedUser));
       } catch {

@@ -9,7 +9,7 @@ import api from '@/services/api.client';
 import {
   Building2, Bell, Trash2, Save, Loader2,
   Globe, Mail, Phone, ToggleLeft, ToggleRight, AlertTriangle,
-  Palette, Download, CreditCard, Star, Crown, Zap, CheckCircle2, XCircle,
+  CreditCard, Star, Crown, Zap, CheckCircle2, XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -52,7 +52,6 @@ export default function SettingsPage() {
     }
   };
 
-  const [theme, setTheme] = useState<'system' | 'light' | 'dark'>('light');
   const [deleteConfirm, setDeleteConfirm] = useState('');
 
   useEffect(() => {
@@ -86,21 +85,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleExportData = async () => {
-    try {
-      const res = await api.get('/projects');
-      const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = window.document.createElement('a');
-      a.href = url;
-      a.download = `skylite_data_export_${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success('Data exported successfully');
-    } catch {
-      toast.error('Failed to export data');
-    }
-  };
+
 
   const Section = ({ title, description, icon: Icon, iconBg, iconColor, children }: any) => (
     <GlassCard className="p-8 border-gray-200" gradient>
@@ -367,61 +352,9 @@ export default function SettingsPage() {
           </div>
         </Section>
 
-        {/* Appearance */}
-        <Section
-          title="Appearance"
-          description="Choose your display theme preference."
-          icon={Palette}
-          iconBg="bg-amber-50 border-amber-200"
-          iconColor="text-amber-600"
-        >
-          <div className="grid grid-cols-3 gap-3">
-            {(['light', 'dark', 'system'] as const).map(t => (
-              <button
-                key={t}
-                onClick={() => setTheme(t)}
-                className={cn(
-                  'p-4 rounded-2xl border-2 text-center transition-all',
-                  theme === t ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'
-                )}
-              >
-                <div className={cn(
-                  'w-10 h-10 rounded-xl mx-auto mb-3 border-2',
-                  t === 'light' ? 'bg-white border-gray-200' :
-                  t === 'dark' ? 'bg-gray-900 border-gray-700' :
-                  'bg-gradient-to-br from-white to-gray-900 border-gray-300'
-                )} />
-                <p className={cn('text-xs font-bold capitalize', theme === t ? 'text-blue-700' : 'text-slate-600')}>{t}</p>
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-slate-400 mt-3 italic">Theme switching is a UI preference — full dark mode coming soon.</p>
-        </Section>
 
-        {/* Data Export */}
-        <Section
-          title="Data & Privacy"
-          description="Export your data or manage data retention."
-          icon={Download}
-          iconBg="bg-emerald-50 border-emerald-200"
-          iconColor="text-emerald-600"
-        >
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-100">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">Export All Projects</p>
-                <p className="text-xs text-slate-500 mt-0.5">Download all project data as a JSON file.</p>
-              </div>
-              <button
-                onClick={handleExportData}
-                className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-gray-100 transition-all"
-              >
-                <Download className="w-4 h-4" />
-                <span>Export</span>
-              </button>
-            </div>
-          </div>
-        </Section>
+
+
 
         {/* Danger Zone */}
         <GlassCard className="p-8 border-red-200 bg-red-50/30">

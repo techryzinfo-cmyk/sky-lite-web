@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Loader2, ChevronLeft, ChevronRight, FolderOpen,
   FileText, Zap, Upload, Trash2, MapPin, Check,
-  HardHat, Sofa,
+  HardHat, Sofa, Plus, Navigation,
 } from 'lucide-react';
 import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
@@ -29,7 +29,10 @@ const labelCls = 'block text-xs font-bold text-slate-600 mb-1.5 ml-0.5';
 
 const emptyForm = {
   name: '',
-  siteLocation: '',
+  siteLocationAddress: '',
+  siteLocationLatitude: '',
+  siteLocationLongitude: '',
+  attendanceRadius: 100,
   area: '',
   budget: '',
   priority: 'Medium',
@@ -55,6 +58,12 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [isCustom, setIsCustom] = useState(false);
   const [loadingModal, setLoadingModal] = useState(false);
+  
+  // Category creation state
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
 
   // ── Form state ──
   const [form, setForm] = useState(emptyForm);
@@ -74,7 +83,10 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
       setStep('configure');
       setForm({
         name: initialData.name || '',
-        siteLocation: initialData.siteLocation || '',
+        siteLocationAddress: initialData.siteLocation?.address || '',
+        siteLocationLatitude: initialData.siteLocation?.latitude?.toString() || '',
+        siteLocationLongitude: initialData.siteLocation?.longitude?.toString() || '',
+        attendanceRadius: initialData.attendanceRadius ?? 100,
         area: initialData.area || '',
         budget: '',
         priority: initialData.priority || 'Medium',
@@ -110,6 +122,79 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
     } finally {
       setLoadingModal(false);
     }
+  };
+  const handleCreateCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newCategoryName.trim();
+    if (!name) return;
+    setIsCreatingCategory(true);
+    try {
+      const response = await api.post('/template-categories', { name });
+      toast.success('Category created successfully!');
+      setNewCategoryName('');
+      setIsAddingCategory(false);
+      
+      // Refresh categories list
+      const catRes = await api.get('/template-categories');
+      setCategories(catRes.data);
+      
+      // Auto-select the newly created category
+      const createdCategory = catRes.data.find(
+        (c: any) => c.name.toLowerCase() === name.toLowerCase()
+      ) || response.data;
+      
+      if (createdCategory) {
+        setSelectedCategory(createdCategory);
+        setStep('template');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to create category');
+    } finally {
+      setIsCreatingCategory(false);
+    }
+  };
+
+  const handleGetCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setForm(f => ({
+          ...f,
+          siteLocationLatitude: latitude.toFixed(6),
+          siteLocationLongitude: longitude.toFixed(6),
+        }));
+        toast.success('Location coordinates fetched!');
+
+        // Attempt reverse geocoding via public Nominatim API
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.display_name) {
+              setForm(f => ({
+                ...f,
+                siteLocationAddress: data.display_name,
+              }));
+            }
+          }
+        } catch (err) {
+          console.error('Reverse geocoding error:', err);
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        toast.error(error.message || 'Failed to get location');
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   };
 
   // ── Date validation helpers ──
@@ -191,18 +276,31 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      if (isEditing) {
-        const { budget, area, ...rest } = form;
-        await api.patch(`/projects/${projectId}`, { ...rest });
-        toast.success('Project updated successfully!');
-      } else {
-        const descParts: string[] = [];
-        if (form.siteLocation) descParts.push(`Location: ${form.siteLocation}`);
-        if (form.description) descParts.push(form.description);
+      const siteLocationObj = {
+        address: form.siteLocationAddress,
+        latitude: form.siteLocationLatitude ? Number(form.siteLocationLatitude) : undefined,
+        longitude: form.siteLocationLongitude ? Number(form.siteLocationLongitude) : undefined,
+      };
 
+      if (isEditing) {
         const payload: any = {
           name: form.name,
-          description: descParts.join('\n') || undefined,
+          priority: form.priority,
+          startDate: form.startDate || undefined,
+          endDate: form.endDate || undefined,
+          needSiteSurvey: form.needSiteSurvey,
+          projectType: form.projectType,
+          description: form.description || undefined,
+          siteLocation: siteLocationObj,
+          attendanceRadius: form.attendanceRadius ? Number(form.attendanceRadius) : 100,
+        };
+        if (form.area) payload.area = Number(form.area);
+        await api.patch(`/projects/${projectId}`, payload);
+        toast.success('Project updated successfully!');
+      } else {
+        const payload: any = {
+          name: form.name,
+          description: form.description || undefined,
           category: selectedCategory?._id,
           createdBy: user?.id,
           priority: form.priority,
@@ -212,7 +310,10 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
           projectType: form.projectType,
           budget: form.budget ? form.budget : undefined,
           documents: documents.length > 0 ? documents : undefined,
+          siteLocation: siteLocationObj,
+          attendanceRadius: form.attendanceRadius ? Number(form.attendanceRadius) : 100,
         };
+        if (form.area) payload.area = Number(form.area);
         if (selectedTemplate) payload.templateId = selectedTemplate._id;
         await api.post('/projects', payload);
         toast.success('Project created successfully!');
@@ -300,6 +401,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                           return (
                             <button
                               key={cat._id}
+                              type="button"
                               onClick={() => { setSelectedCategory(cat); setStep('template'); }}
                               className={`flex flex-col items-center gap-3 p-6 rounded-2xl border-2 font-bold text-sm transition-all ${c}`}
                             >
@@ -308,9 +410,30 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                             </button>
                           );
                         })}
+                        
+                        {categories.length > 0 && !loadingModal && (
+                          <button
+                            type="button"
+                            onClick={() => { setIsAddingCategory(true); setNewCategoryName(''); }}
+                            className="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-dashed border-slate-300 text-slate-500 hover:text-slate-800 hover:border-slate-400 bg-slate-50 hover:bg-slate-100 font-bold text-sm transition-all"
+                          >
+                            <Plus className="w-8 h-8" />
+                            <span className="text-center leading-tight">Add Category</span>
+                          </button>
+                        )}
+
                         {categories.length === 0 && !loadingModal && (
-                          <div className="col-span-full text-center py-12 text-slate-400">
-                            No categories available
+                          <div className="col-span-full flex flex-col items-center justify-center py-12 px-4 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                            <FolderOpen className="w-12 h-12 text-slate-300 mb-3" />
+                            <p className="text-sm font-medium text-slate-500 mb-4">No categories available</p>
+                            <button
+                              type="button"
+                              onClick={() => { setIsAddingCategory(true); setNewCategoryName(''); }}
+                              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all active:scale-[0.98] shadow-md shadow-blue-600/10"
+                            >
+                              <Plus className="w-4 h-4" />
+                              <span>Create First Category</span>
+                            </button>
                           </div>
                         )}
                       </div>
@@ -412,12 +535,56 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                       </div>
 
                       <div>
-                        <label className={labelCls}>Site Location</label>
+                        <div className="flex items-center justify-between mb-1.5 ml-0.5">
+                          <label className="text-xs font-bold text-slate-600">Site Address</label>
+                          <button
+                            type="button"
+                            onClick={handleGetCurrentLocation}
+                            disabled={isLocating}
+                            className="flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-500 transition-colors disabled:opacity-50"
+                          >
+                            {isLocating ? (
+                              <>
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                <span>Locating...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Navigation className="w-3 h-3" />
+                                <span>Get Current Location</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
                         <div className="relative">
                           <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <input type="text" value={form.siteLocation}
-                            onChange={e => setForm(f => ({ ...f, siteLocation: e.target.value }))}
+                          <input type="text" value={form.siteLocationAddress}
+                            onChange={e => setForm(f => ({ ...f, siteLocationAddress: e.target.value }))}
                             className={`${inputCls} pl-10`} placeholder="e.g. 123 Luxury Ave, Mumbai"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <label className={labelCls}>Latitude</label>
+                          <input type="number" step="any" value={form.siteLocationLatitude}
+                            onChange={e => setForm(f => ({ ...f, siteLocationLatitude: e.target.value }))}
+                            className={inputCls} placeholder="e.g. 25.078"
+                          />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Longitude</label>
+                          <input type="number" step="any" value={form.siteLocationLongitude}
+                            onChange={e => setForm(f => ({ ...f, siteLocationLongitude: e.target.value }))}
+                            className={inputCls} placeholder="e.g. 55.135"
+                          />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Radius (meters)</label>
+                          <input type="number" value={form.attendanceRadius}
+                            onChange={e => setForm(f => ({ ...f, attendanceRadius: Number(e.target.value) || 0 }))}
+                            className={inputCls} placeholder="e.g. 100"
                           />
                         </div>
                       </div>
@@ -597,6 +764,69 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 
               </div>
             </div>
+            
+            {/* Add Category Dialog Overlay */}
+            <AnimatePresence>
+              {isAddingCategory && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm rounded-2xl">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="bg-white w-full max-w-md p-6 rounded-2xl border border-gray-200 shadow-xl"
+                  >
+                    <form onSubmit={handleCreateCategory}>
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-base font-black text-gray-900">Create New Category</h3>
+                        <button
+                          type="button"
+                          onClick={() => setIsAddingCategory(false)}
+                          className="p-1 text-slate-400 hover:text-gray-900 bg-gray-50 rounded-lg"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <p className="text-xs text-slate-500 mb-4">Add a new category to group your project templates and custom projects.</p>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Category Name *</label>
+                          <input
+                            type="text"
+                            value={newCategoryName}
+                            onChange={e => setNewCategoryName(e.target.value)}
+                            placeholder="e.g. Residential, Commercial..."
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"
+                            autoFocus
+                            required
+                          />
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => setIsAddingCategory(false)}
+                            className="flex-1 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-slate-600 text-sm font-bold transition-all"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={isCreatingCategory || !newCategoryName.trim()}
+                            className="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                          >
+                            {isCreatingCategory ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Check className="w-3.5 h-3.5" />
+                            )}
+                            <span>Create Category</span>
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
           </motion.div>
         </div>
       )}

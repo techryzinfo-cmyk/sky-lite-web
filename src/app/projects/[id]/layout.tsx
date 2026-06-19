@@ -11,7 +11,7 @@ import {
   AlertCircle, ShieldAlert, Calendar,
   TrendingUp, GanttChart, ClipboardList, CreditCard,
   ChevronLeft, Pencil, MessageSquare,
-  ClipboardCheck, History, LayoutGrid, Sofa, LayoutDashboard,
+  ClipboardCheck, History, LayoutGrid, Sofa, LayoutDashboard, Clock,
 } from 'lucide-react';
 
 // ── All tab definitions ────────────────────────────────────────
@@ -28,6 +28,7 @@ const ALL_TABS = [
   { id: 'documents',    name: 'Documents',      icon: Files },
   { id: 'materials',    name: 'Materials',      icon: Package },
   { id: 'site-survey',  name: 'Site Survey',    icon: ClipboardList },
+  { id: 'attendance',   name: 'Attendance',     icon: Clock },
   { id: 'issues',       name: 'Issues & Snags', icon: AlertCircle },
   { id: 'risks',        name: 'Risks',          icon: ShieldAlert },
   { id: 'handover',     name: 'Handover',       icon: ClipboardCheck },
@@ -51,7 +52,7 @@ const TAB_GROUPS: TabGroup[] = [
   { id: 'overview',  label: 'Overview',  icon: LayoutDashboard, tabIds: ['dashboard', 'details'] },
   { id: 'work',      label: 'Work',      icon: Calendar,        tabIds: ['boq', 'milestones', 'timeline', 'progress'] },
   { id: 'finance',   label: 'Finance',   icon: DollarSign,      tabIds: ['budget', 'transactions'] },
-  { id: 'site',      label: 'Site',      icon: Map,             tabIds: ['plans', 'documents', 'materials', 'site-survey'] },
+  { id: 'site',      label: 'Site',      icon: Map,             tabIds: ['plans', 'documents', 'materials', 'site-survey', 'attendance'] },
   { id: 'quality',   label: 'Quality',   icon: ShieldAlert,     tabIds: ['issues', 'risks', 'handover', 'audit'] },
   { id: 'chat',      label: 'Chat',      icon: MessageSquare,   tabIds: ['chat'] },
   { id: 'interior',  label: 'Interior',  icon: Sofa,            tabIds: ['rooms', 'ffe'] },

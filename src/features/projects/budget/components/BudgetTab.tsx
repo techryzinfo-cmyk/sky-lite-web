@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import {
@@ -11,6 +11,7 @@ import {
   ArrowUpRight,
   Plus,
   UserCheck,
+  X,
 } from 'lucide-react';
 import { Project } from '@/types';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -18,6 +19,7 @@ import { cn } from '@/lib/utils';
 import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
 import { UserPickerModal } from '@/components/modals/UserPickerModal';
+import { useAuth } from '@/providers/AuthContext';
 
 interface BudgetTabProps {
   project: Project;
@@ -34,7 +36,22 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
     budgetReason: '',
   });
 
+  const { user } = useAuth();
   const toast = useToast();
+
+  const hasBudgetApprovalPermission = user?.role?.name === 'Admin' ||
+    user?.role?.permissions?.includes('budget:approve') ||
+    user?.role?.permissions?.includes('*');
+
+  const handleBudgetAction = async (budgetId: string, action: 'Approved' | 'Rejected') => {
+    try {
+      await api.patch(`/projects/${project._id}/budget-action`, { budgetId, action });
+      toast.success(`Budget request ${action.toLowerCase()} successfully`);
+      onUpdate();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || `Failed to ${action.toLowerCase()} budget request`);
+    }
+  };
 
   const currentApprovers: any[] = (project as any).budgetApprovers || [];
 
@@ -269,10 +286,13 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
             <div key={index} className="relative pl-12">
               <div className={cn(
                 "absolute left-0 top-0 w-11 h-11 rounded-2xl border flex items-center justify-center bg-white z-10 shadow-sm",
-                entry.approvalStatus === 'Approved' ? 'border-emerald-200' : 'border-amber-200'
+                entry.approvalStatus === 'Approved' ? 'border-emerald-200' :
+                entry.approvalStatus === 'Rejected' ? 'border-rose-200' : 'border-amber-200'
               )}>
                 {entry.approvalStatus === 'Approved' ? (
                   <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                ) : entry.approvalStatus === 'Rejected' ? (
+                  <X className="w-5 h-5 text-rose-500" />
                 ) : (
                   <Clock className="w-5 h-5 text-amber-500" />
                 )}
@@ -285,10 +305,31 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
                       <span className="text-lg font-black text-gray-900">${entry.amount.toLocaleString()}</span>
                       <span className={cn(
                         "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border",
-                        entry.approvalStatus === 'Approved' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'
+                        entry.approvalStatus === 'Approved' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                        entry.approvalStatus === 'Rejected' ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-amber-100 text-amber-700 border-amber-200'
                       )}>
                         {entry.approvalStatus}
                       </span>
+                      {entry.approvalStatus === 'Pending' && hasBudgetApprovalPermission && (
+                        <div className="flex items-center space-x-1 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => handleBudgetAction((entry as any)._id || entry, 'Approved')}
+                            className="p-1 px-2.5 py-1 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 text-[10px] font-bold border border-emerald-200 flex items-center space-x-1 transition-all"
+                            title="Approve"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Approve</span>
+                          </button>
+                          <button
+                            onClick={() => handleBudgetAction((entry as any)._id || entry, 'Rejected')}
+                            className="p-1 px-2.5 py-1 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50 text-[10px] font-bold border border-rose-200 flex items-center space-x-1 transition-all"
+                            title="Reject"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Reject</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <p className="text-xs text-slate-500">Updated by <span className="text-blue-600 font-bold">{entry.updatedByName}</span> on {new Date(entry.timestamp).toLocaleDateString()} at {new Date(entry.timestamp).toLocaleTimeString()}</p>
                   </div>
@@ -315,7 +356,7 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
                       </div>
                       <div>
                         <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Status</p>
-                        <p className={cn("font-black mt-0.5", entry.approvalStatus === 'Approved' ? 'text-emerald-600' : 'text-amber-600')}>{entry.approvalStatus}</p>
+                        <p className={cn("font-black mt-0.5", entry.approvalStatus === 'Approved' ? 'text-emerald-600' : entry.approvalStatus === 'Rejected' ? 'text-rose-600' : 'text-amber-600')}>{entry.approvalStatus}</p>
                       </div>
                       <div>
                         <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Requested By</p>
@@ -343,6 +384,7 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
         initialSelected={currentApprovers.map((a: any) => a._id || a)}
         confirmLabel="Save Approvers"
         accentColor="purple"
+        endpoint={`/projects/${project._id}/budget-approvers`}
       />
     </div>
   );

@@ -32,6 +32,8 @@ interface DPRTabProps {
 
 export const DPRTab: React.FC<DPRTabProps> = ({ projectId }) => {
   const [reports, setReports] = useState<any[]>([]);
+  const [summary, setSummary] = useState<any>(null);
+  const [chartTab, setChartTab] = useState<'overTime' | 'weekly' | 'monthly'>('overTime');
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [forbidden, setForbidden] = useState(false);
@@ -40,18 +42,31 @@ export const DPRTab: React.FC<DPRTabProps> = ({ projectId }) => {
 
   const fetchReports = async () => {
     try {
-      const response = await api.get(`/projects/${projectId}/work-progress`);
-      const payload = response.data;
-      setReports(Array.isArray(payload) ? payload : payload?.data ?? []);
-    } catch (error: any) {
-      if (error?.response?.status === 403) {
-        setForbidden(true);
-      } else if (error?.response?.status === 404) {
-        setReports([]);
+      const [reportsRes, summaryRes] = await Promise.allSettled([
+        api.get(`/projects/${projectId}/work-progress`),
+        api.get(`/projects/${projectId}/work-progress/summary`),
+      ]);
+
+      if (reportsRes.status === 'fulfilled') {
+        const payload = reportsRes.value.data;
+        setReports(Array.isArray(payload) ? payload : payload?.data ?? []);
       } else {
-        console.error('Error fetching DPRs:', error);
-        toast.error('Failed to load progress reports');
+        const error = reportsRes.reason;
+        if (error?.response?.status === 403) {
+          setForbidden(true);
+        } else if (error?.response?.status === 404) {
+          setReports([]);
+        } else {
+          console.error('Error fetching DPRs:', error);
+          toast.error('Failed to load progress reports');
+        }
       }
+
+      if (summaryRes.status === 'fulfilled') {
+        setSummary(summaryRes.value.data);
+      }
+    } catch (error: any) {
+      console.error('Error in fetchReports:', error);
     } finally {
       setLoading(false);
     }
@@ -70,13 +85,7 @@ export const DPRTab: React.FC<DPRTabProps> = ({ projectId }) => {
 
   const sortedDates = Object.keys(groupedReports).sort((a, b) => b.localeCompare(a));
 
-  const latestProgress = reports.length > 0
-    ? Math.max(...reports.map(r => r.progressPercent || 0))
-    : 0;
   const activeDays = Object.keys(groupedReports).length;
-  const avgProgress = reports.length > 0
-    ? Math.round(reports.reduce((s, r) => s + (r.progressPercent || 0), 0) / reports.length)
-    : 0;
 
   // Loading state handled by Skeleton wrapper
 
@@ -126,8 +135,8 @@ export const DPRTab: React.FC<DPRTabProps> = ({ projectId }) => {
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: 'Latest Progress', value: `${latestProgress}%`, icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50' },
-              { label: 'Avg Progress', value: `${avgProgress}%`, icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50' },
+              { label: "Today's Progress", value: summary ? `${summary.todayUsed}%` : '0%', icon: Activity, color: 'text-blue-600', bg: 'bg-blue-50' },
+              { label: 'Remaining Capacity', value: summary ? `${summary.todayRemaining}%` : '100%', icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' },
               { label: 'Active Days', value: activeDays, icon: Calendar, color: 'text-emerald-600', bg: 'bg-emerald-50' },
               { label: 'Total Reports', value: reports.length, icon: BarChart, color: 'text-amber-600', bg: 'bg-amber-50' },
             ].map((s, i) => (
@@ -141,7 +150,7 @@ export const DPRTab: React.FC<DPRTabProps> = ({ projectId }) => {
             ))}
           </div>
 
-          {/* Progress Over Time Chart */}
+          {/* Progress Over Time & Capacity Charts */}
           {(() => {
             const chartData = [...reports]
               .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
@@ -166,15 +175,55 @@ export const DPRTab: React.FC<DPRTabProps> = ({ projectId }) => {
 
             return (
               <GlassCard className="p-6 border-gray-200" gradient>
-                <div className="flex items-center space-x-3 mb-5">
-                  <div className="p-2 rounded-xl bg-blue-50 border border-blue-200">
-                    <TrendingUp className="w-4 h-4 text-blue-600" />
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 rounded-xl bg-blue-50 border border-blue-200">
+                      <TrendingUp className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-900">
+                        {chartTab === 'overTime' ? 'Progress Over Time' : chartTab === 'weekly' ? 'Weekly Capacity' : 'Monthly Capacity'}
+                      </h4>
+                      <p className="text-[10px] text-slate-500">
+                        {chartTab === 'overTime'
+                          ? 'Completion % across all reports'
+                          : chartTab === 'weekly'
+                          ? 'Daily logged progress total (7-day capacity view)'
+                          : 'Weekly logged progress total (4-week capacity view)'}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-gray-900">Progress Over Time</h4>
-                    <p className="text-[10px] text-slate-500">Completion % across all reports</p>
+                  <div className="flex p-1 bg-gray-100 border border-gray-200 rounded-xl">
+                    <button
+                      onClick={() => setChartTab('overTime')}
+                      className={cn(
+                        'px-2.5 py-1 rounded-lg text-xs font-bold transition-all',
+                        chartTab === 'overTime' ? 'bg-white shadow text-blue-600' : 'text-slate-400 hover:text-gray-700'
+                      )}
+                    >
+                      Over Time
+                    </button>
+                    <button
+                      onClick={() => setChartTab('weekly')}
+                      className={cn(
+                        'px-2.5 py-1 rounded-lg text-xs font-bold transition-all',
+                        chartTab === 'weekly' ? 'bg-white shadow text-blue-600' : 'text-slate-400 hover:text-gray-700'
+                      )}
+                    >
+                      Weekly
+                    </button>
+                    <button
+                      onClick={() => setChartTab('monthly')}
+                      className={cn(
+                        'px-2.5 py-1 rounded-lg text-xs font-bold transition-all',
+                        chartTab === 'monthly' ? 'bg-white shadow text-blue-600' : 'text-slate-400 hover:text-gray-700'
+                      )}
+                    >
+                      Monthly
+                    </button>
                   </div>
                 </div>
+
                 <div className="w-full overflow-x-auto">
                   <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: 280 }}>
                     <defs>
@@ -190,28 +239,80 @@ export const DPRTab: React.FC<DPRTabProps> = ({ projectId }) => {
                       return (
                         <g key={tick}>
                           <line x1={PAD_L} y1={y} x2={W - PAD_R} y2={y} stroke="#e5e7eb" strokeWidth="1" strokeDasharray={tick === 0 ? '0' : '3 3'} />
-                          <text x={PAD_L - 4} y={y + 4} textAnchor="end" fontSize="9" fill="#94a3b8" fontWeight="700">{tick}</text>
+                          <text x={PAD_L - 4} y={y + 4} textAnchor="end" fontSize="9" fill="#94a3b8" fontWeight="700">{tick}%</text>
                         </g>
                       );
                     })}
 
-                    {/* Area fill */}
-                    {n > 1 && <path d={areaPath} fill="url(#progressGrad)" />}
+                    {chartTab === 'overTime' && (
+                      <>
+                        {/* Area fill */}
+                        {n > 1 && <path d={areaPath} fill="url(#progressGrad)" />}
 
-                    {/* Line */}
-                    {n > 1 && (
-                      <polyline points={polyline} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                        {/* Line */}
+                        {n > 1 && (
+                          <polyline points={polyline} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                        )}
+
+                        {/* Data points + x-labels */}
+                        {chartData.map((d, i) => (
+                          <g key={i}>
+                            <circle cx={xOf(i)} cy={yOf(d.pct)} r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
+                            {(n <= 8 || i % Math.ceil(n / 8) === 0) && (
+                              <text x={xOf(i)} y={H - 4} textAnchor="middle" fontSize="8" fill="#94a3b8" fontWeight="600">{d.label}</text>
+                            )}
+                          </g>
+                        ))}
+                      </>
                     )}
 
-                    {/* Data points + x-labels */}
-                    {chartData.map((d, i) => (
-                      <g key={i}>
-                        <circle cx={xOf(i)} cy={yOf(d.pct)} r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
-                        {(n <= 8 || i % Math.ceil(n / 8) === 0) && (
-                          <text x={xOf(i)} y={H - 4} textAnchor="middle" fontSize="8" fill="#94a3b8" fontWeight="600">{d.label}</text>
-                        )}
-                      </g>
-                    ))}
+                    {chartTab === 'weekly' && (() => {
+                      const weeklyData = summary?.weeklyData || [];
+                      const maxVal = Math.max(100, ...weeklyData.map((d: any) => d.value));
+                      const barWidth = Math.floor(innerW / Math.max(1, weeklyData.length));
+                      const gap = Math.max(6, Math.floor(barWidth * 0.25));
+                      const singleW = barWidth - gap;
+                      const yOfWeekly = (val: number) => PAD_T + innerH - (val / maxVal) * innerH;
+
+                      return weeklyData.map((d: any, i: number) => {
+                        const x = PAD_L + i * barWidth + gap / 2;
+                        const barH = Math.max(2, (d.value / maxVal) * innerH);
+                        const y = yOfWeekly(d.value);
+                        return (
+                          <g key={i}>
+                            <rect x={x} y={y} width={singleW} height={barH} rx="4" fill="#3b82f6" opacity="0.85" />
+                            <text x={x + singleW / 2} y={H - 4} textAnchor="middle" fontSize="8" fill="#94a3b8" fontWeight="600">{d.label}</text>
+                            {d.value > 0 && (
+                              <text x={x + singleW / 2} y={y - 4} textAnchor="middle" fontSize="8" fill="#3b82f6" fontWeight="700">{d.value}%</text>
+                            )}
+                          </g>
+                        );
+                      });
+                    })()}
+
+                    {chartTab === 'monthly' && (() => {
+                      const monthlyData = summary?.monthlyData || [];
+                      const maxVal = Math.max(100, ...monthlyData.map((d: any) => d.value));
+                      const barWidth = Math.floor(innerW / Math.max(1, monthlyData.length));
+                      const gap = Math.max(12, Math.floor(barWidth * 0.3));
+                      const singleW = barWidth - gap;
+                      const yOfMonthly = (val: number) => PAD_T + innerH - (val / maxVal) * innerH;
+
+                      return monthlyData.map((d: any, i: number) => {
+                        const x = PAD_L + i * barWidth + gap / 2;
+                        const barH = Math.max(2, (d.value / maxVal) * innerH);
+                        const y = yOfMonthly(d.value);
+                        return (
+                          <g key={i}>
+                            <rect x={x} y={y} width={singleW} height={barH} rx="6" fill="#8b5cf6" opacity="0.85" />
+                            <text x={x + singleW / 2} y={H - 4} textAnchor="middle" fontSize="8" fill="#94a3b8" fontWeight="600">{d.label}</text>
+                            {d.value > 0 && (
+                              <text x={x + singleW / 2} y={y - 4} textAnchor="middle" fontSize="8" fill="#8b5cf6" fontWeight="700">{d.value}%</text>
+                            )}
+                          </g>
+                        );
+                      });
+                    })()}
                   </svg>
                 </div>
               </GlassCard>

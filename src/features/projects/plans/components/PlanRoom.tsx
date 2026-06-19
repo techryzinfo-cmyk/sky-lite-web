@@ -330,6 +330,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
         description="Choose who must review and approve this plan."
         confirmLabel="Send for Approval"
         accentColor="blue"
+        endpoint={`/projects/${projectId}/plan-approvers`}
       />
     </div>
   );
