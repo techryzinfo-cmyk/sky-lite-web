@@ -93,7 +93,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({ projectId }) => {
   const fetchTodayStatus = async () => {
     setLoadingToday(true);
     try {
-      const res = await api.get(`/api/attendance/today?projectId=${projectId}`);
+      const res = await api.get(`/attendance/today?projectId=${projectId}`);
       setTodayRecord(res.data?.record || null);
     } catch (err) {
       console.error('Error fetching today status', err);
@@ -108,7 +108,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({ projectId }) => {
     try {
       // Fetch for current month
       const currentMonth = new Date().toISOString().substring(0, 7);
-      const res = await api.get(`/api/attendance/monthly?projectId=${projectId}&month=${currentMonth}`);
+      const res = await api.get(`/attendance/monthly?projectId=${projectId}&month=${currentMonth}`);
       
       const records = res.data?.records || [];
       // Group records: today's date vs others
@@ -131,7 +131,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({ projectId }) => {
   // Fetch Monthly history based on filter
   const fetchMonthlyHistory = async () => {
     try {
-      const res = await api.get(`/api/attendance/monthly?projectId=${projectId}&month=${reportMonth}`);
+      const res = await api.get(`/attendance/monthly?projectId=${projectId}&month=${reportMonth}`);
       let records = res.data?.records || [];
       if (reportUser !== 'all') {
         records = records.filter((r: any) => (r.user?._id || r.user) === reportUser);
@@ -323,7 +323,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({ projectId }) => {
         }
       };
 
-      const res = await api.post('/api/attendance/check-in', payload);
+      const res = await api.post('/attendance/check-in', payload);
       toast.success(res.data?.message || 'Checked in successfully!');
       setIsCheckInOpen(false);
       setCheckNote('');
@@ -353,7 +353,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({ projectId }) => {
         }
       };
 
-      const res = await api.put('/api/attendance/check-out', payload);
+      const res = await api.put('/attendance/check-out', payload);
       toast.success(res.data?.message || 'Checked out successfully!');
       setIsCheckOutOpen(false);
       fetchTodayStatus();
@@ -853,7 +853,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({ projectId }) => {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-md relative z-10 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden"
+              className="w-full max-w-md relative z-10 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden flex flex-col max-h-[90vh]"
             >
               <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                 <div>
@@ -868,7 +868,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({ projectId }) => {
                 </button>
               </div>
 
-              <form onSubmit={handleCheckIn} className="p-6 space-y-5">
+              <form onSubmit={handleCheckIn} className="p-6 space-y-5 overflow-y-auto">
                 
                 {/* Geolocation simulation panel for development testing */}
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 space-y-2">
@@ -1028,7 +1028,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({ projectId }) => {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-sm relative z-10 bg-white rounded-2xl shadow-xl border border-gray-200 p-6 space-y-5 text-center"
+              className="w-full max-w-sm relative z-10 bg-white rounded-2xl shadow-xl border border-gray-200 p-6 space-y-5 text-center flex flex-col max-h-[90vh] overflow-y-auto"
             >
               <div className="w-12 h-12 rounded-full bg-red-50 border border-red-100 text-red-600 flex items-center justify-center mx-auto">
                 <Clock className="w-6 h-6 animate-pulse" />

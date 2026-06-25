@@ -26,16 +26,12 @@ import { uploadToCloudinary } from '@/lib/upload';
 import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
  
-const CATEGORIES = ['Contract', 'Specification', 'Report', 'RFI', 'Submittal', 'Meeting Minutes', 'Other'] as const;
-type Category = typeof CATEGORIES[number];
- 
 interface Doc {
   _id: string;
   name: string;
   url: string;
   mimeType: string;
   size: number;
-  category: Category;
   status?: 'Pending' | 'Approved' | 'Rejected';
   uploadedAt: string;
   uploadedBy?: { name: string; user?: string };
@@ -54,16 +50,6 @@ function fmtSize(bytes: number) {
   return `${(bytes / 1024).toFixed(0)} KB`;
 }
 
-const CATEGORY_COLORS: Record<Category, string> = {
-  'Contract':        'bg-blue-100 border-blue-200 text-blue-700',
-  'Specification':   'bg-purple-100 border-purple-200 text-purple-700',
-  'Report':          'bg-emerald-100 border-emerald-200 text-emerald-700',
-  'RFI':             'bg-amber-100 border-amber-200 text-amber-700',
-  'Submittal':       'bg-orange-100 border-orange-200 text-orange-700',
-  'Meeting Minutes': 'bg-cyan-100 border-cyan-200 text-cyan-700',
-  'Other':           'bg-gray-100 border-gray-200 text-gray-700',
-};
-
 interface DocumentsTabProps {
   projectId: string;
 }
@@ -73,9 +59,7 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ projectId }) => {
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<Category | 'All'>('All');
   const [pendingFile, setPendingFile] = useState<File | null>(null);
-  const [pendingCategory, setPendingCategory] = useState<Category>('Other');
   const toast = useToast();
   const { user } = useAuth();
   const isAdmin = user?.role?.name === 'Admin';
@@ -111,7 +95,6 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ projectId }) => {
         name: pendingFile.name,
         mimeType: pendingFile.type,
         size: pendingFile.size,
-        category: pendingCategory,
       });
       toast.success('Document uploaded successfully');
       setIsModalOpen(false);
@@ -145,10 +128,6 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ projectId }) => {
     }
   };
 
-  const filtered = activeCategory === 'All'
-    ? docs
-    : docs.filter(d => d.category === activeCategory);
-
   // Loading state handled by Skeleton wrapper
 
   return (
@@ -167,34 +146,13 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ projectId }) => {
         </label>
       </div>
 
-      {/* Category filter */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {(['All', ...CATEGORIES] as const).map(cat => (
-          <button
-            key={cat}
-            onClick={() => setActiveCategory(cat)}
-            className={cn(
-              'px-3 py-1.5 rounded-xl text-xs font-bold border transition-all',
-              activeCategory === cat
-                ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
-                : 'bg-white border-gray-200 text-slate-600 hover:border-blue-300 hover:text-blue-600'
-            )}
-          >
-            {cat}
-            {cat !== 'All' && (
-              <span className="ml-1.5 opacity-60">{docs.filter(d => d.category === cat).length}</span>
-            )}
-          </button>
-        ))}
-      </div>
-
       {/* Stats row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Total Files', value: docs.length, color: 'text-blue-600' },
-          { label: 'Contracts', value: docs.filter(d => d.category === 'Contract').length, color: 'text-purple-600' },
-          { label: 'RFIs', value: docs.filter(d => d.category === 'RFI').length, color: 'text-amber-600' },
-          { label: 'Reports', value: docs.filter(d => d.category === 'Report').length, color: 'text-emerald-600' },
+          { label: 'Approved', value: docs.filter(d => d.status === 'Approved').length, color: 'text-emerald-600' },
+          { label: 'Pending', value: docs.filter(d => d.status === 'Pending' || !d.status).length, color: 'text-amber-600' },
+          { label: 'Rejected', value: docs.filter(d => d.status === 'Rejected').length, color: 'text-rose-600' },
         ].map((s, i) => (
           <GlassCard key={i} className="p-4 border-gray-200" gradient>
             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{s.label}</p>
@@ -205,22 +163,22 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ projectId }) => {
 
       {/* Documents list */}
       <GlassCard className="p-0 border-gray-200 overflow-hidden" gradient>
-        {filtered.length === 0 ? (
+        {docs.length === 0 ? (
           <div className="py-20 flex flex-col items-center justify-center text-center">
             <FolderOpen className="w-12 h-12 text-gray-300 mb-4" />
-            <p className="text-slate-500 font-medium">No documents in this category.</p>
+            <p className="text-slate-500 font-medium">No documents uploaded.</p>
             <p className="text-slate-400 text-sm mt-1">Upload your first document to get started.</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
             {/* Table header */}
             <div className="grid grid-cols-[2fr_1.2fr_1.2fr_1.2fr_80px_100px] gap-4 px-6 py-3 bg-gray-50 border-b border-gray-100">
-              {['Name', 'Category', 'Status', 'Uploaded', 'Size', ''].map(h => (
-                <span key={h} className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{h}</span>
+              {['Name', 'Status', 'Uploaded', 'Size', '', ''].map((h, i) => (
+                <span key={i} className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{h}</span>
               ))}
             </div>
 
-            {filtered.map(doc => {
+            {docs.map(doc => {
               const Icon = fileIcon(doc.mimeType);
               const uploaderId = doc.uploadedBy?.user || doc.uploadedBy;
               const isUploader = uploaderId === (user?.id || user?._id);
@@ -243,14 +201,6 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ projectId }) => {
                     </div>
                   </div>
 
-                  {/* Category */}
-                  <span className={cn(
-                    'px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border w-fit',
-                    CATEGORY_COLORS[doc.category] || CATEGORY_COLORS['Other']
-                  )}>
-                    {doc.category}
-                  </span>
-
                   {/* Status */}
                   <span className={cn(
                     'px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border w-fit',
@@ -269,8 +219,11 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ projectId }) => {
                   {/* Size */}
                   <span className="text-xs font-semibold text-slate-500">{fmtSize(doc.size)}</span>
 
+                  {/* Empty cell to keep grid aligned */}
+                  <span />
+
                   {/* Actions */}
-                  <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     {(doc.status === 'Pending' || !doc.status) && canManageApproval && (
                       <>
                         <button
@@ -315,7 +268,7 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ projectId }) => {
         )}
       </GlassCard>
 
-      {/* Upload category picker modal */}
+      {/* Upload confirmation modal */}
       <AnimatePresence>
         {isModalOpen && pendingFile && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -352,27 +305,6 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ projectId }) => {
                 </div>
 
                 <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-semibold text-slate-600 mb-3 block">Document Category</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {CATEGORIES.map(cat => (
-                        <button
-                          key={cat}
-                          type="button"
-                          onClick={() => setPendingCategory(cat)}
-                          className={cn(
-                            'px-3 py-2 rounded-xl text-xs font-bold border text-left transition-all',
-                            pendingCategory === cat
-                              ? 'bg-blue-600 border-blue-600 text-white'
-                              : 'bg-gray-50 border-gray-200 text-slate-600 hover:border-blue-300'
-                          )}
-                        >
-                          {cat}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
                   <div className="pt-2 flex space-x-3">
                     <button
                       type="button"
@@ -410,3 +342,4 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ projectId }) => {
     </SkeletonLoader>
   );
 };
+

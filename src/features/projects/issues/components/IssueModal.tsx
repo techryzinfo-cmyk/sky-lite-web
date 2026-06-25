@@ -7,6 +7,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/providers/ToastContext';
 import api from '@/services/api.client';
+import { uploadToCloudinary } from '@/lib/upload';
 
 interface IssueModalProps {
   isOpen: boolean;
@@ -30,7 +31,7 @@ export const IssueModal: React.FC<IssueModalProps> = ({
   const isEdit = !!existingIssue;
   const [isLoading, setIsLoading] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
-  const [notifyTeam, setNotifyTeam] = useState(true);
+  const [files, setFiles] = useState<File[]>([]);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -52,8 +53,10 @@ export const IssueModal: React.FC<IssueModalProps> = ({
         category: existingIssue.category || 'Technical',
         assignedTo: existingIssue.assignedTo?._id || existingIssue.assignedTo || '',
       });
+      setFiles([]);
     } else {
       setFormData({ title: '', description: '', priority: 'Medium', category: 'Technical', assignedTo: '' });
+      setFiles([]);
     }
 
     api.get(`/users?projectId=${projectId}`)
@@ -68,22 +71,25 @@ export const IssueModal: React.FC<IssueModalProps> = ({
     e.preventDefault();
     setIsLoading(true);
     try {
+      let uploadedUrls: string[] = [];
+      if (files.length > 0) {
+        uploadedUrls = await Promise.all(files.map(f => uploadToCloudinary(f)));
+      }
+
       if (type === 'Snag') {
         const snagPayload = {
           title: formData.title,
           description: formData.description,
           priority: formData.priority,
           assignedTo: formData.assignedTo || undefined,
+          ...(uploadedUrls.length > 0 && { images: uploadedUrls }),
         };
 
         if (isEdit) {
           await api.patch(`/snags/${existingIssue._id}`, snagPayload);
           toast.success(`Snag updated successfully!`);
         } else {
-          await api.post(`/projects/${projectId}/snags`, {
-            ...snagPayload,
-            notifyTeam,
-          });
+          await api.post(`/projects/${projectId}/snags`, snagPayload);
           toast.success(`Snag reported successfully!`);
         }
       } else {
@@ -93,22 +99,21 @@ export const IssueModal: React.FC<IssueModalProps> = ({
           priority: formData.priority,
           category: formData.category,
           assignedTo: formData.assignedTo || undefined,
+          ...(uploadedUrls.length > 0 && { images: uploadedUrls }),
         };
 
         if (isEdit) {
           await api.patch(`/issues/${existingIssue._id}`, issuePayload);
           toast.success(`Issue updated successfully!`);
         } else {
-          await api.post(`/projects/${projectId}/issues`, {
-            ...issuePayload,
-            notifyTeam,
-          });
+          await api.post(`/projects/${projectId}/issues`, issuePayload);
           toast.success(`Issue reported successfully!`);
         }
       }
       onSuccess();
       onClose();
       setFormData({ title: '', description: '', priority: 'Medium', category: 'Technical', assignedTo: '' });
+      setFiles([]);
     } catch (error: any) {
       toast.error(error.response?.data?.message || `Failed to ${isEdit ? 'update' : 'report'} ${type}`);
     } finally {
@@ -132,26 +137,29 @@ export const IssueModal: React.FC<IssueModalProps> = ({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="w-full max-w-lg relative z-10"
+            className="w-full max-w-lg relative z-10 max-h-[90vh] flex flex-col"
           >
-            <GlassCard className="border-gray-200" gradient>
-              <div className="p-8">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200">
-                      <AlertTriangle className="w-6 h-6 text-amber-600" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-gray-900">{isEdit ? `Edit ${type}` : `Report New ${type}`}</h2>
-                      <p className="text-xs text-slate-500 mt-0.5">Project Tracking & Accountability</p>
-                    </div>
+            <GlassCard className="border-gray-200 flex flex-col overflow-hidden h-full" gradient>
+              
+              {/* Header */}
+              <div className="p-4 sm:p-6 border-b border-gray-100/50 flex items-center justify-between shrink-0">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 sm:p-3 rounded-2xl bg-amber-50 border border-amber-200">
+                    <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" />
                   </div>
-                  <button onClick={onClose} className="p-2 text-slate-400 hover:text-gray-900 bg-gray-50 rounded-xl transition-colors">
-                    <X className="w-5 h-5" />
-                  </button>
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 leading-none">{isEdit ? `Edit ${type}` : `Report New ${type}`}</h2>
+                    <p className="text-[10px] sm:text-xs text-slate-500 mt-1">Project Tracking & Accountability</p>
+                  </div>
                 </div>
+                <button onClick={onClose} className="p-2 text-slate-400 hover:text-gray-900 bg-gray-50 rounded-xl transition-colors shrink-0">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Scrollable Body */}
+              <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1">
+                <form id="issue-form" onSubmit={handleSubmit} className="space-y-5">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-600 ml-1">Title</label>
                     <input
@@ -218,43 +226,51 @@ export const IssueModal: React.FC<IssueModalProps> = ({
                     />
                   </div>
 
-                  {!isEdit && (
-                    <label className="flex items-center space-x-3 p-3 rounded-xl bg-amber-50 border border-amber-200 cursor-pointer group">
-                      <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${notifyTeam ? 'bg-amber-500 border-amber-500' : 'border-gray-300'}`}>
-                        {notifyTeam && <Bell className="w-3 h-3 text-white" />}
-                        <input type="checkbox" className="hidden" checked={notifyTeam} onChange={e => setNotifyTeam(e.target.checked)} />
-                      </div>
-                      <div>
-                        <span className="text-sm font-semibold text-amber-800">Notify project team</span>
-                        <p className="text-[10px] text-amber-600">Send in-app alert to all project members when this {type.toLowerCase()} is reported.</p>
-                      </div>
-                    </label>
-                  )}
-
-                  <div className="pt-2 flex space-x-4">
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      className="flex-1 py-3 px-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-slate-600 font-medium transition-all active:scale-[0.98]"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      className="flex-2 py-3 px-8 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-blue-600/20 flex items-center justify-center space-x-2"
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          <span>{isEdit ? 'Saving...' : 'Reporting...'}</span>
-                        </>
-                      ) : (
-                        <span>{isEdit ? `Save ${type}` : `Report ${type}`}</span>
-                      )}
-                    </button>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-600 ml-1">Attach Photos</label>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          setFiles(Array.from(e.target.files));
+                        }
+                      }}
+                      className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all"
+                    />
+                    {files.length > 0 && (
+                      <p className="text-xs text-slate-500 ml-1">{files.length} file(s) selected</p>
+                    )}
                   </div>
+
                 </form>
+              </div>
+
+              {/* Fixed Footer */}
+              <div className="p-4 sm:p-6 border-t border-gray-100/50 bg-gray-50/50 shrink-0 flex space-x-3">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 py-2.5 sm:py-3 px-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-slate-600 font-bold transition-all active:scale-[0.98] text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  form="issue-form"
+                  disabled={isLoading}
+                  className="flex-[2] py-2.5 sm:py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-blue-600/20 flex items-center justify-center space-x-2 text-sm"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                      <span>{isEdit ? 'Saving...' : 'Reporting...'}</span>
+                    </>
+                  ) : (
+                    <span>{isEdit ? `Save ${type}` : `Report ${type}`}</span>
+                  )}
+                </button>
               </div>
             </GlassCard>
           </motion.div>

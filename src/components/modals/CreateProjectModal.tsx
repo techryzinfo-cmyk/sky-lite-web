@@ -35,7 +35,6 @@ const emptyForm = {
   attendanceRadius: 100,
   area: '',
   budget: '',
-  priority: 'Medium',
   description: '',
   startDate: '',
   endDate: '',
@@ -89,7 +88,6 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
         attendanceRadius: initialData.attendanceRadius ?? 100,
         area: initialData.area || '',
         budget: '',
-        priority: initialData.priority || 'Medium',
         description: initialData.description || '',
         startDate: initialData.startDate ? initialData.startDate.split('T')[0] : '',
         endDate: initialData.endDate ? initialData.endDate.split('T')[0] : '',
@@ -189,8 +187,14 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
         }
       },
       (error) => {
-        console.error('Geolocation error:', error);
-        toast.error(error.message || 'Failed to get location');
+        
+        let errorMessage = 'Failed to get location';
+        if (error.code === 1) errorMessage = 'Location permission denied. Please allow access in browser settings.';
+        else if (error.code === 2) errorMessage = window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' ? 'Location requires HTTPS when accessed over the network.' : 'Location unavailable. Ensure device location services are enabled.';
+        else if (error.code === 3) errorMessage = 'Location request timed out.';
+        else if (error.message) errorMessage = error.message;
+
+        toast.error(errorMessage);
         setIsLocating(false);
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -285,7 +289,6 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
       if (isEditing) {
         const payload: any = {
           name: form.name,
-          priority: form.priority,
           startDate: form.startDate || undefined,
           endDate: form.endDate || undefined,
           needSiteSurvey: form.needSiteSurvey,
@@ -303,7 +306,6 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
           description: form.description || undefined,
           category: selectedCategory?._id,
           createdBy: user?.id,
-          priority: form.priority,
           startDate: form.startDate || undefined,
           endDate: form.endDate || undefined,
           needSiteSurvey: form.needSiteSurvey,
@@ -639,13 +641,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className={labelCls}>Priority</label>
-                          <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} className={inputCls}>
-                            {['Low', 'Medium', 'High', 'Urgent'].map(p => <option key={p}>{p}</option>)}
-                          </select>
-                        </div>
+                      <div className="grid grid-cols-1 gap-4">
                         <div className="flex items-end pb-1">
                           <label className="flex items-center gap-3 cursor-pointer">
                             <div

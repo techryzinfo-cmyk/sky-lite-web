@@ -388,7 +388,7 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
         {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h3 className="text-xl font-bold text-gray-900">Project Milestones</h3>
+          <h3 className="text-xl font-bold text-gray-900"> </h3>
           <p className="text-sm text-slate-500 mt-1">Key targets and critical path objectives.</p>
         </div>
         <div className="flex items-center space-x-3">
@@ -742,8 +742,8 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
             const progress       = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : (milestone.status === 'Completed' ? 100 : 0);
             const isExpanded     = expandedId === milestone._id;
             return (
-              <GlassCard key={milestone._id} className="border-gray-200 group hover:border-blue-500/50 transition-all" gradient>
-                <div className="p-6">
+              <GlassCard key={milestone._id} className="border-gray-200 group hover:border-blue-500/50 transition-all flex flex-col h-full" gradient>
+                <div className="p-6 flex-1">
                   <div className="flex justify-between items-start mb-4">
                     <div className="p-3 rounded-2xl bg-blue-100 border border-blue-200">
                       <Flag className="w-6 h-6 text-blue-600" />
@@ -809,7 +809,7 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
                     <AnimatePresence>
                       {isExpanded && (
                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                          <div className="px-6 pb-4 space-y-2">
+                          <div className="px-6 pb-4 space-y-2 max-h-[180px] overflow-y-auto">
                             {milestone.tasks.map((task: any, i: number) => {
                               const key = `${milestone._id}-${i}`;
                               const isToggling = togglingTask === key;
@@ -899,7 +899,7 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
                   </div>
                 )}
 
-                <div className="border-t border-gray-100 px-6 py-3">
+                <div className="border-t border-gray-100 px-6 py-3 mt-auto">
                   <button
                     onClick={() => router.push(`/projects/${projectId}/milestones/${milestone._id}`)}
                     className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-500 transition-colors"

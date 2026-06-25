@@ -10,7 +10,6 @@ import {
   Clock, User, MessageSquare, Camera, Package, Plus, Trash2,
   Image as ImageIcon, AlertCircle, Pencil, X, ChevronDown, ChevronUp,
 } from 'lucide-react';
-import { Shell } from '@/components/layouts/Shell';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
 import api from '@/services/api.client';
@@ -45,7 +44,7 @@ const emptySubmitForm = (): SubmitForm => ({
 const inputCls = "w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all";
 
 export default function MilestoneDetailPage() {
-  const { id: projectId, milestoneId } = useParams<{ id: string; milestoneId: string }>();
+  const { id: projectId, milestonesId: milestoneId } = useParams<{ id: string; milestonesId: string }>();
   const router = useRouter();
   const toast = useToast();
 
@@ -84,7 +83,7 @@ export default function MilestoneDetailPage() {
 
         const all = Array.isArray(msRes.data) ? msRes.data : msRes.data?.milestones ?? [];
         const found = all.find((m: any) => m._id === milestoneId);
-        if (!found) { toast.error('Milestone not found'); router.push(`/projects/${projectId}?tab=milestones`); return; }
+        if (!found) { toast.error('Milestone not found'); router.push(`/projects/${projectId}/milestones`); return; }
         setMilestone(found);
 
         const rawUsers: any[] = Array.isArray(usersRes.data) ? usersRes.data : [];
@@ -285,7 +284,7 @@ export default function MilestoneDetailPage() {
   if (!milestone && !loading) return null;
 
   return (
-    <Shell>
+    <>
       <SkeletonLoader loading={loading} preset="detail">
         {milestone && (() => {
           const tasks: any[] = milestone.tasks || [];
@@ -296,11 +295,11 @@ export default function MilestoneDetailPage() {
 
           return (
             <>
-            <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+            <div className="space-y-6 pt-4">
 
         {/* Back button */}
         <button
-          onClick={() => router.push(`/projects/${projectId}?tab=milestones`)}
+          onClick={() => router.push(`/projects/${projectId}/milestones`)}
           className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-blue-600 transition-colors"
         >
           <ChevronLeft className="w-4 h-4" /> Back to Milestones
@@ -827,6 +826,6 @@ export default function MilestoneDetailPage() {
           );
         })()}
       </SkeletonLoader>
-    </Shell>
+    </>
   );
 }

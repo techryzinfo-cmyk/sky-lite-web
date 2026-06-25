@@ -120,16 +120,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
                 {project.members!.length}
               </span>
             )}
-            {project.priority && (
-              <span className={cn(
-                'px-1.5 py-0.5 rounded text-[9px] font-black uppercase',
-                project.priority === 'High' ? 'text-red-600 bg-red-50' :
-                project.priority === 'Medium' ? 'text-amber-600 bg-amber-50' :
-                'text-slate-500 bg-gray-100'
-              )}>
-                {project.priority}
-              </span>
-            )}
+
           </div>
 
           {/* Survey action buttons */}

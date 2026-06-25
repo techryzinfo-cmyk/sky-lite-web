@@ -300,15 +300,7 @@ export const ProjectDashboardTab: React.FC<ProjectDashboardTabProps> = ({ projec
           {/* Priority & Type */}
           <GlassCard className="p-5 border-gray-200">
             <div className="space-y-3">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500 font-medium">Priority</span>
-                <span className={cn(
-                  'px-2 py-0.5 rounded-md font-bold border text-[10px] uppercase',
-                  project.priority === 'High' ? 'bg-red-50 text-red-700 border-red-200' :
-                  project.priority === 'Medium' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                  'bg-gray-50 text-slate-600 border-gray-200'
-                )}>{project.priority || 'Medium'}</span>
-              </div>
+
               <div className="flex justify-between items-center text-xs">
                 <span className="text-slate-500 font-medium">Type</span>
                 <span className="font-bold text-gray-900">{project.projectType || 'Construction'}</span>

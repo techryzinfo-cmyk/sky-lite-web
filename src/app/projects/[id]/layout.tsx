@@ -22,7 +22,6 @@ const ALL_TABS = [
   { id: 'milestones',   name: 'Milestones',     icon: Calendar },
   { id: 'timeline',     name: 'Timeline',       icon: GanttChart },
   { id: 'progress',     name: 'Progress',       icon: TrendingUp },
-  { id: 'budget',       name: 'Budget',         icon: DollarSign },
   { id: 'transactions', name: 'Transactions',   icon: CreditCard },
   { id: 'plans',        name: 'Plans',          icon: Map },
   { id: 'documents',    name: 'Documents',      icon: Files },
@@ -51,32 +50,18 @@ type TabGroup = {
 const TAB_GROUPS: TabGroup[] = [
   { id: 'overview',  label: 'Overview',  icon: LayoutDashboard, tabIds: ['dashboard', 'details'] },
   { id: 'work',      label: 'Work',      icon: Calendar,        tabIds: ['boq', 'milestones', 'timeline', 'progress'] },
-  { id: 'finance',   label: 'Finance',   icon: DollarSign,      tabIds: ['budget', 'transactions'] },
+  { id: 'finance',   label: 'Finance',   icon: DollarSign,      tabIds: ['transactions'] },
   { id: 'site',      label: 'Site',      icon: Map,             tabIds: ['plans', 'documents', 'materials', 'site-survey', 'attendance'] },
   { id: 'quality',   label: 'Quality',   icon: ShieldAlert,     tabIds: ['issues', 'risks', 'handover', 'audit'] },
   { id: 'chat',      label: 'Chat',      icon: MessageSquare,   tabIds: ['chat'] },
   { id: 'interior',  label: 'Interior',  icon: Sofa,            tabIds: ['rooms', 'ffe'] },
 ];
 
-// ── Builds visible groups respecting project type & surveyor ──
-function buildVisibleGroups(projectType?: string, siteSurveyor?: any) {
-  const visibleIds = new Set(
-    ALL_TABS
-      .filter(t => t.id !== 'site-survey' || !!siteSurveyor)
-      .filter(t => t.id !== 'rooms' && t.id !== 'ffe' || projectType === 'Interior')
-      .map(t => t.id)
-  );
-
-  const groups = projectType === 'Interior'
-    ? TAB_GROUPS
-    : TAB_GROUPS.filter(g => g.id !== 'interior');
-
-  return groups
-    .map(g => ({
-      group: g,
-      tabs: ALL_TABS.filter(t => (g.tabIds as readonly string[]).includes(t.id) && visibleIds.has(t.id)),
-    }))
-    .filter(({ tabs }) => tabs.length > 0);
+// ── Builds visible tabs respecting project type & surveyor ──
+function getVisibleTabs(projectType?: string, siteSurveyor?: any) {
+  return ALL_TABS
+    .filter(t => t.id !== 'site-survey' || !!siteSurveyor)
+    .filter(t => t.id !== 'rooms' && t.id !== 'ffe' || projectType === 'Interior');
 }
 
 // ── Status badge colors ────────────────────────────────────────
@@ -102,14 +87,8 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  const visibleGroups = buildVisibleGroups(project?.projectType, project?.siteSurveyor);
-
-  const activeTab = (ALL_TABS as readonly { id: string }[]).find(t => pathname.endsWith(`/${t.id}`))?.id || 'dashboard';
-
-  const activeGroupEntry = visibleGroups.find(({ group }) =>
-    (group.tabIds as readonly string[]).includes(activeTab)
-  );
-  const activeGroupTabs = activeGroupEntry?.tabs ?? [];
+  const visibleTabs = getVisibleTabs(project?.projectType, project?.siteSurveyor);
+  const activeTab = (ALL_TABS as readonly { id: string }[]).find(t => pathname.includes(`/${t.id}`))?.id || 'dashboard';
 
   return (
     <Shell>
@@ -166,56 +145,28 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
                 {/* Divider */}
                 <div className="h-px bg-gray-100" />
 
-                {/* Row 2: Primary group tabs */}
+                {/* Row 2: All Tabs */}
                 <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide px-3 py-2">
-                  {visibleGroups.map(({ group, tabs }) => {
-                    const isGroupActive = (group.tabIds as readonly string[]).includes(activeTab);
-                    const GroupIcon = group.icon;
+                  {visibleTabs.map((tab) => {
+                    const isActive = activeTab === tab.id;
+                    const TabIcon = tab.icon;
                     return (
                       <button
-                        key={group.id}
-                        onClick={() => router.push(`/projects/${projectId}/${tabs[0].id}`)}
+                        key={tab.id}
+                        onClick={() => router.push(`/projects/${projectId}/${tab.id}`)}
                         className={cn(
-                          'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all shrink-0',
-                          isGroupActive
+                          'flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all shrink-0',
+                          isActive
                             ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
                             : 'text-slate-500 hover:bg-gray-100 hover:text-gray-800'
                         )}
                       >
-                        <GroupIcon className="w-3.5 h-3.5 shrink-0" />
-                        <span className="hidden sm:inline">{group.label}</span>
+                        <TabIcon className="w-3.5 h-3.5 shrink-0" />
+                        <span className="inline">{tab.name}</span>
                       </button>
                     );
                   })}
                 </div>
-
-                {/* Row 3: Sub-tabs (only when active group has multiple tabs) */}
-                {activeGroupTabs.length > 1 && (
-                  <>
-                    <div className="h-px bg-gray-100" />
-                    <div className="flex items-center gap-0 overflow-x-auto scrollbar-hide px-3 bg-gray-50/70">
-                      {activeGroupTabs.map((tab) => {
-                        const isActive = activeTab === tab.id;
-                        const TabIcon = tab.icon;
-                        return (
-                          <button
-                            key={tab.id}
-                            onClick={() => router.push(`/projects/${projectId}/${tab.id}`)}
-                            className={cn(
-                              'flex items-center gap-1.5 px-3 py-2 text-xs font-semibold whitespace-nowrap transition-all border-b-2 shrink-0',
-                              isActive
-                                ? 'text-blue-600 border-blue-600'
-                                : 'text-slate-400 border-transparent hover:text-gray-600 hover:border-gray-300'
-                            )}
-                          >
-                            <TabIcon className={cn('w-3 h-3', isActive ? 'text-blue-600' : 'text-slate-400')} />
-                            {tab.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
               </div>
 
               {children}
