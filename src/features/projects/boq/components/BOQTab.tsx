@@ -875,15 +875,6 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
                           className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={e => e.stopPropagation()}
                         >
-                          {canUpdate && status !== 'Approved' && (
-                            <button
-                              onClick={() => { setSelectedItem(groupItems[0]); setIsNewVersion(false); setIsModalOpen(true); }}
-                              title="Edit"
-                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                          )}
                           {canDelete && (
                             <button
                               onClick={e => handleDeleteGroup(groupItems, e)}
