@@ -8,7 +8,7 @@ import {
   ChevronRight, Activity, Building2, Zap,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import api from '@/services/api.client';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 
@@ -144,8 +144,7 @@ export const ProjectDashboardTab: React.FC<ProjectDashboardTabProps> = ({ projec
             </div>
           </div>
           <div className="text-right shrink-0">
-            <p className="text-xs text-slate-400 uppercase tracking-wider font-bold">Budget</p>
-            <p className="text-2xl font-black text-gray-900">${currentBudget.toLocaleString()}</p>
+            <p className="text-2xl font-black text-gray-900">{formatCurrency(currentBudget, project.currency || '$')}</p>
           </div>
         </div>
 
@@ -314,7 +313,7 @@ export const ProjectDashboardTab: React.FC<ProjectDashboardTabProps> = ({ projec
               {currentBudget > 0 && (
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-500 font-medium">Budget</span>
-                  <span className="font-bold text-emerald-700">${currentBudget.toLocaleString()}</span>
+                  <span className="font-bold text-emerald-700">{formatCurrency(currentBudget, project.currency || '$')}</span>
                 </div>
               )}
             </div>
@@ -439,7 +438,7 @@ export const ProjectDashboardTab: React.FC<ProjectDashboardTabProps> = ({ projec
               </div>
               <div className="flex items-end justify-between">
                 <div>
-                  <p className="text-3xl font-black text-gray-900">${currentBudget.toLocaleString()}</p>
+                  <p className="text-3xl font-black text-gray-900">{formatCurrency(currentBudget, project.currency || '$')}</p>
                   <p className="text-xs text-slate-500 mt-0.5">
                     {project.budgetHistory?.length || 0} revision{(project.budgetHistory?.length || 0) !== 1 ? 's' : ''} recorded
                   </p>

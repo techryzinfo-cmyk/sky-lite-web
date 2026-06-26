@@ -22,6 +22,8 @@ import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
 import { useSocket } from '@/providers/SocketContext';
 import { Transaction, MaterialPurchase } from '@/types';
+import { formatCurrency } from '@/lib/utils';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 
 interface TransactionsTabProps {
   projectId: string;
@@ -58,6 +60,7 @@ function getTxMeta(item: LedgerItem) {
 }
 
 export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) => {
+  const { project } = useProjectContext();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [purchases, setPurchases] = useState<MaterialPurchase[]>([]);
   const [loading, setLoading] = useState(true);
@@ -211,7 +214,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Net Balance</span>
           </div>
           <p className={`text-3xl font-black mt-1 ${netBalance >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
-            {netBalance < 0 ? '-' : ''}${Math.abs(netBalance).toLocaleString()}
+            {formatCurrency(netBalance, (project as any)?.currency || '$')}
           </p>
         </div>
 
@@ -220,8 +223,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
             <TrendingUp className="w-6 h-6 text-emerald-600" />
           </div>
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Inflow</p>
-            <p className="text-2xl font-black text-gray-900 mt-1">${totals.incoming.toLocaleString()}</p>
+            <p className="text-2xl font-black text-gray-900 mt-1">{formatCurrency(totals.incoming, (project as any)?.currency || '$')}</p>
           </div>
         </div>
 
@@ -230,8 +232,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
             <TrendingDown className="w-6 h-6 text-red-600" />
           </div>
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Outflow</p>
-            <p className="text-2xl font-black text-gray-900 mt-1">${totals.outgoing.toLocaleString()}</p>
+            <p className="text-2xl font-black text-gray-900 mt-1">{formatCurrency(totals.outgoing, (project as any)?.currency || '$')}</p>
           </div>
         </div>
       </div>
@@ -316,7 +317,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
 
                   <div className="flex items-center space-x-2 sm:space-x-4 ml-3 sm:ml-4">
                     <p className={`text-sm sm:text-base font-black ${color} tabular-nums whitespace-nowrap`}>
-                      {prefix}${item.amount?.toLocaleString()}
+                      {prefix}{formatCurrency(item.amount, (project as any)?.currency || '$')}
                     </p>
                     <button
                       onClick={() => { setDeleteIsPurchase(!!item.isPurchase); setDeleteTarget(item._id); }}

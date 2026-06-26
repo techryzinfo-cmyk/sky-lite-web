@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, ShoppingCart, Plus, Trash2, Calendar, User, DollarSign, FileText } from 'lucide-react';
 import { useToast } from '@/providers/ToastContext';
 import api from '@/services/api.client';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
+import { formatCurrency } from '@/lib/utils';
 
 interface MaterialPurchaseModalProps {
   isOpen: boolean;
@@ -21,6 +23,7 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
   projectId,
   materials
 }) => {
+  const { project } = useProjectContext();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     vendorName: '',
@@ -232,7 +235,7 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
                             <div className="flex items-center justify-between px-1 pt-1 border-t border-gray-200">
                               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Subtotal</span>
                               <span className="text-xs font-black text-emerald-600">
-                                ${subtotal > 0 ? subtotal.toLocaleString() : '—'}
+                               {subtotal > 0 ? formatCurrency(subtotal, project?.currency || '$') : '—'}
                               </span>
                             </div>
                           </div>
@@ -245,7 +248,7 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
                       <div className="flex items-center justify-between px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl mt-2">
                         <span className="text-sm font-black text-slate-600 uppercase tracking-wider">Grand Total</span>
                         <span className="text-lg font-black text-emerald-600">
-                          ${formData.items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0).toLocaleString()}
+                          {formatCurrency(formData.items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0), project?.currency || '$')}
                         </span>
                       </div>
                     )}

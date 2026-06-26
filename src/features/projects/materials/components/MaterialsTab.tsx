@@ -31,8 +31,9 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import api from '@/services/api.client';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 import { useToast } from '@/providers/ToastContext';
 import { MaterialModal } from '@/features/projects/materials/components/MaterialModal';
 import { MaterialRequestModal } from '@/features/projects/materials/components/MaterialRequestModal';
@@ -64,6 +65,7 @@ const PO_STATUS_COLORS: Record<string, string> = {
 };
 
 export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
+  const { project } = useProjectContext();
   const [activeSubTab, setActiveSubTab] = useState('all');
   const [materials, setMaterials] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
@@ -1065,14 +1067,14 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                     {po.items.map((item: any, i: number) => (
                       <div key={i} className="flex justify-between text-xs">
                         <span className="text-slate-500">{item.materialId?.name}</span>
-                        <span className="text-gray-900 font-bold">{item.quantity} {item.unit} {(item.unitPrice || item.unitCost) ? `· $${((item.unitPrice || item.unitCost) * item.quantity).toLocaleString()}` : ''}</span>
+                        <span className="text-gray-900 font-bold">{item.quantity} {item.unit} {(item.unitPrice || item.unitCost) ? `· ${formatCurrency((item.unitPrice || item.unitCost) * item.quantity, (project as any)?.currency || '$')}` : ''}</span>
                       </div>
                     ))}
                   </div>
                   <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                     <div className="flex flex-col">
                       <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Total Amount</span>
-                      <span className="text-sm font-bold text-emerald-600">${(po.grandTotal ?? po.totalAmount)?.toLocaleString() ?? '—'}</span>
+                       <span className="text-sm font-bold text-emerald-600">{(po.grandTotal ?? po.totalAmount) != null ? formatCurrency(po.grandTotal ?? po.totalAmount, (project as any)?.currency || '$') : '—'}</span>
                     </div>
                     <div className="flex items-center space-x-2">
                       {po.status !== 'Approved' ? (
@@ -1397,9 +1399,9 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                           <tr key={i} className="border-b border-gray-100">
                             <td className="px-4 py-3 text-sm font-semibold text-gray-900">{item.materialId?.name || 'Material'}</td>
                             <td className="px-4 py-3 text-sm text-right text-slate-600">{item.quantity} {item.unit}</td>
-                            <td className="px-4 py-3 text-sm text-right text-slate-600">${(item.unitPrice ?? item.unitCost)?.toLocaleString() || '—'}</td>
+                            <td className="px-4 py-3 text-sm text-right text-slate-600">{(item.unitPrice ?? item.unitCost) != null ? formatCurrency(item.unitPrice ?? item.unitCost, (project as any)?.currency || '$') : '—'}</td>
                             <td className="px-4 py-3 text-sm text-right font-bold text-gray-900">
-                              ${(item.quantity * (item.unitPrice ?? item.unitCost ?? 0)).toLocaleString()}
+                              {formatCurrency(item.quantity * (item.unitPrice ?? item.unitCost ?? 0), (project as any)?.currency || '$')}
                             </td>
                           </tr>
                         ))}
@@ -1409,7 +1411,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                 </div>
                 <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
                   <span className="text-sm font-black text-slate-600 uppercase tracking-wider">Total Amount</span>
-                  <span className="text-xl font-black text-emerald-600">${(selectedPO.grandTotal ?? selectedPO.totalAmount)?.toLocaleString() || '—'}</span>
+                   <span className="text-xl font-black text-emerald-600">{(selectedPO.grandTotal ?? selectedPO.totalAmount) != null ? formatCurrency(selectedPO.grandTotal ?? selectedPO.totalAmount, (project as any)?.currency || '$') : '—'}</span>
                 </div>
                 {selectedPO.expectedDelivery && (
                   <div className="flex items-center space-x-3 p-4 bg-gray-50 border border-gray-200 rounded-xl">

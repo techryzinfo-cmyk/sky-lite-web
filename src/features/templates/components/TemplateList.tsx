@@ -324,7 +324,7 @@ import {
   Ruler, DollarSign, Clock, Tag,
   Calendar, Grid3x3, FolderOpen
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
 import { TemplateModal } from '@/features/templates/components/TemplateModal';
@@ -391,13 +391,7 @@ export const TemplateList = () => {
     setEditingTemplate(template);
   };
 
-  // Format currency helper
-  const formatCurrency = (amount: number) => {
-    if (!amount) return null;
-    if (amount >= 1000000) return `$${(amount / 1000000).toFixed(1)}M`;
-    if (amount >= 1000) return `$${(amount / 1000).toFixed(0)}K`;
-    return `$${amount}`;
-  };
+
 
   return (
     <SkeletonLoader loading={loading} preset="card-grid">

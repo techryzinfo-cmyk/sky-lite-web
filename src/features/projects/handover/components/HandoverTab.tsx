@@ -12,7 +12,7 @@ import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
 import { AssignSnagModal } from '@/features/projects/issues/components/AssignSnagModal';
 import { CompleteSnagModal } from '@/features/projects/issues/components/CompleteSnagModal';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { GlassCard } from '@/components/ui/GlassCard';
 
 interface HandoverTabProps {
@@ -742,7 +742,7 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
                           <span className="font-bold text-slate-700 truncate">{b.itemDescription}</span>
                         </div>
                         <span className="text-[10px] font-bold text-slate-900 shrink-0 pl-2">
-                          {project?.currency || '$'}{b.totalCost?.toLocaleString() || '0'}
+                          {formatCurrency(b.totalCost || 0, project?.currency || '$')}
                         </span>
                       </div>
                     ))}

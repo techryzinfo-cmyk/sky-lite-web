@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, FileText, Download, ImageIcon, Pencil } from 'lucide-react';
 import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
+import { formatCurrency } from '@/lib/utils';
 
 interface TemplateDetailModalProps {
   isOpen: boolean;
@@ -95,7 +96,7 @@ export const TemplateDetailModal: React.FC<TemplateDetailModalProps> = ({
                           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Budget Range</p>
                           <p className="text-sm font-black text-gray-900">
                             {template.minBudget || template.maxBudget
-                              ? `$${(template.minBudget || 0).toLocaleString()} – $${(template.maxBudget || 0).toLocaleString()}`
+                              ? `${formatCurrency(template.minBudget || 0, '$')} – ${formatCurrency(template.maxBudget || 0, '$')}`
                               : '—'
                             }
                           </p>

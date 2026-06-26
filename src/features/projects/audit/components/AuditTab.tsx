@@ -8,7 +8,7 @@ import {
   AlertTriangle, Trash2, Wrench, Hammer, Coins, XCircle, Folder, Users
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 
 interface AuditTrailEntry {
   id: string;
@@ -79,12 +79,7 @@ function formatDate(ts: string) {
   return new Date(ts).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function formatCompact(num: number) {
-  if (num >= 1e9) return (num / 1e9).toFixed(1).replace(/\.0$/, '') + 'B';
-  if (num >= 1e6) return (num / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
-  if (num >= 1e3) return (num / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
-  return num.toString();
-}
+
 
 function buildAuditLog(project: any) {
   const entries: AuditTrailEntry[] = [];
@@ -110,7 +105,7 @@ function buildAuditLog(project: any) {
     entries.push({
       id: `budget-${b._id || Math.random()}`,
       action: actionKey,
-      details: `${project?.currency || '$'}${formatCompact(Number(b.amount))} — ${b.reason}`,
+      details: `${formatCurrency(Number(b.amount), project?.currency || '$')} — ${b.reason}`,
       userName: b.updatedByName || 'System',
       userRole: null,
       timestamp: b.timestamp || b.createdAt,

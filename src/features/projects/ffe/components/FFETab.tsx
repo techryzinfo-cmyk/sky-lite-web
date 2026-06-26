@@ -6,7 +6,7 @@ import {
   Palette, Bath, LayoutGrid, Trash2, Edit2, X, Check,
   ChevronDown, ChevronUp, Eye, Layers, Tag, Building2, Package, FileText
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
@@ -50,13 +50,7 @@ const emptyForm = {
   room: '',
 };
 
-const formatCost = (n: number, currency: string = '$') => {
-  const currencySymbol = currency || '$';
-  if (!n) return `${currencySymbol} 0`;
-  if (n >= 1_000_000) return `${currencySymbol} ${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${currencySymbol} ${(n / 1_000).toFixed(1)}k`;
-  return `${currencySymbol} ${n.toLocaleString()}`;
-};
+const formatCost = (n: number, currency: string = '$') => formatCurrency(n, currency);
 
 interface FFETabProps {
   projectId: string;

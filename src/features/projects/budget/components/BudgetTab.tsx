@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { Project } from '@/types';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
 import { UserPickerModal } from '@/components/modals/UserPickerModal';
@@ -99,7 +99,7 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
           <div className="flex justify-between items-start">
             <div>
               <p className="text-sm text-slate-500 font-medium uppercase tracking-wider">Current Budget</p>
-              <p className="text-3xl font-black text-gray-900 mt-1">${currentBudget.toLocaleString()}</p>
+              <p className="text-3xl font-black text-gray-900 mt-1">{formatCurrency(currentBudget, project.currency || '$')}</p>
             </div>
             <div className="p-3 rounded-2xl bg-emerald-100 border border-emerald-200">
               <DollarSign className="w-6 h-6 text-emerald-600" />
@@ -302,7 +302,7 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                   <div>
                     <div className="flex items-center space-x-2 mb-1">
-                      <span className="text-lg font-black text-gray-900">${entry.amount.toLocaleString()}</span>
+                      <span className="text-lg font-black text-gray-900">{formatCurrency(entry.amount, project.currency || '$')}</span>
                       <span className={cn(
                         "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border",
                         entry.approvalStatus === 'Approved' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
@@ -352,7 +352,7 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
                     <div className="grid grid-cols-2 gap-3 text-xs">
                       <div>
                         <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Revision Amount</p>
-                        <p className="font-black text-gray-900 mt-0.5">${entry.amount.toLocaleString()}</p>
+                        <p className="font-black text-gray-900 mt-0.5">{formatCurrency(entry.amount, project.currency || '$')}</p>
                       </div>
                       <div>
                         <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Status</p>

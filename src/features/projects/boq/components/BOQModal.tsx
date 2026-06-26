@@ -8,6 +8,8 @@ import {
 import { useToast } from '@/providers/ToastContext';
 import api from '@/services/api.client';
 import { BOQItem } from '@/types';
+import { formatCurrency } from '@/lib/utils';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 
 const UNIT_OPTIONS = ['Sq Ft', 'Cum', 'Kg', 'Ton', 'Nos', 'Rm', 'Ltr', 'Bags', 'Sqm', 'm', 'Rft', 'No'];
 
@@ -45,6 +47,7 @@ const emptyRow = (): RowItem => ({
 export const BOQModal: React.FC<BOQModalProps> = ({
   isOpen, onClose, onSuccess, projectId, initialData, existingGroups = [], isNewVersion = false, defaultGroupName,
 }) => {
+  const { project } = useProjectContext();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const toast = useToast();
@@ -344,7 +347,7 @@ export const BOQModal: React.FC<BOQModalProps> = ({
                           {/* Total */}
                           <div className="flex items-center justify-between p-4 rounded-2xl bg-blue-50 border border-blue-200">
                             <span className="text-sm font-bold text-blue-600 uppercase tracking-wider">Total</span>
-                            <span className="text-xl font-black text-gray-900">${editTotal.toLocaleString()}</span>
+                            <span className="text-xl font-black text-gray-900">{formatCurrency(editTotal, project?.currency || '$')}</span>
                           </div>
                         </div>
                       </div>

@@ -26,14 +26,11 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { cn } from '@/lib/utils';
+import { cn, formatCompact, formatCurrency } from '@/lib/utils';
 import api from '@/services/api.client';
 import { motion } from 'framer-motion';
 
-const formatCompact = (num: number) => {
-  if (num == null || isNaN(num)) return '0';
-  return Intl.NumberFormat('en-US', { notation: "compact", compactDisplay: "short" }).format(num);
-};
+
 
 export function ProjectDetailsTab() {
   const { project: typedProject, projectId, fetchProject } = useProjectContext();
@@ -250,8 +247,7 @@ export function ProjectDetailsTab() {
             </div>
             
             <h3 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight mt-6">
-              {project.currency || '$'}{' '}
-              {formatCompact(project.budgetHistory?.[project.budgetHistory.length - 1]?.amount || 0)}
+              {formatCurrency(project.budgetHistory?.[project.budgetHistory.length - 1]?.amount || 0, project.currency || '$')}
             </h3>
             <p className="text-xs text-slate-400 mt-2">Latest Approved Base Budget</p>
           </div>
@@ -370,7 +366,7 @@ export function ProjectDetailsTab() {
                   <div key={i} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-base font-extrabold text-blue-600">
-                        {project.currency || '$'}{formatCompact(bh.amount)}
+                        {formatCurrency(bh.amount, project.currency || '$')}
                       </span>
                       <span className={cn('text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border', badgeColor)}>
                         {bh.approvalStatus || 'Approved'}

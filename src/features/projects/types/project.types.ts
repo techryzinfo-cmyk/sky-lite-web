@@ -17,6 +17,7 @@ export interface Project {
   category?: string | { _id: string; name: string };
   projectType: 'Construction' | 'Interior';
   needSiteSurvey: boolean;
+  currency?: string;
   siteSurveyor?: string | User;
   surveyStatus?: string;
   snaggedBy?: string | User;

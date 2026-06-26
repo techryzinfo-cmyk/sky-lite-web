@@ -5,8 +5,9 @@ import { SkeletonLoader } from '@/components/skeletons/SkeletonLoader';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, History, Loader2, CheckCircle2, XCircle, Clock, User, GitBranch } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import api from '@/services/api.client';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 
 interface BOQHistoryModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ const getStatusStyle = (status: string) => {
 };
 
 export const BOQHistoryModal: React.FC<BOQHistoryModalProps> = ({ isOpen, onClose, item, projectId }) => {
+  const { project } = useProjectContext();
   // `versions` holds all historical versions of this BOQ item chain (newest first)
   const [versions, setVersions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -121,11 +123,11 @@ export const BOQHistoryModal: React.FC<BOQHistoryModalProps> = ({ isOpen, onClos
                               </div>
                               <div>
                                 <span className="text-slate-400">Rate: </span>
-                                <span className="font-semibold text-gray-700">${Number(ver.unitCost).toLocaleString()}</span>
+                                <span className="font-semibold text-gray-700">{formatCurrency(Number(ver.unitCost), project?.currency || '$')}</span>
                               </div>
                               <div>
                                 <span className="text-slate-400">Total: </span>
-                                <span className="font-bold text-blue-600">${Number(ver.totalCost).toLocaleString()}</span>
+                                <span className="font-bold text-blue-600">{formatCurrency(Number(ver.totalCost), project?.currency || '$')}</span>
                               </div>
                             </div>
                             {ver.createdByName && (

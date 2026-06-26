@@ -21,6 +21,7 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
   isOpen, onClose, onSuccess, item, projectId,
 }) => {
   const [approvers, setApprovers] = useState<any[]>([]);
+  const [projectMembers, setProjectMembers] = useState<any[]>([]);
   // Only one approver can be selected at a time (matches mobile flow)
   const [selectedApproverId, setSelectedApproverId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -33,10 +34,16 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
     setSearch('');
     setSelectedApproverId(null);
     setLoading(true);
-    // ✅ FIXED: Use the correct BOQ-approvers endpoint (returns only users with boq:approve permission)
-    // Previously was calling GET /users which returns ALL users in the system.
-    api.get(`/projects/${projectId}/boq-approvers`)
-      .then(r => setApprovers(Array.isArray(r.data) ? r.data : []))
+    
+    // Fetch both approvers and project details in parallel
+    Promise.all([
+      api.get(`/projects/${projectId}/boq-approvers`),
+      api.get(`/projects/${projectId}`)
+    ])
+      .then(([approversRes, projectRes]) => {
+        setApprovers(Array.isArray(approversRes.data) ? approversRes.data : []);
+        setProjectMembers(projectRes.data?.members || []);
+      })
       .catch(() => toast.error('Failed to load approvers'))
       .finally(() => setLoading(false));
   }, [isOpen, item, projectId]);
@@ -142,6 +149,21 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
                     )}
                     {filtered.map(user => {
                       const isSelected = selectedApproverId === user._id;
+                      
+                      // Match with project members to get the real decrypted name (same logic as mobile app)
+                      const projectMemberData = projectMembers.find(m => m._id === user._id);
+                      let displayName = projectMemberData?.name || user.name || 'Unknown User';
+                      
+                      // Fallback: If an Admin/Contractor user is not in the project members and their name is a raw hash, extract from email
+                      // Hashes are typically very long (30+ chars) and contain no spaces.
+                      if (displayName && displayName.length > 25 && !displayName.includes(' ') && user.email) {
+                        const emailPrefix = user.email.split('@')[0];
+                        displayName = emailPrefix
+                          .split(/[._-]/)
+                          .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
+                          .join(' ');
+                      }
+                      
                       return (
                         <button
                           key={user._id}
@@ -158,10 +180,10 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
                             'w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0',
                             isSelected ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'
                           )}>
-                            {isSelected ? <Check className="w-4 h-4" /> : user.name?.[0]?.toUpperCase() || 'U'}
+                            {isSelected ? <Check className="w-4 h-4" /> : displayName?.[0]?.toUpperCase() || 'U'}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
+                            <p className="text-sm font-semibold text-gray-900 truncate">{displayName}</p>
                             <p className="text-[10px] text-slate-500 truncate">{user.email}</p>
                           </div>
                           {user.roleName && (
@@ -169,11 +191,7 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
                               {user.roleName}
                             </span>
                           )}
-                          {user.isProjectMember && (
-                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md shrink-0">
-                              Member
-                            </span>
-                          )}
+
                         </button>
                       );
                     })}

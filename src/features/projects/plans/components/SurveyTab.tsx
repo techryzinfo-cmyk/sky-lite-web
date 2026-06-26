@@ -9,7 +9,7 @@ import {
   CheckCircle2, XCircle, Info, ShieldAlert, ImageIcon, Send, Ruler
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
@@ -31,11 +31,7 @@ const statusBadgeColor: Record<string, { color: string; bg: string; border: stri
   Draft: { color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-150', icon: ClipboardCheck },
 };
 
-const formatCurrency = (n: number, currency: string = 'AED') => {
-  const currencySymbol = currency || 'AED';
-  if (!n) return `${currencySymbol} 0`;
-  return `${currencySymbol} ${n.toLocaleString()}`;
-};
+
 
 export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
   const { project, fetchProject } = useProjectContext();
