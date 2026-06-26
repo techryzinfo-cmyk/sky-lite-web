@@ -25,7 +25,6 @@ const NAV_SECTIONS = [
   {
     label: 'Manage',
     items: [
-      { name: 'Finance',       href: '/finance',   icon: CreditCard },
       { name: 'Templates',     href: '/templates', icon: Layers },
       { name: 'Users & Roles', href: '/users',     icon: Users },
     ],

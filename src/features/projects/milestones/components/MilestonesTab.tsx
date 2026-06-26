@@ -17,6 +17,7 @@ import api from '@/services/api.client';
 import { uploadToCloudinary } from '@/lib/upload';
 import { useToast } from '@/providers/ToastContext';
 import { XERImportModal } from '@/features/projects/components/XERImportModal';
+import { TimelineTab } from '@/features/projects/timeline/components/TimelineTab';
 
 interface MilestonesTabProps {
   projectId: string;
@@ -65,6 +66,7 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
   const [expandedId, setExpandedId]       = useState<string | null>(null);
   const [togglingTask, setTogglingTask]   = useState<string | null>(null);
   const [view, setView]                   = useState<'cards' | 'list' | 'gantt'>('cards');
+  const [activeView, setActiveView]       = useState<'milestones' | 'timeline'>('milestones');
   const [milestoneMenuId, setMilestoneMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const [isXERModalOpen, setIsXERModalOpen] = useState(false);
@@ -385,8 +387,40 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
   return (
     <SkeletonLoader loading={loading} preset="list">
       <div className="space-y-6">
-        {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* View switcher */}
+        <div className="flex p-1 bg-gray-100 border border-gray-200 rounded-xl w-fit">
+          <button
+            type="button"
+            onClick={() => setActiveView('milestones')}
+            className={cn(
+              'py-1.5 px-4 rounded-lg text-xs font-bold transition-all',
+              activeView === 'milestones'
+                ? 'bg-white shadow text-blue-600'
+                : 'text-slate-500 hover:text-gray-700'
+            )}
+          >
+            Milestones
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView('timeline')}
+            className={cn(
+              'py-1.5 px-4 rounded-lg text-xs font-bold transition-all',
+              activeView === 'timeline'
+                ? 'bg-white shadow text-blue-600'
+                : 'text-slate-500 hover:text-gray-700'
+            )}
+          >
+            Timeline
+          </button>
+        </div>
+
+        {activeView === 'timeline' ? (
+          <TimelineTab projectId={projectId} />
+        ) : (
+          <>
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h3 className="text-xl font-bold text-gray-900"> </h3>
           <p className="text-sm text-slate-500 mt-1">Key targets and critical path objectives.</p>
@@ -1298,7 +1332,9 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
           </div>
         )}
       </AnimatePresence>
-    </div>
+          </>
+        )}
+      </div>
     </SkeletonLoader>
   );
 };

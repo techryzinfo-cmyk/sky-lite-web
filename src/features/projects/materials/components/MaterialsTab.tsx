@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { SkeletonLoader } from '@/components/skeletons/SkeletonLoader';
 import {
   Package,
@@ -45,11 +45,13 @@ interface MaterialsTabProps {
 }
 
 const subTabs = [
-  { id: 'inventory', name: 'Inventory', icon: Package },
+  { id: 'all', name: 'All', icon: Package },
+  { id: 'low-stock', name: 'Low Stock', icon: Package },
+  { id: 'out-of-stock', name: 'Out of Stock', icon: Package },
   { id: 'requests', name: 'Requests', icon: ClipboardList },
-  { id: 'purchase', name: 'Material Purchases', icon: ShoppingCart },
-  { id: 'receipts', name: 'Material Received', icon: FileCheck },
-  { id: 'usage', name: 'Usage Log', icon: History },
+  { id: 'purchase', name: 'Purchases', icon: ShoppingCart },
+  { id: 'receipts', name: 'Receipts', icon: FileCheck },
+  { id: 'usage', name: 'Usage Logs', icon: History },
   { id: 'activity', name: 'Log History', icon: ScrollText },
 ];
 
@@ -62,7 +64,7 @@ const PO_STATUS_COLORS: Record<string, string> = {
 };
 
 export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
-  const [activeSubTab, setActiveSubTab] = useState('inventory');
+  const [activeSubTab, setActiveSubTab] = useState('all');
   const [materials, setMaterials] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
   const [receipts, setReceipts] = useState<any[]>([]);
@@ -70,6 +72,23 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
   const [usageLogs, setUsageLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredMaterials = useMemo(() => {
+    return materials.filter(m => {
+      const matchesSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const received = m.totalReceived || 0;
+      const consumed = m.totalConsumed || 0;
+      const balance = received - consumed;
+      
+      if (activeSubTab === 'low-stock') {
+        return matchesSearch && balance > 0 && balance < 10;
+      }
+      if (activeSubTab === 'out-of-stock') {
+        return matchesSearch && balance <= 0;
+      }
+      return matchesSearch;
+    });
+  }, [materials, searchQuery, activeSubTab]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
@@ -311,7 +330,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      if (activeSubTab === 'inventory') {
+      if (['all', 'low-stock', 'out-of-stock'].includes(activeSubTab)) {
         await fetchMaterials();
       } else if (activeSubTab === 'requests') {
         await Promise.all([fetchMaterials(), fetchRequests()]);
@@ -350,7 +369,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
         ))}
       </div>
 
-      {activeSubTab === 'inventory' && (
+      {['all', 'low-stock', 'out-of-stock'].includes(activeSubTab) && (
         <div className="space-y-6">
           {/* Inventory Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -417,7 +436,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
             <div>
               {/* Stacked Cards for Mobile (< md) */}
               <div className="grid grid-cols-1 gap-4 md:hidden">
-                {materials.filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase())).map((material) => {
+                {filteredMaterials.map((material) => {
                   const received = material.totalReceived || 0;
                   const consumed = material.totalConsumed || 0;
                   const rawStock = received - consumed;
@@ -531,7 +550,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {materials.filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase())).map((material) => (
+                    {filteredMaterials.map((material) => (
                       <tr key={material._id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors group">
                         <td className="px-6 py-4">
                           <div className="flex items-center space-x-3">

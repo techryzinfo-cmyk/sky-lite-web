@@ -16,14 +16,13 @@ import {
 
 // ── All tab definitions ────────────────────────────────────────
 const ALL_TABS = [
-  { id: 'dashboard',    name: 'Dashboard',      icon: LayoutDashboard },
+ 
   { id: 'details',      name: 'Details',        icon: Info },
   { id: 'boq',          name: 'BOQ',            icon: FileText },
   { id: 'milestones',   name: 'Milestones',     icon: Calendar },
-  { id: 'timeline',     name: 'Timeline',       icon: GanttChart },
-  { id: 'progress',     name: 'Progress',       icon: TrendingUp },
+  { id: 'reports',      name: 'Reports',        icon: TrendingUp },
   { id: 'transactions', name: 'Transactions',   icon: CreditCard },
-  { id: 'plans',        name: 'Plans',          icon: Map },
+  { id: 'plans',        name: 'Drawings',          icon: Map },
   { id: 'documents',    name: 'Documents',      icon: Files },
   { id: 'materials',    name: 'Materials',      icon: Package },
   { id: 'site-survey',  name: 'Site Survey',    icon: ClipboardList },
@@ -48,8 +47,8 @@ type TabGroup = {
 
 // ── Group definitions (order matters — first tab in group = default landing) ──
 const TAB_GROUPS: TabGroup[] = [
-  { id: 'overview',  label: 'Overview',  icon: LayoutDashboard, tabIds: ['dashboard', 'details'] },
-  { id: 'work',      label: 'Work',      icon: Calendar,        tabIds: ['boq', 'milestones', 'timeline', 'progress'] },
+  { id: 'overview',  label: 'Overview',  icon: LayoutDashboard, tabIds: [ 'details'] },
+  { id: 'work',      label: 'Work',      icon: Calendar,        tabIds: ['boq', 'milestones', 'reports'] },
   { id: 'finance',   label: 'Finance',   icon: DollarSign,      tabIds: ['transactions'] },
   { id: 'site',      label: 'Site',      icon: Map,             tabIds: ['plans', 'documents', 'materials', 'site-survey', 'attendance'] },
   { id: 'quality',   label: 'Quality',   icon: ShieldAlert,     tabIds: ['issues', 'risks', 'handover', 'audit'] },
