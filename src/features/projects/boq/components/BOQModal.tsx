@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -408,6 +408,16 @@ export const BOQModal: React.FC<BOQModalProps> = ({
                               </div>
 
                               <div className="space-y-3">
+                                {/* Item Number */}
+                                <div>
+                                  <input
+                                    value={row.itemNumber || ''}
+                                    onChange={e => updateRow(row.id, 'itemNumber', e.target.value)}
+                                    className={inputCls()}
+                                    placeholder="Item Number (Optional)"
+                                  />
+                                </div>
+
                                 {/* Description */}
                                 <div>
                                   <input
