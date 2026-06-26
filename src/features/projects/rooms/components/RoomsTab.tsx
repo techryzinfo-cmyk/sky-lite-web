@@ -59,7 +59,7 @@ export const RoomsTab: React.FC<RoomsTabProps> = ({ projectId, project }) => {
         api.get(`/projects/${projectId}/ffe`),
       ]);
       if (roomsRes.status === 'fulfilled') setRooms(roomsRes.value.data || []);
-      if (ffeRes.status === 'fulfilled') setFfeItems(ffeRes.value.data || []);
+      if (ffeRes.status === 'fulfilled') setFfeItems(ffeRes.value.data?.items || []);
     } catch {
       toast.error('Failed to load rooms');
     } finally {
