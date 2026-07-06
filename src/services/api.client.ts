@@ -13,25 +13,18 @@ let preloadingPromise: Promise<any> | null = null;
 // Request interceptor to attach token
 api.interceptors.request.use(
   async (config) => {
+
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token') || Cookies.get('token');
+
+      const isSuperAdminApi =
+        config.url?.startsWith('/superadmin');
+
+      const token = isSuperAdminApi
+        ? sessionStorage.getItem('saToken')
+        : localStorage.getItem('token') || Cookies.get('token');
+
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
-      }
-    }
-
-    // Workaround for backend Mongoose model registration issue (TemplateCategory)
-    if (config.url && (config.url.includes('/projects') || config.url === 'projects') && typeof window !== 'undefined') {
-      const token = localStorage.getItem('token') || Cookies.get('token');
-      if (token && !preloadingPromise) {
-        preloadingPromise = axios
-          .get(`${process.env.NEXT_PUBLIC_API_URL}/template-categories`, {
-            headers: { Authorization: `Bearer ${token}` },
-          })
-          .catch(() => {});
-      }
-      if (preloadingPromise) {
-        await preloadingPromise;
       }
     }
 
@@ -51,7 +44,17 @@ api.interceptors.response.use(
 
       try {
         const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) throw new Error('No refresh token');
+
+// Super Admin doesn't use refresh token
+const isSuperAdmin = !!localStorage.getItem('saToken');
+
+if (!refreshToken) {
+  if (isSuperAdmin) {
+    return Promise.reject(error);
+  }
+
+  throw new Error('No refresh token');
+}
 
         const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`, {
           refreshToken,
@@ -72,7 +75,7 @@ api.interceptors.response.use(
           Cookies.remove('token');
           // Don't redirect if already on /login or if a superadmin session is active
           const onLoginPage = window.location.pathname === '/login';
-          const hasSaToken = !!sessionStorage.getItem('saToken');
+          const hasSaToken = !!localStorage.getItem('saToken');
           if (!onLoginPage && !hasSaToken) {
             window.location.href = '/login';
           }

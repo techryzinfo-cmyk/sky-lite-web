@@ -36,19 +36,63 @@ function LoginForm() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) { toast.error('Please fill in all fields'); return; }
-    setIsLoading(true);
-    try {
-      await login({ email, password });
-      toast.success('Welcome back!');
-    } catch (error: any) {
-      const msg = error.response?.data?.message || 'Invalid credentials.';
-      toast.error(msg);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  e.preventDefault();
+
+  if (!email || !password) {
+    toast.error('Please fill in all fields');
+    return;
+  }
+
+  setIsLoading(true);
+
+  try {
+    // ======================================================
+    // First try Admin / Member login
+    // ======================================================
+    await login({ email, password });
+
+    toast.success('Welcome back!');
+    return;
+  } catch (adminError) {
+    console.log('Admin/Member login failed. Trying Super Admin...');
+  }
+
+  try {
+    // ======================================================
+    // Try Super Admin login
+    // ======================================================
+    const { data } = await api.post('/superadmin/auth/login', {
+      email,
+      password,
+    });
+
+    // Store token (optional if backend cookie is enough)
+    // Clear any previous normal user session
+localStorage.removeItem('token');
+localStorage.removeItem('refreshToken');
+localStorage.removeItem('user');
+
+// Store SuperAdmin session
+sessionStorage.setItem('saToken', data.saToken);
+sessionStorage.setItem(
+  'superAdmin',
+  JSON.stringify(data.superAdmin)
+);
+
+toast.success('Welcome Super Admin!');
+
+window.location.href = '/superadmin/dashboard';
+  } catch (superAdminError: any) {
+    toast.error(
+      superAdminError?.response?.data?.message ||
+        'Invalid credentials.'
+    );
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-[#F8FAFF]">

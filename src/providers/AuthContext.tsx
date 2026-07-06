@@ -25,7 +25,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
+    const savedSuperAdmin = localStorage.getItem('superAdmin');
     const token = Cookies.get('token') || localStorage.getItem('token');
+    const saToken = Cookies.get('saToken') || localStorage.getItem('saToken');
     
     let isTokenExpired = false;
     if (token) {
@@ -46,37 +48,103 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
+      localStorage.removeItem('saToken');
+      localStorage.removeItem('superAdmin');
       Cookies.remove('token');
+      Cookies.remove('saToken');
       setUser(null);
       router.push('/login');
-    } else if (savedUser && savedUser !== 'undefined' && savedUser !== 'null' && token) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch {
-        localStorage.removeItem('user');
-      }
-    }
+    } else if (
+  savedUser &&
+  savedUser !== 'undefined' &&
+  savedUser !== 'null' &&
+  token
+) {
+  try {
+    setUser(JSON.parse(savedUser));
+  } catch {
+    localStorage.removeItem('user');
+  }
+}else if (
+  savedSuperAdmin &&
+  savedSuperAdmin !== 'undefined' &&
+  savedSuperAdmin !== 'null' &&
+  saToken
+) {
+  try {
+    setUser(JSON.parse(savedSuperAdmin));
+  } catch {
+    localStorage.removeItem('superAdmin');
+  }
+}
     setLoading(false);
   }, []);
 
+  // const login = async (credentials: any) => {
+  //   try {
+  //     const response = await api.post('/auth/login', credentials);
+  //     const { token, refreshToken, user: userData } = response.data;
+      
+  //     localStorage.setItem('token', token);
+  //     localStorage.setItem('refreshToken', refreshToken);
+  //     localStorage.setItem('user', JSON.stringify(userData));
+      
+  //     // Set cookie for middleware
+  //     Cookies.set('token', token, { expires: 7 }); // 7 days
+      
+  //     setUser(userData);
+  //     router.push('/dashboard');
+  //   } catch (error) {
+  //     throw error;
+  //   }
+  // };
+
+
   const login = async (credentials: any) => {
-    try {
-      const response = await api.post('/auth/login', credentials);
-      const { token, refreshToken, user: userData } = response.data;
-      
-      localStorage.setItem('token', token);
-      localStorage.setItem('refreshToken', refreshToken);
-      localStorage.setItem('user', JSON.stringify(userData));
-      
-      // Set cookie for middleware
-      Cookies.set('token', token, { expires: 7 }); // 7 days
-      
-      setUser(userData);
-      router.push('/dashboard');
-    } catch (error) {
-      throw error;
+  try {
+    // First try normal Admin/Member login
+    const response = await api.post('/auth/login', credentials);
+
+    const { token, refreshToken, user: userData } = response.data;
+
+    localStorage.setItem('token', token);
+    localStorage.setItem('refreshToken', refreshToken);
+    localStorage.setItem('user', JSON.stringify(userData));
+
+    Cookies.set('token', token, { expires: 7 });
+
+    setUser(userData);
+
+    router.push('/dashboard');
+  } catch (error: any) {
+
+    // If normal login fails, try SuperAdmin login
+    if (error?.response?.status === 401) {
+
+      try {
+        const saRes = await api.post('/superadmin/auth/login', credentials);
+
+        const { saToken, superAdmin } = saRes.data;
+
+        localStorage.setItem('saToken', saToken);
+        localStorage.setItem('superAdmin', JSON.stringify(superAdmin));
+
+        Cookies.set('saToken', saToken, { expires: 7 });
+
+        router.push('/superadmin/dashboard');
+
+        return;
+      } catch (saError) {
+        throw saError;
+      }
     }
-  };
+
+    throw error;
+  }
+};
+
+
+
 
   const register = async (data: any) => {
     try {
