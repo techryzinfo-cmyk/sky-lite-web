@@ -93,7 +93,7 @@ export default function ActivityCard({
   };
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
 
       {/* Header */}
 
@@ -101,13 +101,13 @@ export default function ActivityCard({
 
         <div className="w-12 h-12 rounded-2xl bg-indigo-100 flex items-center justify-center">
 
-          <Activity className="w-6 h-6 text-indigo-600" />
+          <Activity className="w-4 h-4 text-indigo-600" />
 
         </div>
 
         <div>
 
-          <h2 className="text-2xl font-bold text-slate-900">
+          <h2 className="text-base font-bold text-slate-900">
             Recent Activity
           </h2>
 
@@ -134,11 +134,8 @@ export default function ActivityCard({
 
           </div>
         ) : (
-          activities.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-start gap-4 border border-slate-200 rounded-2xl p-5 hover:bg-slate-50 transition"
-            >
+          activities.slice(0, 5).map((item) => (
+            <div key={item.id} className="flex items-center justify-between border border-slate-200 rounded-2xl p-5 hover:bg-slate-50 transition">
               {getIcon(item.type)}
 
               <div className="flex-1">

@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
 import ManagePlanModal from '../../../components/superadmin/ManagePlanModal';
+import Skeleton from '@/components/superadmin/Skeleton';
 
 type Organization = {
   id: string;
@@ -96,48 +97,98 @@ const filteredOrganizations = useMemo(() => {
   });
 }, [organizations, search, statusFilter]);
 
+
+
+if(loading){
+
+return (
+
+<div className="space-y-6">
+
+
+{/* Header */}
+
+<Skeleton className="h-12 w-64"/>
+
+
+{/* Search */}
+
+<Skeleton className="h-20 w-full"/>
+
+
+
+{/* Cards */}
+
+<div className="
+grid
+lg:grid-cols-2
+xl:grid-cols-4
+gap-5
+">
+
+
+{
+[1,2,3,4,5,6,7,8].map(i=>(
+
+<Skeleton
+key={i}
+className="h-56"
+/>
+
+))
+}
+
+
+</div>
+
+
+</div>
+
+)
+
+}
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
 
       {/* Header */}
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
 
-        <div className="w-16 h-16 rounded-3xl bg-blue-100 flex items-center justify-center">
+  <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
 
-          <Building2 className="w-8 h-8 text-blue-600" />
+    <Building2 className="w-5 h-5 text-blue-600" />
 
-        </div>
+  </div>
 
-        <div>
+  <div>
 
-          <h1 className="text-4xl font-bold text-slate-900">
-            Organizations
-          </h1>
+    <h1 className="text-2xl font-bold text-slate-900">
+      Organizations
+    </h1>
 
-          <p className="text-slate-500 mt-1">
-            Manage all registered organizations.
-          </p>
+    <p className="text-sm text-slate-500">
+      Manage all registered organizations.
+    </p>
 
-        </div>
+  </div>
 
-      </div>
+</div>
 
       {/* Search */}
 
-      <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm">
+      <div className="bg-white rounded-xl border border-slate-200 p-3 shadow-sm">
 
         <div className="flex flex-col lg:flex-row gap-4">
 
           <div className="relative flex-1">
 
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search organization, admin or email..."
-              className="w-full pl-14 pr-5 py-4 rounded-2xl border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full pl-11 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
             />
 
           </div>
@@ -151,7 +202,7 @@ const filteredOrganizations = useMemo(() => {
               <button
                 key={item}
                 onClick={() => setStatusFilter(item)}
-                className={`px-5 py-3 rounded-xl font-semibold transition ${
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
                   statusFilter === item
                     ? 'bg-[#33206F] text-white'
                     : 'bg-slate-100 hover:bg-slate-200'
@@ -170,7 +221,7 @@ const filteredOrganizations = useMemo(() => {
 
       {/* Summary */}
 
-      <div className="flex gap-8 text-sm">
+      <div className="flex gap-5 text-xs">
 
         <span className="font-semibold">
           Total : {organizations.length}
@@ -190,8 +241,7 @@ const filteredOrganizations = useMemo(() => {
 
       {filteredOrganizations.length === 0 ? (
 
-        <div className="bg-white rounded-3xl border border-slate-200 py-20 text-center">
-
+        <div className="bg-white rounded-xl border border-slate-200 py-12 text-center">
           <Building2 className="mx-auto w-14 h-14 text-slate-300 mb-5" />
 
           <h2 className="text-2xl font-bold text-slate-700">
@@ -206,8 +256,7 @@ const filteredOrganizations = useMemo(() => {
 
       ) : (
 
-        <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-6">
-
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredOrganizations.map((organization) => (
 
             <OrganizationCard

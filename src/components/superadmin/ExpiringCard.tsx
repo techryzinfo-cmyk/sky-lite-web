@@ -36,7 +36,7 @@ export default function ExpiringCard({
   ],
 }: ExpiringCardProps) {
   return (
-    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
 
       {/* Header */}
 
@@ -50,7 +50,7 @@ export default function ExpiringCard({
 
         <div>
 
-          <h2 className="text-2xl font-bold text-slate-900">
+          <h2 className="text-base font-bold text-slate-900">
             Organizations Expiring Soon
           </h2>
 

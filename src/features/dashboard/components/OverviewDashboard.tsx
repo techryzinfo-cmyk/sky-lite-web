@@ -380,7 +380,7 @@ export const OverviewDashboard = () => {
 
             <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto pr-1">
               {recent.map((p: any, i: number) => (
-                <Link key={p._id} href={`/projects/${p._id}`} className="py-3 flex items-center justify-between group cursor-pointer">
+                <Link key={p._id} href={`/projects/${p._id}`} className="py-2 flex items-center justify-between group cursor-pointer">
                   <div className="min-w-0 pr-2">
                     <p className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">{p.name}</p>
                     <p className="text-[10px] text-slate-400 mt-0.5">

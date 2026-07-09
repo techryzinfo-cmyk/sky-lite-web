@@ -35,11 +35,11 @@ export default function OrganizationCard({
   const active = organization.status === 'Active';
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg transition-all">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-lg transition-all">
 
       {/* Header */}
 
-      <div className="p-6 border-b border-slate-100">
+      <div className="p-4 border-b border-slate-100">
 
         <div className="flex justify-between items-start gap-4">
 
@@ -53,7 +53,7 @@ export default function OrganizationCard({
 
             <div className="flex-1 min-w-0">
 
-              <h2 className="text-xl font-bold text-slate-900 truncate" 
+              <h2 className="text-base font-bold text-slate-900 truncate" 
               title={organization.name}>
                 {organization.name}
               </h2>
@@ -78,7 +78,7 @@ export default function OrganizationCard({
 
       {/* Details */}
 
-      <div className="p-6 space-y-5">
+      <div className="p-4 space-y-5">
 
         <div className="flex items-center justify-between">
 
@@ -151,7 +151,7 @@ export default function OrganizationCard({
 
         <button
           onClick={onManagePlan}
-          className="w-full bg-[#33206F] hover:bg-[#29175c] text-white rounded-2xl py-3 font-semibold flex items-center justify-center gap-2 transition"
+          className="w-full bg-[#33206F] hover:bg-[#29175c] text-white rounded-2xl py-2 font-semibold flex items-center justify-center gap-2 transition"
         >
           Manage Plan
 

@@ -8,6 +8,10 @@ import {
   XCircle,
   Crown,
 } from 'lucide-react';
+import PlanRequestActionModal from './PlanRequestActionModal';
+import { useState } from 'react';
+import api from '@/services/api.client';
+import { useToast } from '@/providers/ToastContext';
 
 interface PlanRequest {
   _id: string;
@@ -32,6 +36,7 @@ interface PlanRequestCardProps {
   onReject: (id: string) => void;
 }
 
+
 export default function PlanRequestCard({
   request,
   onApprove,
@@ -52,6 +57,62 @@ export default function PlanRequestCard({
         return 'bg-blue-100 text-blue-700';
     }
   };
+
+
+  
+
+
+const [actionModal, setActionModal] = useState<
+  'approve' | 'reject' | null
+>(null);
+
+
+const toast = useToast();
+
+
+
+const handleAction = async(note:string)=>{
+
+  try{
+
+
+    await api.patch(
+      `/superadmin/plan-requests/${request._id}`,
+      {
+         action:
+         actionModal === 'approve'
+         ? 'Approved'
+         : 'Rejected',
+
+         note
+      }
+    );
+
+
+    toast.success(
+      actionModal === 'approve'
+      ? 'Plan approved successfully'
+      : 'Plan rejected successfully'
+    );
+
+
+    setActionModal(null);
+
+
+    window.location.reload();
+
+
+  }
+  catch(error:any){
+
+    toast.error(
+      error?.response?.data?.message ||
+      'Action failed'
+    );
+
+  }
+
+};
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg transition">
@@ -153,21 +214,13 @@ export default function PlanRequestCard({
 
           <div className="grid grid-cols-2 gap-4">
 
-            <button
-  onClick={() => onReject(request._id)}
-  disabled={request.status !== 'Pending'}
-  className="px-5 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
->
-  Reject
-</button>
+           <button
 
-            <button
-  onClick={() => onApprove(request._id)}
-  disabled={request.status !== 'Pending'}
-  className="px-5 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
->
-  Approve
-</button>
+            onClick={()=>setActionModal('reject')}
+
+            className="px-5 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700">Reject</button>
+
+            <button onClick={()=>setActionModal('approve')} className=" px-5 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 " > Approve</button>
 
           </div>
 
@@ -187,6 +240,22 @@ export default function PlanRequestCard({
 
         </div>
       )}
+
+      <PlanRequestActionModal
+
+open={!!actionModal}
+
+type={actionModal || 'approve'}
+
+request={request}
+
+onClose={()=>{
+  setActionModal(null);
+}}
+
+onConfirm={handleAction}
+
+/>
 
       {/*
       =======================================================
@@ -231,5 +300,9 @@ export default function PlanRequestCard({
       */}
 
     </div>
+    
+
+
+
   );
 }
