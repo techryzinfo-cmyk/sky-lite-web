@@ -23,8 +23,8 @@ type Organization = {
 export default function OrganizationsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<
-    'All' | 'Active' | 'Suspended' | 'Expiring'
-  >('All');
+  'All' | 'Active' | 'Suspended' | 'Expiring'
+>('All');
 
   /*
   ======================================================
@@ -72,30 +72,106 @@ useEffect(() => {
   fetchOrganizations();
 }, []);
 
+// const filteredOrganizations = useMemo(() => {
+//   return organizations.filter((org) => {
+
+//     const matchesSearch =
+//       org.orgName
+//         ?.toLowerCase()
+//         .includes(search.toLowerCase()) ||
+
+//       org.owner?.name
+//         ?.toLowerCase()
+//         .includes(search.toLowerCase()) ||
+
+//       org.owner?.email
+//         ?.toLowerCase()
+//         .includes(search.toLowerCase());
+
+//     const matchesStatus =
+//       statusFilter === 'All'
+//         ? true
+//         : org.subscription?.status === statusFilter;
+
+//     return matchesSearch && matchesStatus;
+//   });
+// }, [organizations, search, statusFilter]);
+
 const filteredOrganizations = useMemo(() => {
   return organizations.filter((org) => {
 
-    const matchesSearch =
+    const searchStr = search.toLowerCase();
+
+
+    const matchSearch =
+      !searchStr ||
       org.orgName
         ?.toLowerCase()
-        .includes(search.toLowerCase()) ||
-
-      org.owner?.name
-        ?.toLowerCase()
-        .includes(search.toLowerCase()) ||
-
+        .includes(searchStr) ||
       org.owner?.email
         ?.toLowerCase()
-        .includes(search.toLowerCase());
+        .includes(searchStr);
 
-    const matchesStatus =
+
+
+    if (!matchSearch) {
+      return false;
+    }
+
+
+
+    // Expiring filter
+    if (statusFilter === 'Expiring') {
+
+      const expiryDate =
+        org.subscription?.trialEndsAt ||
+        org.subscription?.renewalDate;
+
+
+      if (!expiryDate) {
+        return false;
+      }
+
+
+      const expiry =
+        new Date(expiryDate);
+
+
+      const today =
+        new Date();
+
+
+      const days =
+        Math.ceil(
+          (expiry.getTime() - today.getTime()) /
+          (1000 * 60 * 60 * 24)
+        );
+
+
+      return days >= 0 && days <= 30;
+
+    }
+
+
+
+    // All / Active / Suspended
+
+    const matchStatus =
       statusFilter === 'All'
         ? true
         : org.subscription?.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+
+
+    return matchStatus;
+
   });
-}, [organizations, search, statusFilter]);
+
+}, [
+  organizations,
+  statusFilter,
+  search
+]);
 
 
 
@@ -197,7 +273,7 @@ className="h-56"
 
             <Filter className="w-5 h-5 text-slate-500" />
 
-            {(['All', 'Active', 'Suspended'] as const).map((item) => (
+            {(['All', 'Active', 'Suspended', 'Expiring'] as const).map((item) => (
 
               <button
                 key={item}
