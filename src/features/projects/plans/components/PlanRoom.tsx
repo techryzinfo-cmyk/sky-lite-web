@@ -21,20 +21,20 @@ interface PlanRoomProps {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  Approved : 'text-emerald-700 bg-emerald-50  border-emerald-200',
-  Rejected : 'text-red-700    bg-red-50       border-red-200',
-  Pending  : 'text-amber-700  bg-amber-50     border-amber-200',
-  Draft    : 'text-slate-500  bg-gray-100     border-gray-200',
+  Approved: 'text-emerald-700 bg-emerald-50  border-emerald-200',
+  Rejected: 'text-red-700    bg-red-50       border-red-200',
+  Pending: 'text-amber-700  bg-amber-50     border-amber-200',
+  Draft: 'text-slate-500  bg-gray-100     border-gray-200',
 };
 
 export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, onUpdate }) => {
-  const [isUploading, setIsUploading]             = useState(false);
-  const [isProcessing, setIsProcessing]           = useState(false);
-  const [viewingDoc, setViewingDoc]               = useState<any>(null);
-  const [annotationCounts, setAnnotationCounts]   = useState<Record<string, number>>({});
-  const [approverDocId, setApproverDocId]         = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [viewingDoc, setViewingDoc] = useState<any>(null);
+  const [annotationCounts, setAnnotationCounts] = useState<Record<string, number>>({});
+  const [approverDocId, setApproverDocId] = useState<string | null>(null);
 
-  const toast   = useToast();
+  const toast = useToast();
   const { user } = useAuth();
   const isAdmin = user?.role?.name === 'Admin';
 
@@ -89,13 +89,13 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
     const v = doc.versions?.at(-1);
     return {
       ...doc,
-      url             : v?.url             || doc.url,
-      uploadedAt      : v?.uploadedAt      || doc.uploadedAt || new Date(),
-      size            : v?.size            || doc.size       || 0,
-      approvalStatus  : v?.approvalStatus  || doc.approvalStatus || 'Draft',
-      approvals       : v?.approvals       || doc.approvals  || [],
-      versionId       : v?._id,
-      versionNumber   : v?.versionNumber,
+      url: v?.url || doc.url,
+      uploadedAt: v?.uploadedAt || doc.uploadedAt || new Date(),
+      size: v?.size || doc.size || 0,
+      approvalStatus: v?.approvalStatus || doc.approvalStatus || 'Draft',
+      approvals: v?.approvals || doc.approvals || [],
+      versionId: v?._id,
+      versionNumber: v?.versionNumber,
     };
   };
 
@@ -144,9 +144,9 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
       {/* ── Document list ── */}
       <div className="space-y-3">
         {folder.documents?.map((raw: any) => {
-          const doc          = mapDoc(raw);
-          const annCount     = annotationCounts[doc._id] || 0;
-          const statusStyle  = STATUS_STYLES[doc.approvalStatus] || STATUS_STYLES.Draft;
+          const doc = mapDoc(raw);
+          const annCount = annotationCounts[doc._id] || 0;
+          const statusStyle = STATUS_STYLES[doc.approvalStatus] || STATUS_STYLES.Draft;
 
           return (
             <div
@@ -281,7 +281,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
                       <div className={cn(
                         'w-5 h-5 rounded-lg flex items-center justify-center',
                         app.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' :
-                        app.status === 'Rejected' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'
+                          app.status === 'Rejected' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'
                       )}>
                         {app.status === 'Approved' ? <UserCheck className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
                       </div>
@@ -289,7 +289,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
                       <span className={cn(
                         'text-[9px] font-black uppercase tracking-widest',
                         app.status === 'Approved' ? 'text-emerald-600' :
-                        app.status === 'Rejected' ? 'text-red-600' : 'text-amber-600'
+                          app.status === 'Rejected' ? 'text-red-600' : 'text-amber-600'
                       )}>{app.status}</span>
                     </div>
                   ))}

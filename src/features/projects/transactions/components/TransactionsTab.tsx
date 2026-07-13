@@ -10,6 +10,8 @@ import {
   ShoppingCart,
   Plus,
   Trash2,
+  Edit2,
+  DownloadCloud,
   Loader2,
   CreditCard,
   X,
@@ -71,6 +73,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
   const [showFormModal, setShowFormModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const [editingTxId, setEditingTxId] = useState<string | null>(null);
   const [txType, setTxType] = useState<TxType>('Incoming');
   const [amount, setAmount] = useState('');
   const [partyName, setPartyName] = useState('');
@@ -146,12 +149,22 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
   const netBalance = totals.incoming - totals.outgoing;
 
   const openForm = (type: TxType) => {
+    setEditingTxId(null);
     setTxType(type);
     setAmount('');
     setPartyName('');
     setDescription('');
     setShowTypeSheet(false);
     setTimeout(() => setShowFormModal(true), 150);
+  };
+
+  const handleEdit = (item: LedgerItem) => {
+    setEditingTxId(item._id);
+    setTxType(item.type as TxType);
+    setAmount(item.amount.toString());
+    setPartyName(item.partyName || '');
+    setDescription(item.description || '');
+    setShowFormModal(true);
   };
 
   const handleSave = async () => {
@@ -161,13 +174,23 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
     }
     setSubmitting(true);
     try {
-      await api.post(`/projects/${projectId}/transactions`, {
-        type: txType,
-        amount: parseFloat(amount),
-        partyName,
-        description,
-      });
-      toast.success('Transaction recorded successfully');
+      if (editingTxId) {
+        await api.patch(`/transactions/${editingTxId}`, {
+          type: txType,
+          amount: parseFloat(amount),
+          partyName,
+          description,
+        });
+        toast.success('Transaction updated successfully');
+      } else {
+        await api.post(`/projects/${projectId}/transactions`, {
+          type: txType,
+          amount: parseFloat(amount),
+          partyName,
+          description,
+        });
+        toast.success('Transaction recorded successfully');
+      }
       setShowFormModal(false);
       fetchData();
     } catch (err: any) {
@@ -201,6 +224,119 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
     }
   };
 
+  const generateTransactionHTML = (txData: LedgerItem, project: any) => {
+    const isIncoming = txData.type === 'Incoming';
+    const mainColor = isIncoming ? '#10B981' : '#EF4444';
+    const bgColor = isIncoming ? '#ECFDF5' : '#FEF2F2';
+    const title = isIncoming ? 'OFFICIAL RECEIPT' : 'PAYMENT VOUCHER';
+    
+    // Formatting numbers for the HTML
+    const formatNumber = (num: number) => {
+        if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+        if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+        return num.toString();
+    };
+
+    return `
+      <html>
+        <head>
+          <style>
+            body { font-family: 'Helvetica', sans-serif; padding: 40px; color: #333; }
+            .header { display: flex; justify-content: space-between; border-bottom: 3px solid ${mainColor}; padding-bottom: 20px; }
+            .title-box { text-align: right; }
+            .company-name { color: ${mainColor}; font-size: 28px; font-weight: bold; margin-bottom: 4px; }
+            .doc-type { font-size: 20px; font-weight: 800; color: #1E293B; letter-spacing: 1px; }
+            .info-section { display: flex; justify-content: space-between; margin-top: 40px; }
+            .info-block { flex: 1; }
+            .label { color: #64748B; font-size: 11px; text-transform: uppercase; font-weight: bold; margin-bottom: 5px; }
+            .value { font-size: 15px; font-weight: 600; color: #0F172A; }
+            .amount-card { margin-top: 50px; background: ${bgColor}; padding: 40px; border-radius: 20px; text-align: center; border: 1px solid ${mainColor}40; }
+            .amount-label { font-size: 13px; color: #64748B; margin-bottom: 10px; font-weight: bold; }
+            .amount-value { font-size: 42px; color: #0F172A; font-weight: 900; }
+            .details-section { margin-top: 40px; padding: 20px; background: #F8FAFF; border-radius: 12px; }
+            .footer { margin-top: 80px; text-align: center; border-top: 1px solid #E2E8F0; padding-top: 20px; color: #94A3B8; font-size: 11px; }
+            .stamp { display: inline-block; margin-top: 20px; padding: 10px 20px; border: 3px double ${mainColor}; color: ${mainColor}; font-weight: bold; border-radius: 8px; transform: rotate(-5deg); opacity: 0.8; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <div class="company-name">Sky-Lite</div>
+              <div style="font-size: 13px; color: #64748B;">Construction Management Solutions</div>
+            </div>
+            <div class="title-box">
+              <div class="doc-type">${title}</div>
+              <div style="font-size: 13px; color: #64748B; margin-top: 5px;">Date: ${new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+            </div>
+          </div>
+          <div class="info-section">
+            <div class="info-block">
+              <div class="label">Project Site</div>
+              <div class="value">${project?.name || 'N/A'}</div>
+            </div>
+            <div class="info-block" style="text-align: center;">
+              <div class="label">Reference No.</div>
+              <div class="value">${txData.referenceNumber || 'N/A'}</div>
+            </div>
+            <div class="info-block" style="text-align: right;">
+              <div class="label">${isIncoming ? 'Received From' : 'Paid To'}</div>
+              <div class="value">${txData.partyName}</div>
+            </div>
+          </div>
+          <div class="amount-card">
+            <div class="amount-label">TOTAL TRANSACTION VALUE</div>
+            <div class="amount-value">${project?.currency || '$'} ${formatNumber(txData.amount)}</div>
+            <div class="stamp">${isIncoming ? 'FUNDS RECEIVED' : 'PAYMENT RELEASED'}</div>
+          </div>
+          <div class="details-section">
+            <div class="label">Transaction Particulars</div>
+            <div style="font-size: 14px; color: #334155; line-height: 1.6; min-height: 60px;">
+              ${txData.description || 'General transaction recorded for project expenditures/receipts.'}
+            </div>
+            <div style="margin-top: 15px; display: flex; gap: 20px;">
+              <div><span class="label">Payment Mode:</span> <span class="value" style="font-size: 13px;">${txData.paymentMethod || 'Bank Transfer'}</span></div>
+              <div><span class="label">Category:</span> <span class="value" style="font-size: 13px;">${txData.category || 'Uncategorized'}</span></div>
+            </div>
+          </div>
+          <div class="footer">
+            This document is a digitally generated ${title.toLowerCase()} from the Sky-Lite Web Platform.<br/>
+            &copy; ${new Date().getFullYear()} Sky-Lite Systems. All rights reserved.
+          </div>
+        </body>
+      </html>
+    `;
+  };
+
+  const handleDownloadInvoice = async (item: LedgerItem) => {
+    if (item.invoiceUrl) {
+      window.open(item.invoiceUrl, '_blank');
+    } else {
+      toast.success('Generating and downloading invoice...');
+      const htmlContent = generateTransactionHTML(item, project);
+      
+      try {
+        // Dynamically import to avoid SSR issues
+        const html2pdf = (await import('html2pdf.js')).default;
+        
+        const element = document.createElement('div');
+        element.innerHTML = htmlContent;
+        
+        const opt = {
+          margin:       0,
+          filename:     `tx_inv_${item._id}.pdf`,
+          image:        { type: 'jpeg', quality: 0.98 },
+          html2canvas:  { scale: 2 },
+          jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).save();
+      } catch (err) {
+        console.error('Error generating PDF:', err);
+        toast.error('Failed to generate PDF invoice.');
+      }
+    }
+  };
+
   // Loading state handled by Skeleton wrapper
 
   return (
@@ -223,6 +359,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
             <TrendingUp className="w-6 h-6 text-emerald-600" />
           </div>
           <div>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Inflow</p>
             <p className="text-2xl font-black text-gray-900 mt-1">{formatCurrency(totals.incoming, (project as any)?.currency || '$')}</p>
           </div>
         </div>
@@ -232,6 +369,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
             <TrendingDown className="w-6 h-6 text-red-600" />
           </div>
           <div>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Outflow</p>
             <p className="text-2xl font-black text-gray-900 mt-1">{formatCurrency(totals.outgoing, (project as any)?.currency || '$')}</p>
           </div>
         </div>
@@ -320,6 +458,20 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
                       {prefix}{formatCurrency(item.amount, (project as any)?.currency || '$')}
                     </p>
                     <button
+                      onClick={() => handleDownloadInvoice(item)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-all shrink-0"
+                    >
+                      <DownloadCloud className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </button>
+                    {!item.isPurchase && (
+                      <button
+                        onClick={() => handleEdit(item)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-all shrink-0"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      </button>
+                    )}
+                    <button
                       onClick={() => { setDeleteIsPurchase(!!item.isPurchase); setDeleteTarget(item._id); }}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all shrink-0"
                     >
@@ -371,7 +523,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowFormModal(false)} />
           <div className="relative bg-white rounded-t-3xl sm:rounded-2xl w-full sm:max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white rounded-t-3xl sm:rounded-t-2xl border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-              <h3 className="text-xl font-black text-gray-900">New {txType}</h3>
+              <h3 className="text-xl font-black text-gray-900">{editingTxId ? 'Edit' : 'New'} {txType}</h3>
               <button onClick={() => setShowFormModal(false)} className="p-2 rounded-xl text-slate-400 hover:bg-gray-100 transition-colors">
                 <X className="w-5 h-5" />
               </button>
