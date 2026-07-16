@@ -54,29 +54,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       Cookies.remove('saToken');
       setUser(null);
       router.push('/login');
-    } else if (
-  savedUser &&
-  savedUser !== 'undefined' &&
-  savedUser !== 'null' &&
-  token
-) {
-  try {
-    setUser(JSON.parse(savedUser));
-  } catch {
-    localStorage.removeItem('user');
-  }
-}else if (
-  savedSuperAdmin &&
-  savedSuperAdmin !== 'undefined' &&
-  savedSuperAdmin !== 'null' &&
-  saToken
-) {
-  try {
-    setUser(JSON.parse(savedSuperAdmin));
-  } catch {
-    localStorage.removeItem('superAdmin');
-  }
-}
+    } else if (token && savedUser && savedUser !== 'undefined' && savedUser !== 'null') {
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch {
+        localStorage.removeItem('user');
+      }
+    } else if (saToken && savedSuperAdmin && savedSuperAdmin !== 'undefined' && savedSuperAdmin !== 'null') {
+      try {
+        setUser(JSON.parse(savedSuperAdmin));
+      } catch {
+        localStorage.removeItem('superAdmin');
+      }
+    } else {
+      localStorage.removeItem('user');
+      localStorage.removeItem('superAdmin');
+      setUser(null);
+    }
     setLoading(false);
   }, []);
 
@@ -101,47 +95,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 
   const login = async (credentials: any) => {
-  try {
-    // First try normal Admin/Member login
-    const response = await api.post('/auth/login', credentials);
+    const { authType, ...payload } = credentials;
 
-    const { token, refreshToken, user: userData } = response.data;
+    const handleSuperAdminLogin = async (loginPayload: any) => {
+      const saRes = await api.post('/superadmin/auth/login', loginPayload);
+      const { saToken, token: responseToken, superAdmin } = saRes.data;
+      const storedSaToken = saToken || responseToken || 'superadmin-session';
 
-    localStorage.setItem('token', token);
-    localStorage.setItem('refreshToken', refreshToken);
-    localStorage.setItem('user', JSON.stringify(userData));
+      sessionStorage.setItem('saToken', storedSaToken);
+      localStorage.setItem('saToken', storedSaToken);
+      localStorage.setItem('superAdmin', JSON.stringify(superAdmin));
+      Cookies.set('saToken', storedSaToken, { expires: 7 });
 
-    Cookies.set('token', token, { expires: 7 });
+      router.push('/superadmin/dashboard');
+    };
 
-    setUser(userData);
-
-    router.push('/dashboard');
-  } catch (error: any) {
-
-    // If normal login fails, try SuperAdmin login
-    if (error?.response?.status === 401) {
-
-      try {
-        const saRes = await api.post('/superadmin/auth/login', credentials);
-
-        const { saToken, superAdmin } = saRes.data;
-
-        localStorage.setItem('saToken', saToken);
-        localStorage.setItem('superAdmin', JSON.stringify(superAdmin));
-
-        Cookies.set('saToken', saToken, { expires: 7 });
-
-        router.push('/superadmin/dashboard');
-
-        return;
-      } catch (saError) {
-        throw saError;
-      }
+    if (authType === 'superadmin') {
+      await handleSuperAdminLogin(payload);
+      return;
     }
 
-    throw error;
-  }
-};
+    try {
+      const response = await api.post('/auth/login', payload);
+      const { token, refreshToken, user: userData } = response.data;
+
+      localStorage.setItem('token', token);
+      localStorage.setItem('refreshToken', refreshToken);
+      localStorage.setItem('user', JSON.stringify(userData));
+
+      Cookies.set('token', token, { expires: 7 });
+      setUser(userData);
+      router.push('/dashboard');
+    } catch (error: any) {
+      // Do not retry normal credentials against the superadmin endpoint.
+      throw error;
+    }
+  };
 
 
 
@@ -167,14 +156,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      await api.post('/auth/logout');
+      await api.post('/auth/logout', {}, { withCredentials: true });
     } catch {
-      // fire-and-forget — clear client state regardless
+      // fire-and-forget — clear normal user session anyway
     }
+
+    try {
+      await api.post('/superadmin/auth/logout', {}, { withCredentials: true });
+    } catch {
+      // fire-and-forget — clear superadmin session regardless
+    }
+
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
+    localStorage.removeItem('saToken');
+    localStorage.removeItem('superAdmin');
+    sessionStorage.removeItem('saToken');
     Cookies.remove('token');
+    Cookies.remove('token', { path: '/' });
+    Cookies.remove('refreshToken');
+    Cookies.remove('refreshToken', { path: '/' });
+    Cookies.remove('saToken');
+    Cookies.remove('saToken', { path: '/' });
+    Cookies.remove('superadmin_token');
+    Cookies.remove('superadmin_token', { path: '/' });
+    Cookies.remove('sa_token');
+    Cookies.remove('sa_token', { path: '/' });
     setUser(null);
     router.push('/login');
   };

@@ -3,7 +3,7 @@
 import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Eye, EyeOff, Lock, Mail, Loader2, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Building, Eye, EyeOff, Lock, Mail, Loader2, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/providers/AuthContext';
 import { useToast } from '@/providers/ToastContext';
 import api from '@/services/api.client';
@@ -16,6 +16,7 @@ function LoginForm() {
   const [fpEmail, setFpEmail] = useState('');
   const [fpLoading, setFpLoading] = useState(false);
   const [fpSent, setFpSent] = useState(false);
+  const [loginType, setLoginType] = useState<'org' | 'superadmin'>('org');
 
   const { login } = useAuth();
   const toast = useToast();
@@ -36,221 +37,228 @@ function LoginForm() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (!email || !password) {
-    toast.error('Please fill in all fields');
-    return;
-  }
+    if (!email || !password) {
+      toast.error('Please fill in all fields');
+      return;
+    }
 
-  setIsLoading(true);
+    setIsLoading(true);
 
-  try {
-    // ======================================================
-    // First try Admin / Member login
-    // ======================================================
-    await login({ email, password });
-
-    toast.success('Welcome back!');
-    return;
-  } catch (adminError) {
-    console.log('Admin/Member login failed. Trying Super Admin...');
-  }
-
-  try {
-    // ======================================================
-    // Try Super Admin login
-    // ======================================================
-    const { data } = await api.post('/superadmin/auth/login', {
-      email,
-      password,
-    });
-
-    // Store token (optional if backend cookie is enough)
-    // Clear any previous normal user session
-localStorage.removeItem('token');
-localStorage.removeItem('refreshToken');
-localStorage.removeItem('user');
-
-// Store SuperAdmin session
-sessionStorage.setItem('saToken', data.saToken);
-sessionStorage.setItem(
-  'superAdmin',
-  JSON.stringify(data.superAdmin)
-);
-
-toast.success('Welcome Super Admin!');
-
-window.location.href = '/superadmin/dashboard';
-  } catch (superAdminError: any) {
-    toast.error(
-      superAdminError?.response?.data?.message ||
+    try {
+      await login(
+        loginType === 'superadmin'
+          ? { authType: 'superadmin', email, password }
+          : { email, password }
+      );
+      toast.success('Welcome back!');
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+        error?.message ||
         'Invalid credentials.'
-    );
-  } finally {
-    setIsLoading(false);
-  }
-};
-
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-[#F8FAFF]">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-black tracking-tight text-gray-900 mb-2">
-            SKY<span className="text-blue-600">LITE</span>
-          </h1>
-          <p className="text-slate-500">Construction Management simplified.</p>
+    <div className="min-h-screen bg-[#E6F0FF] flex items-center justify-center px-6 py-10">
+      <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_1fr] gap-10 w-full max-w-6xl">
+        <div className="rounded-[32px] bg-[#0E3B7B] p-10 text-white shadow-xl overflow-hidden relative">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.18),_transparent_35%)] pointer-events-none" />
+          <div className="relative z-10 flex h-full flex-col justify-between">
+            <div>
+              <div className="inline-flex items-center gap-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-sm">
+                <Building className="w-5 h-5 text-white" />
+                Sky-Lite Construction
+              </div>
+
+              <h1 className="mt-10 text-4xl font-black leading-tight tracking-tight">
+                Build better projects
+                <span className="text-[#8AC7FF]"> with one login</span>
+              </h1>
+
+              <p className="mt-6 max-w-xl text-blue-100/90 text-base leading-7">
+                Access your construction workspace, manage teams and budgets, or switch to Super Admin mode for tenant and organization control.
+              </p>
+            </div>
+
+            <div className="mt-8 rounded-[24px] border border-white/10 bg-white/10 p-8 backdrop-blur-xl">
+              <p className="text-sm uppercase tracking-[0.24em] text-blue-100/80">Login options</p>
+              <div className="mt-4 flex flex-col gap-4">
+                <button
+                  type="button"
+                  onClick={() => setLoginType('org')}
+                  className={`w-full rounded-2xl border px-5 py-4 text-left text-white transition ${loginType === 'org' ? 'border-blue-300/80 bg-white/10 shadow-lg shadow-blue-900/30' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+                >
+                  <span className="block text-lg font-semibold">Organization Login</span>
+                  <span className="text-sm text-blue-100/75">Login as a normal workspace admin or member.</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLoginType('superadmin')}
+                  className={`w-full rounded-2xl border px-5 py-4 text-left transition ${loginType === 'superadmin' ? 'border-blue-300/80 bg-white/10 shadow-lg shadow-blue-900/30 text-white' : 'border-white/10 bg-white/5 text-blue-100/90 hover:bg-white/10'}`}
+                >
+                  <span className="block text-lg font-semibold">Super Admin Login</span>
+                  <span className="text-sm text-blue-100/75">Use superadmin credentials to manage tenants and platform settings.</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {registered && (
-          <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm text-center font-medium">
-            Registration successful! Please login with your credentials.
-          </div>
-        )}
-
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-          {showForgotPw ? (
+        <div className="rounded-[32px] bg-white p-10 shadow-xl shadow-slate-200/60 border border-slate-200/80">
+          <div className="mb-8 flex items-center justify-between gap-4">
             <div>
-              <button
-                onClick={() => { setShowForgotPw(false); setFpSent(false); setFpEmail(''); }}
-                className="flex items-center space-x-1.5 text-sm text-slate-500 hover:text-gray-900 mb-6 transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>Back to login</span>
-              </button>
-              {fpSent ? (
-                <div className="text-center py-6">
-                  <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle2 className="w-7 h-7 text-emerald-500" />
-                  </div>
-                  <h2 className="text-xl font-bold text-gray-900 mb-2">OTP Sent</h2>
-                  <p className="text-sm text-slate-500">We've sent a 6-digit verification code (OTP) to <span className="font-semibold text-gray-900">{fpEmail}</span>.</p>
-                  <Link
-                    href={`/reset-password?email=${encodeURIComponent(fpEmail)}`}
-                    className="mt-6 w-full inline-flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl shadow-sm shadow-blue-600/20 transition-all active:scale-[0.98]"
-                  >
-                    Enter OTP & Reset Password
-                  </Link>
-                  <button
-                    onClick={() => { setFpSent(false); }}
-                    className="mt-4 text-xs font-bold text-slate-500 hover:text-gray-900 transition-colors block mx-auto"
-                  >
-                    Resend Email
-                  </button>
-                </div>
-              ) : (
-                <div>
-                  <h2 className="text-2xl font-bold mb-2 text-gray-900">Reset Password</h2>
-                  <p className="text-sm text-slate-500 mb-6">Enter your email and we'll send you a reset link.</p>
-                  <form onSubmit={handleForgotPassword} className="space-y-5">
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-semibold text-gray-700">Email Address</label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <input
-                          type="email"
-                          required
-                          value={fpEmail}
-                          onChange={(e) => setFpEmail(e.target.value)}
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                          placeholder="name@company.com"
-                        />
-                      </div>
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={fpLoading}
-                      className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-xl shadow-sm shadow-blue-600/20 transition-all active:scale-[0.98] flex items-center justify-center space-x-2"
-                    >
-                      {fpLoading ? (
-                        <><Loader2 className="w-5 h-5 animate-spin" /><span>Sending...</span></>
-                      ) : (
-                        <span>Send Reset Link</span>
-                      )}
-                    </button>
-                  </form>
-                </div>
-              )}
+              <h2 className="text-3xl font-black tracking-tight text-slate-900">Sign in</h2>
+              <p className="mt-2 text-sm text-slate-500">Enter your credentials to continue with {loginType === 'org' ? 'Organization' : 'Super Admin'} login.</p>
             </div>
-          ) : (
-            <>
-              <h2 className="text-2xl font-bold mb-6 text-center text-gray-900">Login to Workspace</h2>
+            <div className="rounded-2xl bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">{loginType === 'org' ? 'Organization' : 'Super Admin'}</div>
+          </div>
 
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-700">Email Address</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                      placeholder="name@company.com"
-                      required
-                    />
-                  </div>
-                </div>
+          {registered && (
+            <div className="mb-6 rounded-3xl border border-emerald-100/90 bg-emerald-50 p-4 text-sm text-emerald-800">
+              Registration successful! Please login with your credentials.
+            </div>
+          )}
 
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-700">Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-12 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                      placeholder="••••••••"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-gray-700 transition-colors"
+          <div className="bg-white rounded-[28px] border border-slate-200 p-8 shadow-sm">
+            {showForgotPw ? (
+              <div>
+                <button
+                  onClick={() => { setShowForgotPw(false); setFpSent(false); setFpEmail(''); }}
+                  className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to login
+                </button>
+
+                {fpSent ? (
+                  <div className="text-center py-6">
+                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-3xl bg-emerald-100 text-emerald-700">
+                      <CheckCircle2 className="w-7 h-7" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-slate-900">OTP Sent</h3>
+                    <p className="mt-2 text-sm text-slate-500">A reset email has been sent to <span className="font-medium text-slate-900">{fpEmail}</span>.</p>
+                    <Link
+                      href={`/reset-password?email=${encodeURIComponent(fpEmail)}`}
+                      className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
                     >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      Enter OTP & Reset Password
+                    </Link>
+                    <button
+                      onClick={() => setFpSent(false)}
+                      className="mt-4 text-xs font-semibold text-slate-500 hover:text-slate-900"
+                    >
+                      Resend Email
                     </button>
                   </div>
-                </div>
+                ) : (
+                  <div>
+                    <h3 className="text-xl font-semibold text-slate-900 mb-2">Reset Password</h3>
+                    <p className="text-sm text-slate-500 mb-6">Enter your email and we’ll send a reset link.</p>
+                    <form onSubmit={handleForgotPassword} className="space-y-5">
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-semibold text-slate-700">Email Address</label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                          <input
+                            type="email"
+                            required
+                            value={fpEmail}
+                            onChange={(e) => setFpEmail(e.target.value)}
+                            className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                            placeholder="name@company.com"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={fpLoading}
+                        className="w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {fpLoading ? 'Sending...' : 'Send Reset Link'}
+                      </button>
+                    </form>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">Email Address</label>
+                    <div className="relative mt-2">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                        placeholder="name@company.com"
+                        required
+                      />
+                    </div>
+                  </div>
 
-                <div className="flex items-center justify-between text-sm pt-1">
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500/20" />
-                    <span className="text-slate-500">Remember me</span>
-                  </label>
-                  <button type="button" onClick={() => setShowForgotPw(true)} className="text-blue-600 hover:text-blue-700 font-medium transition-colors">Forgot password?</button>
-                </div>
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">Password</label>
+                    <div className="relative mt-2">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-12 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                        placeholder="••••••••"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
 
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-xl shadow-sm shadow-blue-600/20 transition-all active:scale-[0.98] flex items-center justify-center space-x-2 mt-2"
-                >
-                  {isLoading ? (
-                    <><Loader2 className="w-5 h-5 animate-spin" /><span>Signing in...</span></>
-                  ) : (
-                    <span>Sign In</span>
-                  )}
-                </button>
-              </form>
+                  <div className="flex items-center justify-between text-sm text-slate-500">
+                    <label className="inline-flex items-center gap-2">
+                      <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                      Remember me
+                    </label>
+                    <button type="button" onClick={() => setShowForgotPw(true)} className="font-semibold text-blue-600 hover:text-blue-700">
+                      Forgot password?
+                    </button>
+                  </div>
 
-              <div className="mt-8 pt-6 border-t border-gray-100 text-center">
-                <p className="text-slate-500 text-sm">
-                  Don&apos;t have an account?{' '}
-                  <Link href="/register" className="text-blue-600 font-bold hover:text-blue-700 transition-colors">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isLoading ? 'Signing in...' : 'Sign In'}
+                  </button>
+                </form>
+
+                <div className="mt-8 text-center text-sm text-slate-500">
+                  Don’t have an account?{' '}
+                  <Link href="/register" className="font-semibold text-blue-600 hover:text-blue-700">
                     Register Workspace
                   </Link>
-                </p>
-              </div>
-            </>
-          )}
-        </div>
+                </div>
+              </>
+            )}
+          </div>
 
-        <div className="mt-10 text-center text-slate-400 text-xs">
-          &copy; 2026 Sky-Lite Construction. All rights reserved.
+          <div className="mt-8 text-center text-xs text-slate-400">
+            © 2026 Sky-Lite Construction. All rights reserved.
+          </div>
         </div>
       </div>
     </div>
