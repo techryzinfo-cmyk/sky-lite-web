@@ -28,6 +28,7 @@ import {
   ScrollText,
   PackageCheck,
   Lock,
+  Pencil,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -97,7 +98,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [isUsageModalOpen, setIsUsageModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<'create' | 'stock-in' | 'stock-out'>('create');
+  const [modalMode, setModalMode] = useState<'create' | 'stock-in' | 'stock-out' | 'edit'>('create');
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
   const [checkedRequestIds, setCheckedRequestIds] = useState<Set<string>>(new Set());
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
@@ -524,6 +525,17 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                             <History className="w-4 h-4" />
                           </button>
                           <button
+                            onClick={() => {
+                              setModalMode('edit');
+                              setSelectedMaterial(material);
+                              setIsModalOpen(true);
+                            }}
+                            title="Edit Material"
+                            className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all border border-gray-200 bg-white"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => handleDeleteMaterial(material._id)}
                             disabled={deletingId === material._id}
                             title="Delete Material"
@@ -611,7 +623,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end space-x-1">
-                            <button
+                            {/* <button
                               onClick={() => {
                                 setModalMode('stock-in');
                                 setSelectedMaterial(material);
@@ -639,6 +651,17 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                               className="p-2 text-slate-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
                             >
                               <History className="w-4 h-4" />
+                            </button> */}
+                            <button
+                              onClick={() => {
+                                setModalMode('edit');
+                                setSelectedMaterial(material);
+                                setIsModalOpen(true);
+                              }}
+                              title="Edit Material"
+                              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                            >
+                              <Pencil className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleDeleteMaterial(material._id)}

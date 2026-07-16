@@ -660,6 +660,17 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
           {/* Readiness validation lists */}
           {validationData && (
             <div className="space-y-3">
+              {!validationData.isValid && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 text-sm text-amber-800 flex items-start space-x-3">
+                  <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-600" />
+                  <div className="space-y-1">
+                    <p className="font-bold">Project is not ready for handover!</p>
+                    <p className="opacity-90 leading-relaxed">
+                      Please resolve all issues, complete all milestones/tasks, and approve drawings, BOQ items, and active risks to initiate the handover process.
+                    </p>
+                  </div>
+                </div>
+              )}
               <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 ml-1">Handover Validation Checks</h4>
               
               {/* Checklist Group Cards */}
@@ -878,15 +889,13 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
                     <span>Request Project Handover</span>
                   </button>
                 ) : (
-                  <div className="bg-amber-50/50 border border-amber-200 rounded-3xl p-4 text-xs flex items-start space-x-3 text-amber-800">
-                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
-                    <div className="space-y-1">
-                      <p className="font-bold">Project is not ready for handover!</p>
-                      <p className="opacity-90 leading-relaxed">
-                        Please resolve all issues, complete all milestones/tasks, and approve drawings, BOQ items, and active risks to initiate the handover process.
-                      </p>
-                    </div>
-                  </div>
+                  <button
+                    disabled
+                    className="w-full py-3 bg-slate-100 text-slate-400 rounded-xl text-sm font-bold cursor-not-allowed flex items-center justify-center space-x-2 border border-slate-200"
+                  >
+                    <ClipboardCheck className="w-4 h-4 text-slate-400" />
+                    <span>Request Project Handover</span>
+                  </button>
                 )}
               </div>
             )}
