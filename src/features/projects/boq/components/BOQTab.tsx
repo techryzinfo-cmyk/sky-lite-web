@@ -398,173 +398,175 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
               DESKTOP TABLE
             ───────────────────────────────────────────────────────────────── */}
             <div className="hidden sm:block overflow-hidden rounded-2xl border border-gray-200 shadow-sm bg-white">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="w-10 px-4 py-3.5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">#</th>
-                    <th className="px-4 py-3.5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Item No.</th>
-                    <th className="px-4 py-3.5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[200px]">Item Description</th>
-                    <th className="px-4 py-3.5 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Unit</th>
-                    <th className="px-4 py-3.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Quantity</th>
-                    <th className="px-4 py-3.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Unit Cost</th>
-                    <th className="px-4 py-3.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Cost</th>
-                    <th className="px-4 py-3.5 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                    <th className="px-4 py-3.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {filteredGroups.map(groupName => {
-                    const groupItems = groupedItems[groupName];
-                    const status = getGroupStatus(groupItems);
-                    const totalCost = groupItems.reduce((s, i) => s + ((i as any).effectiveTotalCost !== undefined ? (i as any).effectiveTotalCost : (i.totalCost || 0)), 0);
-
-                    return (
-                      <React.Fragment key={groupName}>
-                        {/* Group Header Row */}
-                        <tr className="bg-slate-50 border-y border-slate-200 group">
-                          <td colSpan={6} className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <div className="w-1.5 h-6 bg-blue-500 rounded-full" />
-                              <span className="font-black text-gray-900 text-sm uppercase tracking-wider">{groupName}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-right font-black text-gray-900">
-                            {formatCurrency(totalCost, project?.currency || '$')}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <StatusBadge status={status} size="xs" />
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              {canDelete && (
-                                <button
-                                  onClick={e => handleDeleteGroup(groupItems, e)}
-                                  title="Delete Group"
-                                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-
-                        {/* Items in the Group */}
-                        {groupItems.map((item, idx) => {
-                          const isUpdating = updatingItemId === item._id;
-                          const isTargetApprover = String(user?.id || user?._id) === String((item as any).requestedApprover);
-                          const canApproveThis = canApprove || isTargetApprover;
-                          const rowStyle = STATUS_STYLES[item.status as StatusKey]?.row ?? '';
-
-                          return (
-                            <tr key={item._id} className={cn('transition-colors group/item hover:bg-blue-50/40', rowStyle)}>
-                              <td className="px-4 py-3 text-slate-400 text-xs font-mono">{idx + 1}</td>
-                              <td className="px-4 py-3">
-                                {item.itemNumber
-                                  ? <span className="font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">{item.itemNumber}</span>
-                                  : <span className="text-slate-300 text-xs">—</span>}
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-semibold text-gray-900 leading-snug">{item.itemDescription}</p>
-                                  {(item as any).version > 1 && (
-                                    <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap">
-                                      v{(item as any).version}
-                                    </span>
-                                  )}
-                                </div>
-                                {item.remark && (
-                                  <p className="text-xs text-slate-400 italic mt-0.5 truncate max-w-xs">{item.remark}</p>
-                                )}
-                                {item.status === 'Pending' && (item as any).requestedApproverName && (
-                                  <p className="text-[10px] text-amber-600 font-semibold mt-0.5">
-                                    ↗ Awaiting: {(item as any).requestedApproverName}
-                                  </p>
-                                )}
-                              </td>
-                              <td className="px-4 py-3 text-center text-slate-500 text-xs">{item.unit || '—'}</td>
-                              <td className="px-4 py-3 text-right font-semibold text-gray-900">
-                                {Number(item.quantity).toLocaleString('en-IN')}
-                              </td>
-                              <td className="px-4 py-3 text-right text-slate-600">
-                                {formatCurrency(Number(item.unitCost), project?.currency || '$')}
-                              </td>
-                              <td className="px-4 py-3 text-right font-bold text-blue-700">
-                                {formatCurrency(Number(item.totalCost || 0), project?.currency || '$')}
-                              </td>
-                              <td className="px-4 py-3 text-center">
-                                <StatusBadge status={item.status} />
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="flex items-center justify-end gap-0.5">
-                                  {isUpdating ? (
-                                    <Loader2 className="w-4 h-4 animate-spin text-blue-500 mx-2" />
-                                  ) : (
-                                    <>
-                                      {canApproveThis && item.status === 'Pending' && (
-                                        <>
-                                          <button onClick={() => handleUpdateItemStatus(item, 'Approved')}
-                                            title="Approve" className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
-                                            <CheckCircle2 className="w-4 h-4" />
-                                          </button>
-                                          <button onClick={() => handleUpdateItemStatus(item, 'Rejected')}
-                                            title="Reject" className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                                            <XCircle className="w-4 h-4" />
-                                          </button>
-                                        </>
-                                      )}
-                                      {item.status === 'Draft' && (
-                                        <button onClick={() => setApproversItem(item)}
-                                          title="Send for Approval" className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
-                                          <Send className="w-4 h-4" />
-                                        </button>
-                                      )}
-                                      {item.status === 'Approved' ? (
-                                        <button onClick={() => { setSelectedItem(item); setIsNewVersion(true); setIsModalOpen(true); }}
-                                          title="Create New Version" className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors">
-                                          <GitBranch className="w-4 h-4" />
-                                        </button>
-                                      ) : canUpdate && (
-                                        <button onClick={() => { setSelectedItem(item); setIsNewVersion(false); setIsModalOpen(true); }}
-                                          title="Edit" className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                                          <Edit2 className="w-4 h-4" />
-                                        </button>
-                                      )}
-                                      <button onClick={() => setViewingItem(item)}
-                                        title="View Details" className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors">
-                                        <History className="w-4 h-4" />
-                                      </button>
-                                      {canDelete && (
-                                        <button onClick={() => handleDeleteItem(item)}
-                                          title="Delete" className="p-1.5 text-transparent group-hover/item:text-slate-300 hover:!text-red-500 hover:bg-red-50 rounded-lg transition-all">
-                                          <Trash2 className="w-4 h-4" />
-                                        </button>
-                                      )}
-                                    </>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </React.Fragment>
-                    );
-                  })}
-                </tbody>
-                {filteredGroups.length > 0 && (
-                  <tfoot>
-                    <tr className="border-t-2 border-gray-200 bg-gray-50">
-                      <td colSpan={6} className="px-4 py-3.5 text-right text-xs font-black text-slate-500 uppercase tracking-widest">
-                        Grand Total
-                      </td>
-                      <td className="px-4 py-3.5 text-right font-black text-gray-900 text-base">
-                        {formatCurrency(totalBOQAmount, project?.currency || '$')}
-                      </td>
-                      <td colSpan={2} />
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="w-10 px-4 py-3.5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">#</th>
+                      <th className="px-4 py-3.5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Item No.</th>
+                      <th className="px-4 py-3.5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[200px]">Item Description</th>
+                      <th className="px-4 py-3.5 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Unit</th>
+                      <th className="px-4 py-3.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Quantity</th>
+                      <th className="px-4 py-3.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Unit Cost</th>
+                      <th className="px-4 py-3.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Cost</th>
+                      <th className="px-4 py-3.5 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                      <th className="px-4 py-3.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
                     </tr>
-                  </tfoot>
-                )}
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredGroups.map(groupName => {
+                      const groupItems = groupedItems[groupName];
+                      const status = getGroupStatus(groupItems);
+                      const totalCost = groupItems.reduce((s, i) => s + ((i as any).effectiveTotalCost !== undefined ? (i as any).effectiveTotalCost : (i.totalCost || 0)), 0);
+  
+                      return (
+                        <React.Fragment key={groupName}>
+                          {/* Group Header Row */}
+                          <tr className="bg-slate-50 border-y border-slate-200 group">
+                            <td colSpan={6} className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-1.5 h-6 bg-blue-500 rounded-full" />
+                                <span className="font-black text-gray-900 text-sm uppercase tracking-wider">{groupName}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-right font-black text-gray-900">
+                              {formatCurrency(totalCost, project?.currency || '$')}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <StatusBadge status={status} size="xs" />
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                {canDelete && (
+                                  <button
+                                    onClick={e => handleDeleteGroup(groupItems, e)}
+                                    title="Delete Group"
+                                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+  
+                          {/* Items in the Group */}
+                          {groupItems.map((item, idx) => {
+                            const isUpdating = updatingItemId === item._id;
+                            const isTargetApprover = String(user?.id || user?._id) === String((item as any).requestedApprover);
+                            const canApproveThis = canApprove || isTargetApprover;
+                            const rowStyle = STATUS_STYLES[item.status as StatusKey]?.row ?? '';
+  
+                            return (
+                              <tr key={item._id} className={cn('transition-colors group/item hover:bg-blue-50/40', rowStyle)}>
+                                <td className="px-4 py-3 text-slate-400 text-xs font-mono">{idx + 1}</td>
+                                <td className="px-4 py-3">
+                                  {item.itemNumber
+                                    ? <span className="font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">{item.itemNumber}</span>
+                                    : <span className="text-slate-300 text-xs">—</span>}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-semibold text-gray-900 leading-snug">{item.itemDescription}</p>
+                                    {(item as any).version > 1 && (
+                                      <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                        v{(item as any).version}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {item.remark && (
+                                    <p className="text-xs text-slate-400 italic mt-0.5 truncate max-w-xs">{item.remark}</p>
+                                  )}
+                                  {item.status === 'Pending' && (item as any).requestedApproverName && (
+                                    <p className="text-[10px] text-amber-600 font-semibold mt-0.5">
+                                      ↗ Awaiting: {(item as any).requestedApproverName}
+                                    </p>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-center text-slate-500 text-xs">{item.unit || '—'}</td>
+                                <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                                  {Number(item.quantity).toLocaleString('en-IN')}
+                                </td>
+                                <td className="px-4 py-3 text-right text-slate-600">
+                                  {formatCurrency(Number(item.unitCost), project?.currency || '$')}
+                                </td>
+                                <td className="px-4 py-3 text-right font-bold text-blue-700">
+                                  {formatCurrency(Number(item.totalCost || 0), project?.currency || '$')}
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <StatusBadge status={item.status} />
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center justify-end gap-0.5">
+                                    {isUpdating ? (
+                                      <Loader2 className="w-4 h-4 animate-spin text-blue-500 mx-2" />
+                                    ) : (
+                                      <>
+                                        {canApproveThis && item.status === 'Pending' && (
+                                          <>
+                                            <button onClick={() => handleUpdateItemStatus(item, 'Approved')}
+                                              title="Approve" className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
+                                              <CheckCircle2 className="w-4 h-4" />
+                                            </button>
+                                            <button onClick={() => handleUpdateItemStatus(item, 'Rejected')}
+                                              title="Reject" className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                                              <XCircle className="w-4 h-4" />
+                                            </button>
+                                          </>
+                                        )}
+                                        {item.status === 'Draft' && (
+                                          <button onClick={() => setApproversItem(item)}
+                                            title="Send for Approval" className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                                            <Send className="w-4 h-4" />
+                                          </button>
+                                        )}
+                                        {item.status === 'Approved' ? (
+                                          <button onClick={() => { setSelectedItem(item); setIsNewVersion(true); setIsModalOpen(true); }}
+                                            title="Create New Version" className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors">
+                                            <GitBranch className="w-4 h-4" />
+                                          </button>
+                                        ) : canUpdate && (
+                                          <button onClick={() => { setSelectedItem(item); setIsNewVersion(false); setIsModalOpen(true); }}
+                                            title="Edit" className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                            <Edit2 className="w-4 h-4" />
+                                          </button>
+                                        )}
+                                        <button onClick={() => setViewingItem(item)}
+                                          title="View Details" className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors">
+                                          <History className="w-4 h-4" />
+                                        </button>
+                                        {canDelete && (
+                                          <button onClick={() => handleDeleteItem(item)}
+                                            title="Delete" className="p-1.5 text-transparent group-hover/item:text-slate-300 hover:!text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                                            <Trash2 className="w-4 h-4" />
+                                          </button>
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                  {filteredGroups.length > 0 && (
+                    <tfoot>
+                      <tr className="border-t-2 border-gray-200 bg-gray-50">
+                        <td colSpan={6} className="px-4 py-3.5 text-right text-xs font-black text-slate-500 uppercase tracking-widest">
+                          Grand Total
+                        </td>
+                        <td className="px-4 py-3.5 text-right font-black text-gray-900 text-base">
+                          {formatCurrency(totalBOQAmount, project?.currency || '$')}
+                        </td>
+                        <td colSpan={2} />
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
             </div>
 
             {/* ─────────────────────────────────────────────────────────────────

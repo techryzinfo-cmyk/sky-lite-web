@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Calendar, CheckCircle2, Circle, Clock, MessageSquare,
   User, Image as ImageIcon, X, ChevronRight, Loader2, BarChart2,
-  TrendingUp, Activity
+  TrendingUp, Activity, Download
 } from 'lucide-react';
 import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
@@ -23,8 +23,18 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [project, setProject] = useState<any>(null);
+  const [issues, setIssues] = useState<any[]>([]);
+  const [snags, setSnags] = useState<any[]>([]);
 
   const toast = useToast();
+
+  const getMemberName = (assignedTo: any) => {
+    if (!assignedTo) return 'Unassigned';
+    const id = assignedTo?._id || assignedTo;
+    const member = members.find(m => m._id === id || m.id === id);
+    return member?.name || assignedTo?.name || 'Assigned User';
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -128,11 +138,44 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
     return { chartData: cData, groupedTasks: grouped, totalFiltered: tFiltered };
   }, [milestones, reportType]);
 
-  const getMemberName = (assignedTo: any) => {
-    if (!assignedTo) return 'Unassigned';
-    const id = assignedTo?._id || assignedTo;
-    const member = members.find(m => m._id === id || m.id === id);
-    return member?.name || assignedTo?.name || 'Assigned User';
+  const handleExportReport = () => {
+    if (Object.keys(groupedTasks).length === 0) {
+      toast.error('No report data available to export');
+      return;
+    }
+
+    const headers = ['Milestone Name', 'Task Title', 'Completed By', 'Completed Date', 'Completion Note'];
+    const rows: any[] = [];
+
+    Object.entries(groupedTasks).forEach(([milestoneName, tasks]) => {
+      tasks.forEach((task: any) => {
+        const completedDate = new Date(task.completedAtDate).toLocaleDateString('en-IN', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric'
+        });
+        const completedBy = getMemberName(task.assignedTo);
+        rows.push([
+          milestoneName,
+          task.title,
+          completedBy,
+          completedDate,
+          task.completionNote || ''
+        ]);
+      });
+    });
+
+    const csv = [headers, ...rows].map(r =>
+      r.map((v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')
+    ).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Project_Report_${reportType}_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${reportType} report exported successfully`);
   };
 
   // SVG Chart calculation parameters (shrunk for neat high-density UI)
@@ -162,28 +205,39 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
       <div className="space-y-4">
         {/* Toggle Box */}
         <div className="flex justify-between items-center flex-wrap gap-3">
-          <div className="flex p-1 bg-gray-100 border border-gray-200 rounded-xl w-fit">
+          <div className="flex items-center gap-2">
+            <div className="flex p-1 bg-gray-100 border border-gray-200 rounded-xl w-fit">
+              <button
+                onClick={() => setReportType('Daily')}
+                className={cn(
+                  'py-1.5 px-4 rounded-lg text-xs font-bold transition-all',
+                  reportType === 'Daily'
+                    ? 'bg-white shadow text-blue-600'
+                    : 'text-slate-500 hover:text-gray-700'
+                )}
+              >
+                Daily
+              </button>
+              <button
+                onClick={() => setReportType('Monthly')}
+                className={cn(
+                  'py-1.5 px-4 rounded-lg text-xs font-bold transition-all',
+                  reportType === 'Monthly'
+                    ? 'bg-white shadow text-blue-600'
+                    : 'text-slate-500 hover:text-gray-700'
+                )}
+              >
+                Monthly
+              </button>
+            </div>
+
             <button
-              onClick={() => setReportType('Daily')}
-              className={cn(
-                'py-1.5 px-4 rounded-lg text-xs font-bold transition-all',
-                reportType === 'Daily'
-                  ? 'bg-white shadow text-blue-600'
-                  : 'text-slate-500 hover:text-gray-700'
-              )}
+              onClick={handleExportReport}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 border border-gray-200 rounded-xl text-xs font-bold text-slate-600 transition-all shadow-sm active:scale-95"
+              title="Export Report to CSV"
             >
-              Daily
-            </button>
-            <button
-              onClick={() => setReportType('Monthly')}
-              className={cn(
-                'py-1.5 px-4 rounded-lg text-xs font-bold transition-all',
-                reportType === 'Monthly'
-                  ? 'bg-white shadow text-blue-600'
-                  : 'text-slate-500 hover:text-gray-700'
-              )}
-            >
-              Monthly
+              <Download className="w-3.5 h-3.5" />
+              <span>Export Report</span>
             </button>
           </div>
 
