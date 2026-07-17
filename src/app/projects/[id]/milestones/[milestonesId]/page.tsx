@@ -323,7 +323,7 @@ export default function MilestoneDetailPage() {
                     <select
                       value={milestone.status || 'Pending'}
                       onChange={e => handleStatusChange(e.target.value as MilestoneStatus)}
-                      className={cn('px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border cursor-pointer focus:outline-none appearance-none', getStatusStyle(milestone.status))}
+                      className={cn('px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border cursor-pointer focus:outline-none appearance-none', getStatusStyle(milestone.status))}
                     >
                       {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
@@ -358,7 +358,7 @@ export default function MilestoneDetailPage() {
                     className="transition-all duration-500"
                   />
                 </svg>
-                <span className="absolute inset-0 flex items-center justify-center text-lg font-black text-gray-900">{progress}%</span>
+                <span className="absolute inset-0 flex items-center justify-center text-lg font-bold text-gray-900">{progress}%</span>
               </div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{completedCount}/{tasks.length} Tasks</p>
             </div>
@@ -383,7 +383,7 @@ export default function MilestoneDetailPage() {
             {showAddTask && (
               <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
                 <GlassCard className="p-5 border-blue-200 bg-blue-50/30" gradient>
-                  <p className="text-xs font-black text-blue-700 uppercase tracking-wider mb-4">New Task</p>
+                  <p className="text-xs font-bold text-blue-700 uppercase tracking-wider mb-4">New Task</p>
                   <div className="space-y-3">
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Title *</label>
@@ -595,7 +595,7 @@ export default function MilestoneDetailPage() {
                   {!task.isCompleted && form.open && (
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
                       <div className="px-5 pb-5 pt-4 border-t border-blue-100 bg-blue-50/30 space-y-5">
-                        <p className="text-xs font-black text-blue-700 uppercase tracking-wider">Submit Task Completion</p>
+                        <p className="text-xs font-bold text-blue-700 uppercase tracking-wider">Submit Task Completion</p>
 
                         <div className="grid md:grid-cols-2 gap-5">
                           {/* Left col — note + photo */}

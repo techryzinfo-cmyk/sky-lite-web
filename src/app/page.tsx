@@ -1,495 +1,186 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/AuthContext';
-import Link from 'next/link';
 import {
-  BarChart3,
-  Briefcase,
-  CheckCircle2,
-  ChevronRight,
-  ClipboardList,
-  DollarSign,
-  FileText,
-  HardHat,
-  Layers,
-  Menu,
-  Package,
-  Shield,
-  Users,
-  X,
-  Zap,
   ArrowRight,
-  Star,
-  Building2,
-  TrendingUp,
-  Clock,
+  Check,
+  ChevronRight,
+  CircleDollarSign,
+  ClipboardCheck,
+  FileCheck2,
+  HardHat,
+  Layers3,
+  Menu,
+  MessageSquareQuote,
+  Plus,
+  Sparkles,
+  X,
 } from 'lucide-react';
 
-const NAV_LINKS = [
-  { label: 'Features', href: '#features' },
-  { label: 'How It Works', href: '#how-it-works' },
-  { label: 'Stats', href: '#stats' },
+const navLinks = [
+  { label: 'Platform', href: '#platform' },
+  { label: 'How it works', href: '#workflow' },
+  { label: 'Why SKYLITE', href: '#results' },
 ];
 
-const FEATURES = [
+const features = [
+  { icon: Layers3, title: 'One view of every project', text: 'Plans, progress, budgets and teams—connected across your whole portfolio.', tint: 'bg-sky-100 text-sky-700' },
+  { icon: CircleDollarSign, title: 'Control every rupee', text: 'Keep BOQs, commitments and approvals clear long before costs become surprises.', tint: 'bg-emerald-100 text-emerald-700' },
+  { icon: ClipboardCheck, title: 'Quality without the chase', text: 'Turn site observations into accountable actions with a complete close-out trail.', tint: 'bg-violet-100 text-violet-700' },
+  { icon: FileCheck2, title: 'Drawings people trust', text: 'Make sure every team is always working from the latest approved document.', tint: 'bg-amber-100 text-amber-700' },
+];
+
+const steps = [
+  ['01', 'Set up your workspace', 'Add your organisation, projects and people in one guided flow.'],
+  ['02', 'Bring your site online', 'Start from a template or configure the workflow your team already uses.'],
+  ['03', 'Make better calls daily', 'See the exact work, risk and spend that needs attention—before it escalates.'],
+];
+
+const operatingAreas = [
   {
-    icon: Briefcase,
-    title: 'Project Pipeline',
-    description: 'Manage every project phase from planning to handover with real-time status tracking across your entire portfolio.',
-    color: 'bg-blue-50 text-blue-600',
+    eyebrow: 'Project command centre',
+    title: 'See the whole job without losing the detail.',
+    description: 'A portfolio view for leadership and practical, project-level views for the people making progress happen on site.',
+    points: ['Live progress and milestone visibility', 'Clear ownership across every workstream', 'Daily priorities surfaced automatically'],
+    accent: 'bg-cyan-300',
   },
   {
-    icon: DollarSign,
-    title: 'Budget & BOQ',
-    description: 'Track budgets, approve revisions, and monitor spend against Bill of Quantities with full audit history.',
-    color: 'bg-emerald-50 text-emerald-600',
+    eyebrow: 'Commercial confidence',
+    title: 'Keep scope, cost and approvals connected.',
+    description: 'Give your commercial team one reliable source for budgets, BOQs, revisions and approvals—without endless version hunting.',
+    points: ['Budget versus actual at a glance', 'Approval history on every important decision', 'Material and procurement requests in context'],
+    accent: 'bg-emerald-300',
   },
   {
-    icon: Package,
-    title: 'Materials Management',
-    description: 'Raise material requests, track deliveries, and reconcile inventory across all active sites.',
-    color: 'bg-orange-50 text-orange-600',
-  },
-  {
-    icon: ClipboardList,
-    title: 'Quality Control',
-    description: 'Log snags, run inspections, and close quality issues before they delay handover.',
-    color: 'bg-purple-50 text-purple-600',
-  },
-  {
-    icon: FileText,
-    title: 'Document Approvals',
-    description: 'Upload drawings and plans, route them for multi-stage approval, and maintain a signed-off document trail.',
-    color: 'bg-rose-50 text-rose-600',
-  },
-  {
-    icon: Users,
-    title: 'Team & Roles',
-    description: 'Assign granular permissions per role, manage site surveyors, and keep every stakeholder in the loop.',
-    color: 'bg-cyan-50 text-cyan-600',
-  },
-  {
-    icon: HardHat,
-    title: 'Site Surveys',
-    description: 'Schedule and capture site survey data, link findings to project phases, and track remediation progress.',
-    color: 'bg-yellow-50 text-yellow-600',
-  },
-  {
-    icon: Layers,
-    title: 'Templates',
-    description: 'Standardise your workflow with reusable project templates — create once, deploy across every new project.',
-    color: 'bg-indigo-50 text-indigo-600',
+    eyebrow: 'Site quality and handover',
+    title: 'Close the loop on every observation.',
+    description: 'Capture issues in the field, assign the next action, and bring handover closer with a complete record of what was done.',
+    points: ['Mobile-ready snag and inspection workflows', 'Photo and document evidence on each item', 'A traceable close-out record for every handover'],
+    accent: 'bg-violet-300',
   },
 ];
 
-const STEPS = [
-  {
-    step: '01',
-    title: 'Create your organisation',
-    description: 'Sign up, set up your company profile, and invite your team. Roles and permissions are configured in minutes.',
-  },
-  {
-    step: '02',
-    title: 'Launch a project',
-    description: 'Start from scratch or pick a template. Define phases, assign members, set budgets, and you\'re live.',
-  },
-  {
-    step: '03',
-    title: 'Track everything in one place',
-    description: 'Monitor progress, approve documents, manage materials, and close snags — all from a single dashboard.',
-  },
-];
-
-const STATS = [
-  { value: '10x', label: 'Faster document approvals', icon: Zap },
-  { value: '360°', label: 'Project visibility', icon: BarChart3 },
-  { value: '100%', label: 'Audit trail coverage', icon: Shield },
-  { value: '∞', label: 'Projects per plan', icon: Building2 },
-];
-
-const TESTIMONIALS = [
-  {
-    name: 'Ravi Menon',
-    role: 'Project Director, AlRashidi Contracting',
-    text: 'SKYLITE replaced three separate tools we were using. Our site teams now raise material requests and get approvals the same day.',
-    stars: 5,
-  },
-  {
-    name: 'Priya Nair',
-    role: 'QC Manager, Skyline Builders',
-    text: 'The snag-tracking and quality control module alone saved us weeks before our last handover. Absolutely recommend it.',
-    stars: 5,
-  },
-  {
-    name: 'Omar Khalid',
-    role: 'Finance Controller, BuildCo',
-    text: 'Budget revisions used to be a black box. Now every change has an approver name, a timestamp, and a reason. Audit-ready.',
-    stars: 5,
-  },
+const faqs = [
+  ['How quickly can our team get started?', 'Most teams create their workspace, invite their core group and launch their first project in a single working session. Templates make it even faster.'],
+  ['Can SKYLITE work across multiple projects?', 'Yes. Your workspace gives leadership a portfolio-level view while each project team gets a focused space for its own documents, progress and workflows.'],
+  ['Will site teams need extensive training?', 'No. The experience is designed around clear next actions, simple updates and familiar construction workflows, so adoption feels natural for office and site teams.'],
+  ['Can we control who sees sensitive information?', 'Yes. Role-based access lets you give people the right level of visibility and responsibility without exposing the rest of the workspace.'],
 ];
 
 export default function LandingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [openFaq, setOpenFaq] = useState(0);
 
   useEffect(() => {
-    if (!loading && user) {
-      router.push('/dashboard');
-    }
-  }, [user, loading, router]);
+    if (!loading && user) router.push('/dashboard');
+  }, [loading, router, user]);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
+    const handleScroll = () => setScrolled(window.scrollY > 12);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   if (loading || user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFF]">
-        <h1 className="text-4xl font-black tracking-tight text-gray-900">
-          SKY<span className="text-blue-600">LITE</span>
-        </h1>
-      </div>
-    );
+    return <div className="grid min-h-screen place-items-center bg-[#07172b] text-2xl font-bold tracking-normal text-white">SKY<span className="text-cyan-300">LITE</span></div>;
   }
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 antialiased">
-      {/* ── Navbar ── */}
-      <header
-        className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/95 backdrop-blur shadow-sm border-b border-gray-100' : 'bg-transparent'
-          }`}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          {/* Logo */}
-          <span className="text-2xl font-black tracking-tight text-gray-900">
-            SKY<span className="text-blue-600">LITE</span>
-          </span>
-
-          {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-8">
-            {NAV_LINKS.map((l) => (
-              <a
-                key={l.href}
-                href={l.href}
-                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                {l.label}
-              </a>
-            ))}
+    <div className="min-h-screen overflow-hidden bg-[#f7f9fc] text-slate-900">
+      <header className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${scrolled ? 'border-b border-white/10 bg-[#07172b]/90 shadow-xl shadow-slate-950/15 backdrop-blur-xl' : 'bg-transparent'}`}>
+        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-8">
+          <Link href="/" className="flex items-center gap-2.5 text-xl font-bold tracking-tight text-white" aria-label="SKYLITE home">
+            <span className="grid size-8 place-items-center rounded-lg bg-cyan-300 text-sm text-[#08203b] font-extrabold">S</span> SKY<span className="text-cyan-300">LITE</span>
+          </Link>
+          <nav className="hidden items-center gap-8 md:flex">
+            {navLinks.map((link) => <a key={link.href} href={link.href} className="text-sm font-medium text-slate-300 transition hover:text-white">{link.label}</a>)}
           </nav>
-
-          {/* Desktop CTA */}
-          <div className="hidden md:flex items-center gap-3">
-            <Link
-              href="/login"
-              className="text-sm font-semibold text-gray-700 hover:text-gray-900 transition-colors px-4 py-2"
-            >
-              Sign in
-            </Link>
-            <Link
-              href="/register"
-              className="text-sm font-semibold bg-blue-600 text-white px-5 py-2.5 rounded-xl hover:bg-blue-700 transition-colors"
-            >
-              Get started free
-            </Link>
+          <div className="hidden items-center gap-2 md:flex">
+            <Link href="/login" className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:bg-white/10 hover:text-white">Sign in</Link>
+            <Link href="/register" className="rounded-xl bg-cyan-300 px-4 py-2.5 text-sm font-bold text-[#07203c] transition hover:-translate-y-0.5 hover:bg-cyan-200">Start free <ArrowRight className="ml-1 inline size-3.5" /></Link>
           </div>
-
-          {/* Mobile hamburger */}
-          <button
-            className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100"
-            onClick={() => setMobileMenuOpen((v) => !v)}
-          >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+          <button onClick={() => setMenuOpen(!menuOpen)} className="rounded-lg p-2 text-white md:hidden" aria-label="Toggle navigation">{menuOpen ? <X /> : <Menu />}</button>
         </div>
-
-        {/* Mobile menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-gray-100 px-4 pb-4 space-y-1">
-            {NAV_LINKS.map((l) => (
-              <a
-                key={l.href}
-                href={l.href}
-                className="block py-2.5 text-sm font-medium text-gray-700 hover:text-blue-600"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {l.label}
-              </a>
-            ))}
-            <div className="pt-3 flex flex-col gap-2">
-              <Link href="/login" className="text-center py-2.5 text-sm font-semibold text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-50">
-                Sign in
-              </Link>
-              <Link href="/register" className="text-center py-2.5 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700">
-                Get started free
-              </Link>
-            </div>
-          </div>
-        )}
+        {menuOpen && <div className="border-t border-white/10 bg-[#07172b] px-5 pb-5 pt-2 md:hidden">
+          {navLinks.map((link) => <a onClick={() => setMenuOpen(false)} key={link.href} href={link.href} className="block rounded-lg px-3 py-3 text-sm font-medium text-slate-200 hover:bg-white/10">{link.label}</a>)}
+          <div className="mt-2 grid grid-cols-2 gap-2"><Link href="/login" className="rounded-lg border border-white/15 py-2.5 text-center text-sm font-semibold text-white">Sign in</Link><Link href="/register" className="rounded-lg bg-cyan-300 py-2.5 text-center text-sm font-bold text-[#07203c]">Start free</Link></div>
+        </div>}
       </header>
 
-      {/* ── Hero ── */}
-      <section className="relative pt-32 pb-24 px-4 sm:px-6 lg:px-8 overflow-hidden">
-        {/* Background gradient blobs */}
-        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-blue-100/60 blur-3xl pointer-events-none" />
-        <div className="absolute top-40 -left-32 w-[400px] h-[400px] rounded-full bg-indigo-100/40 blur-3xl pointer-events-none" />
-
-        <div className="relative max-w-5xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-blue-700 text-xs font-semibold px-4 py-1.5 rounded-full mb-6">
-            <TrendingUp className="w-3.5 h-3.5" />
-            Construction project intelligence — built for site teams
-          </div>
-
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight text-gray-900 leading-[1.08] mb-6">
-            Build smarter.<br />
-            <span className="text-blue-600">Deliver faster.</span>
-          </h1>
-
-          <p className="text-lg sm:text-xl text-gray-500 max-w-2xl mx-auto mb-10 leading-relaxed">
-            SKYLITE brings your projects, budgets, documents, quality checks, and site teams
-            into one command centre — so nothing falls through the cracks.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              href="/register"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-blue-600 text-white font-semibold px-8 py-3.5 rounded-xl hover:bg-blue-700 transition-colors text-base shadow-lg shadow-blue-200"
-            >
-              Get started free
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              href="/login"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white text-gray-800 font-semibold px-8 py-3.5 rounded-xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors text-base"
-            >
-              Sign in to your account
-            </Link>
-          </div>
-
-          <p className="mt-5 text-xs text-gray-400">No credit card required · Free forever for small teams</p>
-        </div>
-
-        {/* Dashboard preview card */}
-        <div className="relative max-w-5xl mx-auto mt-20">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-2xl shadow-gray-200/80 overflow-hidden">
-            {/* Fake browser chrome */}
-            <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 border-b border-gray-200">
-              <span className="w-3 h-3 rounded-full bg-red-400" />
-              <span className="w-3 h-3 rounded-full bg-yellow-400" />
-              <span className="w-3 h-3 rounded-full bg-green-400" />
-              <span className="ml-4 flex-1 bg-white rounded-md px-3 py-1 text-xs text-gray-400 border border-gray-200">
-                app.skylite.io/dashboard
-              </span>
-            </div>
-            {/* Dashboard mockup */}
-            <div className="bg-[#F8FAFF] p-6">
-              <div className="flex gap-4 mb-4">
-                {[
-                  { label: 'Active Projects', value: '12', color: 'bg-blue-100 text-blue-700' },
-                  { label: 'Total Budget', value: '₹48.2M', color: 'bg-emerald-100 text-emerald-700' },
-                  { label: 'Milestones Done', value: '34/41', color: 'bg-purple-100 text-purple-700' },
-                  { label: 'Completed', value: '5', color: 'bg-orange-100 text-orange-700' },
-                ].map((stat) => (
-                  <div key={stat.label} className="flex-1 bg-white rounded-xl border border-gray-200 p-4">
-                    <p className="text-xs text-gray-400 mb-1">{stat.label}</p>
-                    <p className={`text-xl font-black ${stat.color} rounded-lg px-2 py-0.5 inline-block`}>{stat.value}</p>
-                  </div>
-                ))}
+      <main>
+        <section className="relative isolate bg-[#07172b] px-5 pb-20 pt-32 sm:px-8 lg:pb-28 lg:pt-40">
+          <div className="absolute inset-0 -z-10 opacity-40 [background-image:linear-gradient(rgba(148,205,224,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(148,205,224,.08)_1px,transparent_1px)] [background-size:52px_52px]" />
+          <div className="absolute -right-32 top-24 -z-10 size-[36rem] rounded-full bg-cyan-400/15 blur-[130px]" />
+          <div className="absolute -left-40 bottom-0 -z-10 size-[28rem] rounded-full bg-blue-600/20 blur-[100px]" />
+          <div className="mx-auto max-w-7xl">
+            <div className="mx-auto max-w-4xl text-center">
+              {/* <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-cyan-200/15 bg-white/[.06] px-3 py-1.5 text-xs font-semibold text-cyan-100"><Sparkles className="size-3.5 text-cyan-300" /> BUILT FOR MODERN CONSTRUCTION TEAMS</div> */}
+              <h1 className="text-4xl font-extrabold leading-[1.1] tracking-tight text-white sm:text-5xl lg:text-7xl">Your project site,<br /><span className="text-cyan-300">finally in sync.</span></h1>
+              <p className="mx-auto mt-7 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">Replace fragmented spreadsheets, chats and follow-ups with a single operating system that keeps every project moving forward.</p>
+              <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
+                <Link href="/register" className="group inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-300 px-6 py-3.5 text-sm font-bold text-[#06203c] shadow-lg shadow-cyan-950/20 transition hover:-translate-y-0.5 hover:bg-cyan-200">Build your workspace <ArrowRight className="size-4 transition group-hover:translate-x-1" /></Link>
+                <a href="#platform" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-white/10">Explore the platform <ChevronRight className="size-4" /></a>
               </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-2 bg-white rounded-xl border border-gray-200 p-4 h-32">
-                  <p className="text-xs font-semibold text-gray-500 mb-3">Project Pipeline</p>
-                  <div className="space-y-2">
-                    {[
-                      { name: 'Tower A — Block 3', pct: 72, color: 'bg-blue-500' },
-                      { name: 'Villa Complex Phase 2', pct: 45, color: 'bg-emerald-500' },
-                      { name: 'Commercial Hub', pct: 91, color: 'bg-purple-500' },
-                    ].map((p) => (
-                      <div key={p.name} className="flex items-center gap-3">
-                        <p className="text-xs text-gray-600 w-40 truncate">{p.name}</p>
-                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div className={`h-full ${p.color} rounded-full`} style={{ width: `${p.pct}%` }} />
-                        </div>
-                        <p className="text-xs text-gray-500 w-8 text-right">{p.pct}%</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="bg-white rounded-xl border border-gray-200 p-4 h-32">
-                  <p className="text-xs font-semibold text-gray-500 mb-3">Live Feed</p>
-                  <div className="space-y-2">
-                    {[
-                      { text: 'Drawing A-103 approved', time: '2m ago' },
-                      { text: 'Snag #47 closed', time: '18m ago' },
-                      { text: 'Material request raised', time: '1h ago' },
-                    ].map((e) => (
-                      <div key={e.text} className="flex items-start gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0" />
-                        <div>
-                          <p className="text-[10px] text-gray-700 leading-tight">{e.text}</p>
-                          <p className="text-[9px] text-gray-400">{e.time}</p>
-                        </div>
-                      </div>
-                    ))}
+              <div className="mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium text-slate-400"><span className="inline-flex items-center gap-1.5"><Check className="size-3.5 text-cyan-300" /> No credit card needed</span><span className="inline-flex items-center gap-1.5"><Check className="size-3.5 text-cyan-300" /> Ready in minutes</span><span className="inline-flex items-center gap-1.5"><Check className="size-3.5 text-cyan-300" /> Built for growing teams</span></div>
+            </div>
+
+            <div className="relative mx-auto mt-16 max-w-6xl rounded-2xl border border-white/15 bg-white/[.06] p-2 shadow-2xl shadow-black/30 backdrop-blur-sm sm:p-3">
+              <div className="overflow-hidden rounded-xl bg-[#f4f8fc] p-3 sm:p-5">
+                <div className="mb-4 flex items-center justify-between"><div className="flex items-center gap-2"><span className="size-2 rounded-full bg-rose-400" /><span className="size-2 rounded-full bg-amber-400" /><span className="size-2 rounded-full bg-emerald-400" /><span className="ml-3 hidden rounded-md bg-slate-200 px-12 py-1 text-[10px] text-slate-400 sm:block">workspace.skylite.com / overview</span></div><div className="rounded-lg bg-slate-900 px-2.5 py-1 text-[10px] font-bold text-cyan-300">LIVE WORKSPACE</div></div>
+                <div className="grid gap-4 lg:grid-cols-[176px_1fr]">
+                  <aside className="hidden rounded-xl bg-[#0c2440] p-4 text-slate-300 lg:block"><p className="mb-7 text-sm font-bold tracking-tight text-white">SKY<span className="text-cyan-300">LITE</span></p>{['Overview', 'Projects', 'Workflows', 'Documents', 'Team'].map((item, index) => <div key={item} className={`mb-1 rounded-lg px-3 py-2 text-xs ${index === 0 ? 'bg-cyan-300 font-bold text-[#0c2440]' : ''}`}>{item}</div>)}<div className="mt-12 rounded-lg border border-white/10 bg-white/5 p-3"><p className="text-[10px] text-slate-400">Monthly health</p><p className="mt-1 text-xl font-bold text-white">86<span className="text-sm text-cyan-300">/100</span></p></div></aside>
+                  <div className="min-w-0"><div className="mb-4 flex items-end justify-between"><div><p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Wednesday, 16 July</p><h2 className="mt-1 text-lg font-bold tracking-tight text-[#102947] sm:text-2xl">Good morning, Ananya</h2></div><button className="rounded-lg bg-[#0c2440] px-3 py-2 text-[10px] font-bold text-white"><Plus className="mr-1 inline size-3" /> New project</button></div>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[['12', 'Active projects', 'text-cyan-700'], ['₹48.2M', 'Managed budget', 'text-emerald-700'], ['08', 'Needs attention', 'text-amber-700'], ['94%', 'On-time tasks', 'text-violet-700']].map(([value, label, color]) => <div key={label} className="rounded-xl border border-slate-200 bg-white p-3"><p className="text-[10px] text-slate-500">{label}</p><p className={`mt-1 text-lg font-bold sm:text-xl ${color}`}>{value}</p></div>)}</div>
+                    <div className="mt-4 grid gap-4 md:grid-cols-[1.45fr_1fr]"><div className="rounded-xl border border-slate-200 bg-white p-4"><div className="flex items-center justify-between"><p className="text-xs font-bold text-[#102947]">Project progress</p><span className="text-[10px] text-slate-400">View all</span></div>{[['Marina Tower', '82', 'bg-cyan-500'], ['Cedar Residences', '67', 'bg-blue-500'], ['District One Retail', '43', 'bg-violet-500']].map(([name, pct, color]) => <div key={name} className="mt-4"><div className="mb-1 flex justify-between text-[10px] font-medium text-slate-500"><span>{name}</span><span>{pct}%</span></div><div className="h-1.5 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} /></div></div>)}</div><div className="rounded-xl bg-[#0c2440] p-4"><p className="text-xs font-bold text-white">Today&apos;s focus</p>{['2 drawings waiting approval', 'Material delivery at 14:30', 'Site inspection: Tower 2'].map((item, i) => <div key={item} className="mt-3 flex gap-2 text-[10px] leading-4 text-slate-300"><span className={`mt-0.5 size-2 shrink-0 rounded-full ${i === 0 ? 'bg-amber-300' : 'bg-cyan-300'}`} />{item}</div>)}<div className="mt-4 flex items-center gap-1 text-[10px] font-bold text-cyan-300">Open daily plan <ArrowRight className="size-3" /></div></div></div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ── Features ── */}
-      <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-blue-600 text-sm font-semibold uppercase tracking-widest mb-3">Features</p>
-            <h2 className="text-4xl font-black text-gray-900 mb-4">Everything your site team needs</h2>
-            <p className="text-gray-500 text-lg max-w-xl mx-auto">
-              From foundation to handover — SKYLITE covers every phase of the construction lifecycle.
-            </p>
+        <section id="results" className="border-y border-slate-200 bg-white px-5 py-7 sm:px-8"><div className="mx-auto grid max-w-6xl grid-cols-2 divide-x divide-slate-200 md:grid-cols-4">{[['10×', 'faster approvals'], ['360°', 'project visibility'], ['100%', 'traceable decisions'], ['1 place', 'for site operations']].map(([number, label]) => <div key={label} className="px-4 text-center"><p className="text-xl font-bold tracking-tight text-[#0b2949] sm:text-2xl">{number}</p><p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p></div>)}</div></section>
+
+        <section id="platform" className="px-5 py-24 sm:px-8 lg:py-32"><div className="mx-auto max-w-7xl"><div className="grid gap-12 lg:grid-cols-[.8fr_1.2fr] lg:items-end"><div><p className="text-xs font-bold uppercase tracking-[.18em] text-cyan-700">The SKYLITE advantage</p><h2 className="mt-4 text-3xl font-extrabold leading-tight tracking-tight text-[#0b2949] sm:text-4xl">Less chasing.<br />More building.</h2><p className="mt-5 max-w-md leading-7 text-slate-600">Give each person a clear next step and your leadership team a clear line of sight—without forcing your sites to change the way they work.</p><Link href="/register" className="mt-7 inline-flex items-center gap-2 text-sm font-bold text-[#0b5f86] hover:text-cyan-700">See what your team can do <ArrowRight className="size-4" /></Link></div><div className="grid gap-4 sm:grid-cols-2">{features.map((feature) => <article key={feature.title} className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-cyan-200 hover:shadow-xl hover:shadow-slate-200/60"><div className={`grid size-10 place-items-center rounded-xl ${feature.tint}`}><feature.icon className="size-5" /></div><h3 className="mt-5 text-base font-bold tracking-tight text-[#0b2949]">{feature.title}</h3><p className="mt-2 text-sm leading-6 text-slate-500">{feature.text}</p></article>)}</div></div></div></section>
+
+        <section className="border-y border-slate-200 bg-white px-5 py-24 sm:px-8 lg:py-32">
+          <div className="mx-auto max-w-7xl">
+            <div className="mx-auto max-w-2xl text-center"><p className="text-xs font-bold uppercase tracking-[.18em] text-cyan-700">Designed around real project work</p><h2 className="mt-4 text-3xl font-extrabold tracking-tight text-[#0b2949] sm:text-4xl">Every team gets the clarity it needs.</h2><p className="mt-5 leading-7 text-slate-600">SKYLITE connects the daily work happening in the field to the decisions being made in the office—so everyone can move with more confidence.</p></div>
+            <div className="mt-16 space-y-5">{operatingAreas.map((area, index) => <article key={area.eyebrow} className={`grid overflow-hidden rounded-3xl border border-slate-200 ${index % 2 === 0 ? 'lg:grid-cols-[1.1fr_.9fr]' : 'lg:grid-cols-[.9fr_1.1fr]'}`}>
+              <div className={`p-8 sm:p-10 ${index % 2 === 0 ? 'order-1 bg-[#0b2949] text-white' : 'order-2 bg-[#eef8fb] text-[#0b2949]'}`}><p className={`text-xs font-bold uppercase tracking-[.18em] ${index % 2 === 0 ? 'text-cyan-300' : 'text-cyan-700'}`}>{area.eyebrow}</p><h3 className="mt-4 max-w-md text-2xl font-extrabold leading-tight tracking-tight">{area.title}</h3><p className={`mt-5 max-w-md leading-7 ${index % 2 === 0 ? 'text-slate-300' : 'text-slate-600'}`}>{area.description}</p></div>
+              <div className={`order-2 flex items-center p-8 sm:p-10 ${index % 2 === 0 ? 'bg-[#f4f9fb]' : 'order-1 bg-[#0b2949]'}`}><div className="w-full space-y-4">{area.points.map((point, pointIndex) => <div key={point} className={`flex items-start gap-3 rounded-xl p-4 ${index % 2 === 0 ? 'bg-white shadow-sm' : 'border border-white/10 bg-white/5 text-white'}`}><span className={`grid size-6 shrink-0 place-items-center rounded-full text-xs font-bold text-[#0b2949] ${area.accent}`}>0{pointIndex + 1}</span><p className={`pt-0.5 text-sm font-semibold ${index % 2 === 0 ? 'text-[#173a57]' : 'text-slate-200'}`}>{point}</p></div>)}</div></div>
+            </article>)}</div>
           </div>
+        </section>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {FEATURES.map((f) => (
-              <div
-                key={f.title}
-                className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-              >
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${f.color}`}>
-                  <f.icon className="w-5 h-5" />
-                </div>
-                <h3 className="font-bold text-gray-900 mb-2">{f.title}</h3>
-                <p className="text-sm text-gray-500 leading-relaxed">{f.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        <section id="workflow" className="bg-[#eaf5fa] px-5 py-24 sm:px-8 lg:py-32"><div className="mx-auto max-w-7xl"><div className="max-w-xl"><p className="text-xs font-bold uppercase tracking-[.18em] text-cyan-700">A clearer way to run work</p><h2 className="mt-4 text-3xl font-extrabold tracking-tight text-[#0b2949] sm:text-4xl">From setup to site-ready in three steps.</h2><p className="mt-5 leading-7 text-slate-600">A focused launch process means your team sees value from day one, then grows into the platform as each project needs more structure.</p></div><div className="mt-14 grid gap-5 lg:grid-cols-3">{steps.map(([number, title, text], index) => <article key={number} className="relative overflow-hidden rounded-2xl border border-[#cfe4ed] bg-white p-7"><span className="text-6xl font-bold tracking-tight text-cyan-100">{number}</span><div className="absolute right-5 top-5 grid size-9 place-items-center rounded-full bg-[#0b2949] text-xs font-bold text-cyan-300">{index + 1}</div><h3 className="mt-8 text-xl font-bold tracking-tight text-[#0b2949]">{title}</h3><p className="mt-3 text-sm leading-6 text-slate-600">{text}</p></article>)}</div></div></section>
 
-      {/* ── Stats ── */}
-      <section id="stats" className="py-24 px-4 sm:px-6 lg:px-8 bg-blue-600">
-        <div className="max-w-5xl mx-auto">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
-            {STATS.map((s) => (
-              <div key={s.label} className="text-center">
-                <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center mx-auto mb-4">
-                  <s.icon className="w-6 h-6 text-white" />
-                </div>
-                <p className="text-4xl font-black text-white mb-1">{s.value}</p>
-                <p className="text-blue-200 text-sm font-medium">{s.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        <section className="bg-white px-5 py-24 sm:px-8 lg:py-32"><div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[.85fr_1.15fr] lg:items-center"><div><p className="text-xs font-bold uppercase tracking-[.18em] text-cyan-700">Built for the way teams actually work</p><h2 className="mt-4 text-3xl font-extrabold tracking-tight text-[#0b2949] sm:text-4xl">A system people want to come back to.</h2><p className="mt-5 max-w-md leading-7 text-slate-600">Construction software only works when it works in the real world—across site meetings, approvals, changing priorities and handovers. That&apos;s what SKYLITE is made for.</p><div className="mt-7 flex items-center gap-3"><div className="flex -space-x-2">{['A', 'R', 'N', 'K'].map((initial, index) => <span key={initial} className={`grid size-8 place-items-center rounded-full border-2 border-white text-[10px] font-bold text-white ${['bg-cyan-600', 'bg-violet-600', 'bg-emerald-600', 'bg-amber-500'][index]}`}>{initial}</span>)}</div><p className="text-xs font-semibold text-slate-500">Designed for project owners, site teams and partners.</p></div></div><blockquote className="relative rounded-3xl bg-[#0b2949] p-8 text-white sm:p-10"><MessageSquareQuote className="size-9 text-cyan-300" /><p className="mt-6 text-2xl font-bold leading-9 tracking-[-.03em] sm:text-3xl">“We stopped asking where things were and started making decisions from the same picture. The difference on site was immediate.”</p><footer className="mt-8 border-t border-white/10 pt-5"><p className="font-bold text-cyan-300">Project Director</p><p className="mt-1 text-sm text-slate-400">Multi-project construction team</p></footer></blockquote></div></section>
 
-      {/* ── How It Works ── */}
-      <section id="how-it-works" className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-blue-600 text-sm font-semibold uppercase tracking-widest mb-3">How It Works</p>
-            <h2 className="text-4xl font-black text-gray-900 mb-4">Up and running in minutes</h2>
-            <p className="text-gray-500 text-lg max-w-xl mx-auto">
-              No lengthy onboarding. No consultants. Just sign up and go.
-            </p>
-          </div>
+        <section className="px-5 py-24 sm:px-8 lg:py-32"><div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[.8fr_1.2fr]"><div><p className="text-xs font-bold uppercase tracking-[.18em] text-cyan-700">Questions, answered</p><h2 className="mt-4 text-3xl font-extrabold tracking-tight text-[#0b2949] sm:text-4xl">Everything you need to know to get going.</h2><p className="mt-5 max-w-md leading-7 text-slate-600">Start small, bring your team in, and scale your workflows as your organisation grows.</p><Link href="/register" className="mt-7 inline-flex items-center gap-2 text-sm font-bold text-[#0b5f86] hover:text-cyan-700">Create your free workspace <ArrowRight className="size-4" /></Link></div><div className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">{faqs.map(([question, answer], index) => <div key={question}><button type="button" onClick={() => setOpenFaq(openFaq === index ? -1 : index)} className="flex w-full items-center justify-between gap-5 px-6 py-5 text-left text-sm font-bold text-[#0b2949] sm:px-7"><span>{question}</span><Plus className={`size-4 shrink-0 text-cyan-700 transition-transform ${openFaq === index ? 'rotate-45' : ''}`} /></button>{openFaq === index && <p className="px-6 pb-6 text-sm leading-6 text-slate-600 sm:px-7">{answer}</p>}</div>)}</div></div></section>
 
-          <div className="relative">
-            {/* Connector line */}
-            <div className="hidden lg:block absolute top-8 left-[16.67%] right-[16.67%] h-px bg-gray-200" />
+        <section className="px-5 py-24 sm:px-8"><div className="relative mx-auto max-w-6xl overflow-hidden rounded-3xl bg-[#0b2949] px-7 py-14 text-center sm:px-12 sm:py-20"><div className="absolute -right-20 -top-28 size-80 rounded-full bg-cyan-400/15 blur-3xl" /><div className="absolute -bottom-32 -left-16 size-80 rounded-full bg-blue-500/20 blur-3xl" /><div className="relative"><div className="mx-auto grid size-12 place-items-center rounded-2xl bg-cyan-300 text-[#0b2949]"><HardHat className="size-6" /></div><h2 className="mx-auto mt-6 max-w-2xl text-3xl font-extrabold tracking-tight text-white sm:text-4xl">Build a calmer, more predictable project operation.</h2><p className="mx-auto mt-5 max-w-xl text-slate-300">Start with the work your team is doing today. SKYLITE gives it structure, visibility and momentum.</p><Link href="/register" className="mt-8 inline-flex items-center gap-2 rounded-xl bg-cyan-300 px-6 py-3.5 text-sm font-bold text-[#08203b] transition hover:-translate-y-0.5 hover:bg-cyan-200">Get started free <ArrowRight className="size-4" /></Link></div></div></section>
+      </main>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-              {STEPS.map((step, i) => (
-                <div key={step.step} className="relative text-center lg:text-left">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600 text-white text-xl font-black mb-5 lg:mx-0 mx-auto">
-                    {step.step}
-                  </div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">{step.title}</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">{step.description}</p>
-                </div>
-              ))}
+      <footer className="bg-[#07172b] px-5 pt-16 text-slate-300 sm:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-12 border-b border-white/10 pb-12 md:grid-cols-[1.5fr_repeat(3,1fr)]">
+            <div className="max-w-xs">
+              <Link href="/" className="flex items-center gap-2.5 text-xl font-bold tracking-tight text-white" aria-label="SKYLITE home"><span className="grid size-8 place-items-center rounded-lg bg-cyan-300 text-sm text-[#08203b] font-extrabold">S</span> SKY<span className="text-cyan-300">LITE</span></Link>
+              <p className="mt-5 text-sm leading-6 text-slate-400">A clearer operating system for construction teams that want every project, person and decision moving in the same direction.</p>
+              <Link href="/register" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-cyan-300 transition hover:text-cyan-200">Start your free workspace <ArrowRight className="size-4" /></Link>
             </div>
+            <div><p className="text-xs font-bold uppercase tracking-[.16em] text-cyan-300">Platform</p><ul className="mt-5 space-y-3 text-sm"><li><a href="#platform" className="transition hover:text-white">Project overview</a></li><li><a href="#platform" className="transition hover:text-white">Budget and BOQ</a></li><li><a href="#platform" className="transition hover:text-white">Quality workflows</a></li><li><a href="#platform" className="transition hover:text-white">Documents and approvals</a></li></ul></div>
+            <div><p className="text-xs font-bold uppercase tracking-[.16em] text-cyan-300">Explore</p><ul className="mt-5 space-y-3 text-sm"><li><a href="#workflow" className="transition hover:text-white">How it works</a></li><li><a href="#results" className="transition hover:text-white">Why SKYLITE</a></li><li><a href="#platform" className="transition hover:text-white">For project teams</a></li><li><a href="#workflow" className="transition hover:text-white">Getting started</a></li></ul></div>
+            <div><p className="text-xs font-bold uppercase tracking-[.16em] text-cyan-300">Account</p><ul className="mt-5 space-y-3 text-sm"><li><Link href="/register" className="transition hover:text-white">Create account</Link></li><li><Link href="/login" className="transition hover:text-white">Sign in</Link></li><li><Link href="/reset-password" className="transition hover:text-white">Reset password</Link></li></ul></div>
           </div>
-        </div>
-      </section>
-
-      {/* ── Testimonials ── */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-blue-600 text-sm font-semibold uppercase tracking-widest mb-3">Testimonials</p>
-            <h2 className="text-4xl font-black text-gray-900 mb-4">Trusted by construction teams</h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map((t) => (
-              <div key={t.name} className="bg-white rounded-2xl border border-gray-200 p-6">
-                <div className="flex gap-0.5 mb-4">
-                  {Array.from({ length: t.stars }).map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  ))}
-                </div>
-                <p className="text-gray-700 text-sm leading-relaxed mb-5">"{t.text}"</p>
-                <div>
-                  <p className="font-semibold text-sm text-gray-900">{t.name}</p>
-                  <p className="text-xs text-gray-400">{t.role}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── CTA ── */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-3xl p-12 text-white shadow-2xl shadow-blue-200">
-            <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <HardHat className="w-7 h-7 text-white" />
-            </div>
-            <h2 className="text-4xl font-black mb-4">Ready to take control?</h2>
-            <p className="text-blue-200 text-lg mb-8 max-w-lg mx-auto">
-              Join construction teams who've replaced spreadsheets and group chats with SKYLITE.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link
-                href="/register"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white text-blue-600 font-bold px-8 py-3.5 rounded-xl hover:bg-blue-50 transition-colors text-base"
-              >
-                Get started free
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-              <Link
-                href="/login"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/10 text-white font-semibold px-8 py-3.5 rounded-xl hover:bg-white/20 transition-colors text-base border border-white/20"
-              >
-                Sign in
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Footer ── */}
-      <footer className="border-t border-gray-100 py-10 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <span className="text-xl font-black tracking-tight text-gray-900">
-            SKY<span className="text-blue-600">LITE</span>
-          </span>
-          <div className="flex items-center gap-6 text-sm text-gray-400">
-            <a href="#features" className="hover:text-gray-700 transition-colors">Features</a>
-            <a href="#how-it-works" className="hover:text-gray-700 transition-colors">How It Works</a>
-            <Link href="/login" className="hover:text-gray-700 transition-colors">Sign In</Link>
-            <Link href="/register" className="hover:text-gray-700 transition-colors">Register</Link>
-          </div>
-          <p className="text-xs text-gray-400">© {new Date().getFullYear()} SKYLITE. All rights reserved.</p>
+          <div className="flex flex-col gap-4 py-6 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between"><p>Copyright {new Date().getFullYear()} SKYLITE. Built for teams that build.</p><div className="flex gap-5"><a href="#platform" className="transition hover:text-slate-300">Privacy</a><a href="#platform" className="transition hover:text-slate-300">Terms</a><span className="inline-flex items-center gap-1.5 text-slate-400"><span className="size-1.5 rounded-full bg-emerald-400" /> All systems operational</span></div></div>
         </div>
       </footer>
     </div>

@@ -43,7 +43,7 @@ export default function TermsPage() {
 
           </div>
 
-          <h2 className="text-5xl font-black text-slate-900">
+          <h2 className="text-5xl font-extrabold text-slate-900">
 
             Legal Agreement
 

@@ -159,7 +159,7 @@ export const AuditTab: React.FC<AuditTabProps> = ({ project }) => {
   }, [paginatedLogs]);
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto px-1 sm:px-4">
+    <div className="space-y-6 px-1 sm:px-4">
       {/* Header Info */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

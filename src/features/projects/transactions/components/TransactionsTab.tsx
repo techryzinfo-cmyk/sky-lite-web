@@ -43,6 +43,8 @@ interface LedgerItem {
   description?: string;
   date: string;
   paymentMethod?: string;
+  category?: string;
+  invoiceUrl?: string;
   isPurchase?: boolean;
 }
 
@@ -121,6 +123,8 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
       description: t.description,
       date: t.date,
       paymentMethod: t.paymentMethod,
+      category: t.category,
+      invoiceUrl: t.invoiceUrl,
     }))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -324,9 +328,9 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
         const opt = {
           margin:       0,
           filename:     `tx_inv_${item._id}.pdf`,
-          image:        { type: 'jpeg', quality: 0.98 },
+          image:        { type: 'jpeg' as const, quality: 0.98 },
           html2canvas:  { scale: 2 },
-          jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+          jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' as const }
         };
 
         html2pdf().set(opt).from(element).save();

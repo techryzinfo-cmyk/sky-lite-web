@@ -135,15 +135,15 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
     return member?.name || assignedTo?.name || 'Assigned User';
   };
 
-  // SVG Chart calculation parameters
+  // SVG Chart calculation parameters (shrunk for neat high-density UI)
   const chartPoints = useMemo(() => {
     const maxVal = Math.max(...chartData.map(c => c.value), 1);
     return chartData.map((item, index) => {
-      // chart viewBox: 0 0 600 220
+      // chart viewBox: 0 0 600 135
       // x: ranges from 40 to 560
-      // y: ranges from 30 to 180 (height offset: 180 - valuePct * 150)
+      // y: ranges from 20 to 110 (height offset: 110 - valuePct * 90)
       const x = 40 + (index / (chartData.length - 1)) * 520;
-      const y = 180 - (item.value / maxVal) * 140;
+      const y = 110 - (item.value / maxVal) * 90;
       return { x, y, value: item.value, label: item.label };
     });
   }, [chartData]);
@@ -154,14 +154,14 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
 
   const areaPath = useMemo(() => {
     if (chartPoints.length === 0) return '';
-    return `${linePath} L ${chartPoints[chartPoints.length - 1].x} 180 L ${chartPoints[0].x} 180 Z`;
+    return `${linePath} L ${chartPoints[chartPoints.length - 1].x} 110 L ${chartPoints[0].x} 110 Z`;
   }, [chartPoints, linePath]);
 
   return (
     <SkeletonLoader loading={loading} preset="list">
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Toggle Box */}
-        <div className="flex justify-between items-center flex-wrap gap-4">
+        <div className="flex justify-between items-center flex-wrap gap-3">
           <div className="flex p-1 bg-gray-100 border border-gray-200 rounded-xl w-fit">
             <button
               onClick={() => setReportType('Daily')}
@@ -188,45 +188,45 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
           </div>
 
           <div className="flex items-center gap-1.5">
-            <Activity className="w-4 h-4 text-blue-500" />
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            <Activity className="w-3.5 h-3.5 text-blue-500" />
+            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
               {reportType === 'Daily' ? 'Last 7 Days Activity' : 'Last 6 Months Activity'}
             </span>
           </div>
         </div>
 
         {/* Metric Header Card */}
-        <GlassCard className="p-6 border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4" gradient>
+        <GlassCard className="p-3.5 border-gray-200 flex justify-between items-center gap-4" gradient>
           <div>
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Completed Tasks</h4>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-5xl font-black text-gray-900 leading-none">{totalFiltered}</span>
-              <span className="text-xs font-semibold text-slate-500">
+            <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Completed Tasks</h4>
+            <div className="flex items-baseline gap-1.5 mt-0.5">
+              <span className="text-2xl font-extrabold text-gray-900 leading-none">{totalFiltered}</span>
+              <span className="text-[11px] font-semibold text-slate-500">
                 tasks in {reportType === 'Daily' ? 'last 7 days' : 'last 6 months'}
               </span>
             </div>
           </div>
-          <div className="p-3 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
-            <TrendingUp className="w-6 h-6 text-blue-600" />
+          <div className="p-2 rounded-xl bg-blue-50/80 border border-blue-100/50 flex items-center justify-center shrink-0">
+            <TrendingUp className="w-4 h-4 text-blue-600" />
           </div>
         </GlassCard>
 
         {/* Custom SVG Line Chart */}
-        <GlassCard className="p-6 border-gray-200 overflow-hidden" gradient>
-          <div className="w-full overflow-x-auto">
+        <GlassCard className="p-4 border-gray-200 overflow-hidden" gradient>
+          <div className="w-full overflow-x-auto scrollbar-hide">
             <div className="min-w-[500px]">
-              <svg viewBox="0 0 600 220" className="w-full h-auto overflow-visible select-none">
+              <svg viewBox="0 0 600 135" className="w-full h-auto overflow-visible select-none">
                 <defs>
                   <linearGradient id="chart-area-grad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.4" />
+                    <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.3" />
                     <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.0" />
                   </linearGradient>
                 </defs>
 
                 {/* Horizontal Grid lines */}
-                <line x1="40" y1="40" x2="560" y2="40" stroke="#F1F5F9" strokeWidth="1" strokeDasharray="4 4" />
-                <line x1="40" y1="110" x2="560" y2="110" stroke="#F1F5F9" strokeWidth="1" strokeDasharray="4 4" />
-                <line x1="40" y1="180" x2="560" y2="180" stroke="#E2E8F0" strokeWidth="1.5" />
+                <line x1="40" y1="20" x2="560" y2="20" stroke="#F8FAFC" strokeWidth="1" strokeDasharray="4 4" />
+                <line x1="40" y1="65" x2="560" y2="65" stroke="#F1F5F9" strokeWidth="1" strokeDasharray="4 4" />
+                <line x1="40" y1="110" x2="560" y2="110" stroke="#E2E8F0" strokeWidth="1.5" />
 
                 {/* Area under the line */}
                 {areaPath && (
@@ -239,7 +239,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
                     d={linePath}
                     fill="none"
                     stroke="#3B82F6"
-                    strokeWidth="3.5"
+                    strokeWidth="3"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     className="transition-all duration-500 ease-out"
@@ -250,18 +250,18 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
                 {chartPoints.map((p, i) => (
                   <g key={i} className="group cursor-pointer">
                     {/* Glow ring */}
-                    <circle cx={p.x} cy={p.y} r="10" className="fill-transparent group-hover:fill-blue-500/10 transition-colors" />
+                    <circle cx={p.x} cy={p.y} r="8" className="fill-transparent group-hover:fill-blue-500/10 transition-colors" />
                     {/* Outer border dot */}
-                    <circle cx={p.x} cy={p.y} r="6" className="fill-white stroke-blue-500 stroke-2" />
+                    <circle cx={p.x} cy={p.y} r="5" className="fill-white stroke-blue-500 stroke-2" />
                     {/* Inner core dot */}
-                    <circle cx={p.x} cy={p.y} r="3" className="fill-blue-500" />
+                    <circle cx={p.x} cy={p.y} r="2.5" className="fill-blue-500" />
 
                     {/* Value text above dot */}
                     <text
                       x={p.x}
-                      y={p.y - 12}
+                      y={p.y - 9}
                       textAnchor="middle"
-                      className="text-[10px] font-black fill-blue-600 transition-opacity"
+                      className="text-[9px] font-black fill-blue-600 transition-opacity"
                     >
                       {p.value}
                     </text>
@@ -269,9 +269,9 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
                     {/* Label at bottom */}
                     <text
                       x={p.x}
-                      y="205"
+                      y="125"
                       textAnchor="middle"
-                      className="text-[10px] font-bold fill-slate-400"
+                      className="text-[9px] font-bold fill-slate-400"
                     >
                       {p.label}
                     </text>
@@ -283,37 +283,37 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
         </GlassCard>
 
         {/* Milestone Breakdown List */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-bold text-gray-900 pl-1">Breakdown by Milestone</h3>
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Breakdown by Milestone</h3>
 
           {Object.keys(groupedTasks).length === 0 ? (
-            <div className="py-12 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-white">
-              <CheckCircle2 className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-              <p className="text-slate-400 font-medium text-sm">No tasks completed in this time range.</p>
+            <div className="py-8 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-white">
+              <CheckCircle2 className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+              <p className="text-slate-400 font-medium text-xs">No tasks completed in this time range.</p>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-4">
               {Object.entries(groupedTasks).map(([milestoneName, tasks], index) => (
-                <div key={index} className="space-y-3">
-                  <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider pl-1">
+                <div key={index} className="space-y-2">
+                  <h4 className="text-[11px] font-extrabold text-slate-800 tracking-wide pl-1">
                     {milestoneName}
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {tasks.map((task, tIndex) => (
                       <GlassCard
                         key={tIndex}
-                        className="p-4 border-gray-200 hover:border-blue-500/40 transition-colors flex items-center justify-between cursor-pointer group"
+                        className="p-2.5 border-gray-200 hover:border-blue-500/30 transition-colors flex items-center justify-between cursor-pointer group"
                         onClick={() => setSelectedTask(task)}
                         gradient
                       >
-                        <div className="flex items-center space-x-3 min-w-0">
-                          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+                        <div className="flex items-center space-x-2.5 min-w-0">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                           <div className="min-w-0">
-                            <p className="text-sm font-bold text-gray-900 group-hover:text-blue-600 transition-colors truncate">
+                            <p className="text-xs font-bold text-gray-900 group-hover:text-blue-600 transition-colors truncate">
                               {task.title}
                             </p>
-                            <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1 font-medium">
-                              <Calendar className="w-3 h-3" />
+                            <p className="text-[9px] text-slate-400 mt-0.5 flex items-center gap-1 font-medium">
+                              <Calendar className="w-2.5 h-2.5" />
                               {new Date(task.completedAtDate).toLocaleDateString('en-IN', {
                                 day: 'numeric',
                                 month: 'short',
@@ -322,7 +322,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
                             </p>
                           </div>
                         </div>
-                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-all group-hover:translate-x-0.5" />
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-500 transition-all group-hover:translate-x-0.5" />
                       </GlassCard>
                     ))}
                   </div>

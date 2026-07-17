@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Eye, EyeOff, Lock, Mail, User, Loader2, Building2, Phone, KeyRound, ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Building2, CheckCircle2, Eye, EyeOff, KeyRound, Loader2, Lock, Mail, User } from 'lucide-react';
 import { useAuth } from '@/providers/AuthContext';
 import { useToast } from '@/providers/ToastContext';
 import api from '@/services/api.client';
@@ -10,269 +10,95 @@ import api from '@/services/api.client';
 export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
-  // OTP Verification States
   const [showOtp, setShowOtp] = useState(false);
   const [otp, setOtp] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
-
   const { register } = useAuth();
   const toast = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name || !email || !password || !confirmPassword) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-    if (password !== confirmPassword) {
-      toast.error('Passwords do not match');
-      return;
-    }
-    if (password.length < 6) {
-      toast.error('Password must be at least 6 characters');
-      return;
-    }
-
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!name || !email || !password || !confirmPassword) return toast.error('Please fill in all required fields');
+    if (password !== confirmPassword) return toast.error('Passwords do not match');
+    if (password.length < 6) return toast.error('Password must be at least 6 characters');
     setIsLoading(true);
     try {
-      await register({ name, email, password, phoneNumber });
+      await register({ name, email, password });
       toast.success('Registration code sent to your email!');
       setShowOtp(true);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Registration failed. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+      toast.error(message || 'Registration failed. Please try again.');
+    } finally { setIsLoading(false); }
   };
 
-  const handleVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!otp || otp.length !== 6) {
-      toast.error('Please enter a valid 6-digit OTP');
-      return;
-    }
-
+  const handleVerify = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!otp || otp.length !== 6) return toast.error('Please enter a valid 6-digit OTP');
     setIsVerifying(true);
     try {
       await api.post('/auth/register/verify', { email, otp });
       toast.success('Workspace verified and created successfully!');
       window.location.href = '/login?registered=true';
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Verification failed. Please check the OTP.');
-    } finally {
-      setIsVerifying(false);
-    }
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+      toast.error(message || 'Verification failed. Please check the OTP.');
+    } finally { setIsVerifying(false); }
   };
 
   const handleResend = async () => {
     setResendLoading(true);
     try {
-      await api.post('/auth/register', { name, email, password, phoneNumber });
+      await api.post('/auth/register', { name, email, password });
       toast.success('A new OTP has been sent to your email.');
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to resend OTP.');
-    } finally {
-      setResendLoading(false);
-    }
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+      toast.error(message || 'Failed to resend OTP.');
+    } finally { setResendLoading(false); }
   };
 
+  const inputClass = 'w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-xs text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20';
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-[#F8FAFF]">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-black tracking-tight text-gray-900 mb-2">
-            SKY<span className="text-blue-600">LITE</span>
-          </h1>
-          <p className="text-slate-500">Join the next-gen construction platform.</p>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-          {showOtp ? (
+    <div className="min-h-screen xl:h-screen xl:overflow-hidden bg-[#E6F0FF] flex items-center justify-center px-6 py-6 xl:py-0">
+      <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-6 xl:gap-8 xl:grid-cols-[1.2fr_1fr]">
+        <aside className="relative overflow-hidden rounded-3xl bg-[#0E3B7B] p-6 xl:p-8 text-white shadow-xl flex flex-col justify-between">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.18),_transparent_35%)]" />
+          <div className="relative z-10 flex h-full flex-col justify-between space-y-6">
             <div>
-              <button
-                onClick={() => setShowOtp(false)}
-                className="flex items-center space-x-1.5 text-sm text-slate-500 hover:text-gray-900 mb-6 transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>Back to registration</span>
-              </button>
-
-              <div className="text-center mb-6">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mx-auto mb-3">
-                  <KeyRound className="w-6 h-6 text-blue-500" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-1">Verify Workspace</h2>
-                <p className="text-xs text-slate-500 px-4">
-                  We have sent a 6-digit OTP code to <span className="font-semibold text-gray-900">{email}</span>. Please enter it below to complete registration.
-                </p>
-              </div>
-
-              <form onSubmit={handleVerify} className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-700">Verification Code (OTP)</label>
-                  <div className="relative">
-                    <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      type="text"
-                      maxLength={6}
-                      required
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-4 text-gray-900 font-mono tracking-widest text-center text-lg placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                      placeholder="000000"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isVerifying || otp.length !== 6}
-                  className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-xl shadow-sm shadow-blue-600/20 transition-all active:scale-[0.98] flex items-center justify-center space-x-2 mt-2"
-                >
-                  {isVerifying ? (
-                    <><Loader2 className="w-5 h-5 animate-spin" /><span>Verifying...</span></>
-                  ) : (
-                    <span>Verify Workspace</span>
-                  )}
-                </button>
-              </form>
-
-              <div className="mt-6 text-center">
-                <p className="text-xs text-slate-500">
-                  Didn't receive code?{' '}
-                  <button
-                    type="button"
-                    onClick={handleResend}
-                    disabled={resendLoading}
-                    className="text-blue-600 font-bold hover:text-blue-700 transition-colors disabled:opacity-50"
-                  >
-                    {resendLoading ? 'Resending...' : 'Resend Code'}
-                  </button>
-                </p>
-              </div>
+              <Link href="/" className="inline-flex items-center gap-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold shadow-sm"><Building2 className="size-5" /> Sky-Lite Construction</Link>
+              <h1 className="mt-4 xl:mt-6 text-2xl xl:text-3xl font-extrabold leading-tight tracking-tight">Set up your team&apos;s<br /><span className="text-[#8AC7FF]">project command centre.</span></h1>
+              <p className="mt-3 xl:mt-4 max-w-xl text-xs xl:text-sm leading-normal text-blue-100/90">Create a workspace where every project, approval, and decision stays connected from day one.</p>
             </div>
-          ) : (
-            <>
-              <h2 className="text-2xl font-bold mb-6 text-center text-gray-900">Register Workspace</h2>
+            <div className="mt-4 xl:mt-6 rounded-2xl border border-white/10 bg-white/10 p-5 xl:p-6 backdrop-blur-xl">
+              <p className="text-xs uppercase tracking-[0.24em] text-blue-100/80">What happens next</p>
+              <div className="mt-4 xl:mt-5 space-y-3 xl:space-y-4">{[
+                ['1', 'Create your workspace', 'Add your organisation details and primary account.'],
+                ['2', 'Verify your email', 'Confirm your account securely with a one-time code.'],
+                ['3', 'Invite your team', 'Bring the right people into your first project.'],
+              ].map(([number, title, detail]) => <div key={number} className="flex gap-3"><span className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-xs font-bold text-[#0E3B7B]">{number}</span><div><p className="text-sm font-semibold">{title}</p><p className="mt-0.5 text-xs leading-5 text-blue-100/75">{detail}</p></div></div>)}</div>
+            </div>
+          </div>
+        </aside>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-700">Full Name</label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                      placeholder="John Doe"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-700">Work Email</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                      placeholder="name@company.com"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-700">Phone Number <span className="text-slate-400 font-normal">(Optional)</span></label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      type="tel"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                      placeholder="+1 (555) 000-0000"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-700">Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-12 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                      placeholder="••••••••"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-gray-700 transition-colors"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-700">Confirm Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                      placeholder="••••••••"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-xl shadow-sm shadow-blue-600/20 transition-all active:scale-[0.98] flex items-center justify-center space-x-2 mt-2"
-                >
-                  {isLoading ? (
-                    <><Loader2 className="w-5 h-5 animate-spin" /><span>Creating Account...</span></>
-                  ) : (
-                    <span>Create Workspace</span>
-                  )}
-                </button>
-              </form>
-
-              <div className="mt-8 pt-6 border-t border-gray-100 text-center">
-                <p className="text-slate-500 text-sm">
-                  Already have a workspace?{' '}
-                  <Link href="/login" className="text-blue-600 font-bold hover:text-blue-700 transition-colors">
-                    Sign In
-                  </Link>
-                </p>
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="mt-10 text-center text-slate-400 text-xs flex items-center justify-center space-x-2">
-          <Building2 className="w-3 h-3" />
-          <span>Enterprise Construction Solutions</span>
-        </div>
+        <section className="self-center rounded-3xl border border-slate-200/80 bg-white p-5 xl:p-6 shadow-xl shadow-slate-200/60 flex flex-col justify-between">
+          {showOtp ? <div>
+            <button onClick={() => setShowOtp(false)} className="mb-4 inline-flex items-center gap-2 text-xs font-semibold text-slate-600 transition hover:text-slate-900"><ArrowLeft className="size-4" /> Back to registration</button>
+            <div className="text-center"><div className="mx-auto grid size-12 place-items-center rounded-2xl bg-blue-50 text-blue-600"><KeyRound className="size-5" /></div><h2 className="mt-4 text-2xl font-extrabold tracking-tight text-slate-900">Verify your workspace</h2><p className="mx-auto mt-2 max-w-sm text-xs leading-normal text-slate-500">We sent a 6-digit code to <span className="font-semibold text-slate-900">{email}</span>. Enter it below to complete setup.</p></div>
+            <form onSubmit={handleVerify} className="mt-6 space-y-4"><div><label className="text-xs font-semibold text-slate-700">Verification code</label><div className="relative mt-1"><KeyRound className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><input type="text" maxLength={6} required value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, ''))} className={`${inputClass} pr-10 text-center font-mono text-base tracking-[0.45em]`} placeholder="000000" /></div></div><button type="submit" disabled={isVerifying || otp.length !== 6} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60">{isVerifying && <Loader2 className="size-4 animate-spin" />}{isVerifying ? 'Verifying...' : 'Verify workspace'}</button></form>
+            <p className="mt-4 text-center text-xs text-slate-500">Didn&apos;t receive a code? <button type="button" onClick={handleResend} disabled={resendLoading} className="font-bold text-blue-600 hover:text-blue-700 disabled:opacity-50">{resendLoading ? 'Resending...' : 'Resend code'}</button></p>
+          </div> : <>
+            <div className="mb-4 xl:mb-5"><p className="text-[10px] xl:text-xs font-semibold text-blue-600">CREATE YOUR WORKSPACE</p><h2 className="mt-1 xl:mt-2 text-xl xl:text-2xl font-extrabold tracking-tight text-slate-900">Get started with SKYLITE</h2><p className="mt-1 text-xs leading-normal text-slate-500">Set up your account now. Invite teammates and create your first project straight after.</p></div>
+            <form onSubmit={handleSubmit} className="space-y-3 xl:space-y-4"><div><label className="text-xs font-semibold text-slate-700">Full name</label><div className="relative mt-1"><User className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><input type="text" value={name} onChange={(event) => setName(event.target.value)} className={inputClass} placeholder="John Doe" required /></div></div><div><label className="text-xs font-semibold text-slate-700">Work email</label><div className="relative mt-1"><Mail className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} className={inputClass} placeholder="name@company.com" required /></div></div><div className="grid gap-3 sm:grid-cols-2"><div><label className="text-xs font-semibold text-slate-700">Password</label><div className="relative mt-1"><Lock className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><input type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)} className={inputClass} placeholder="Password" required /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900">{showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}</button></div></div><div><label className="text-xs font-semibold text-slate-700">Confirm password</label><div className="relative mt-1"><Lock className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><input type={showPassword ? 'text' : 'password'} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className={inputClass} placeholder="Confirm password" required /></div></div></div><button type="submit" disabled={isLoading} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60">{isLoading && <Loader2 className="size-4 animate-spin" />}{isLoading ? 'Creating workspace...' : 'Create workspace'}</button></form>
+            <div className="mt-4 border-t border-slate-100 pt-3 text-center text-xs text-slate-500">Already have a workspace? <Link href="/login" className="font-semibold text-blue-600 hover:text-blue-700">Sign in</Link></div>
+          </>}
+          <div className="mt-4 flex items-center justify-center gap-2 text-[10px] xl:text-xs text-slate-400"><CheckCircle2 className="size-3.5" /> Secure account setup for your organisation</div>
+        </section>
       </div>
     </div>
   );

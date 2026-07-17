@@ -15,7 +15,7 @@ export default function UsersPage() {
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-black text-gray-900">Organisation Members</h1>
+            <h1 className="text-3xl font-extrabold text-gray-900">Organisation Members</h1>
             <p className="text-slate-500 mt-1">Manage all organisation-level users, roles, and access permissions.</p>
           </div>
 
