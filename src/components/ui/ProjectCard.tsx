@@ -17,6 +17,7 @@ interface ProjectCardProps {
   onDelete?: (project: Project) => void;
   onSendForSurvey?: (project: Project) => void;
   onCompleteSurvey?: (project: Project) => void;
+  allUsers?: any[];
 }
 
 const statusColors: Record<string, string> = {
@@ -42,7 +43,7 @@ const STATUS_PROGRESS: Record<string, number> = {
 };
 
 export const ProjectCard: React.FC<ProjectCardProps> = ({
-  project, onEdit, onDelete, onSendForSurvey, onCompleteSurvey,
+  project, onEdit, onDelete, onSendForSurvey, onCompleteSurvey, allUsers = [],
 }) => {
   const progress = STATUS_PROGRESS[project.status] ?? 10;
   const { user } = useAuth();
@@ -169,14 +170,15 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
         {/* Member avatars */}
         <div className="flex -space-x-1.5">
           {project.members?.slice(0, 4).map((member: any, i: number) => {
-            const name = (member.user?.name || member.name || '?');
+            const matchedUser = allUsers.find(u => u._id === member || u._id === member?.userId || u._id === member?._id || u._id === member?.user);
+            const name = (member.user?.name || member.userId?.name || member.name || matchedUser?.name || '?');
             return (
               <div
                 key={i}
                 title={name}
-                className="w-6 h-6 rounded-md bg-blue-100 border-2 border-white flex items-center justify-center text-[9px] font-bold text-blue-700"
+                className="w-6 h-6 rounded-md bg-blue-100 border-2 border-white flex items-center justify-center text-[9px] font-bold text-blue-700 uppercase"
               >
-                {name.charAt(0).toUpperCase()}
+                {name !== '?' ? name.charAt(0) : '?'}
               </div>
             );
           })}

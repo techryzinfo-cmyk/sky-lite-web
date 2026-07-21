@@ -322,6 +322,7 @@ import { SendForSurveyModal } from '@/features/projects/site-survey/components/S
 import { SurveyModal } from '@/features/projects/plans/components/SurveyModal';
 import { Plus, Search, Filter, LayoutGrid, List, FolderOpen, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import api from '@/services/api.client';
 import { Project } from '@/types';
 import { cn } from '@/lib/utils';
@@ -340,7 +341,9 @@ export default function ProjectsPage() {
   const [isSurveyAssignOpen, setIsSurveyAssignOpen] = useState(false);
   const [isSurveyModalOpen, setIsSurveyModalOpen] = useState(false);
   const [surveyProject, setSurveyProject] = useState<Project | null>(null);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
   const toast = useToast();
+  const pathname = usePathname();
  
   const fetchProjects = async () => {
     try {
@@ -355,8 +358,32 @@ export default function ProjectsPage() {
       setLoading(false);
     }
   };
+
+  const fetchUsers = async () => {
+    try {
+      const r = await api.get('/users');
+      setAllUsers(r.data?.users || r.data || []);
+    } catch (e) {
+      console.error('Failed to fetch users', e);
+    }
+  };
  
-  useEffect(() => { fetchProjects(); }, []);
+  useEffect(() => {
+    fetchProjects();
+    fetchUsers();
+    
+    // Refresh on focus and visibility change to ensure fresh data after returning from other pages
+    const handleFocus = () => fetchProjects();
+    const handleVisibility = () => document.visibilityState === 'visible' && fetchProjects();
+    
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [pathname]);
  
   const handleDelete = async () => {
     if (!deletingProject) return;
@@ -473,6 +500,7 @@ export default function ProjectsPage() {
                     onDelete={(p) => setDeletingProject(p)}
                     onSendForSurvey={(p) => { setSurveyProject(p); setIsSurveyAssignOpen(true); }}
                     onCompleteSurvey={(p) => { setSurveyProject(p); setIsSurveyModalOpen(true); }}
+                    allUsers={allUsers}
                   />
                 ))}
               </div>
@@ -522,25 +550,49 @@ export default function ProjectsPage() {
                           {project.clientName && <span className="font-medium">{project.clientName}</span>}
                           <span className="text-slate-400">{startStr} → {endStr}</span>
                         </div>
-                        <div className="flex items-center gap-4 pt-1">
-                          <Link
-                            href={`/projects/${project._id}`}
-                            className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-500 transition-colors"
-                          >
-                            Open <ArrowRight className="w-3.5 h-3.5" />
-                          </Link>
-                          <button
-                            onClick={() => { setEditingProject(project); setIsModalOpen(true); }}
-                            className="text-xs font-bold text-slate-500 hover:text-gray-900 transition-colors"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => setDeletingProject(project)}
-                            className="text-xs font-bold text-red-400 hover:text-red-600 transition-colors"
-                          >
-                            Delete
-                          </button>
+                        <div className="flex items-center justify-between pt-1 mt-2 border-t border-gray-100/50">
+                          {/* Left side: Member avatars */}
+                          <div className="flex -space-x-1.5 pt-2">
+                            {project.members?.slice(0, 4).map((member: any, i: number) => {
+                              const matchedUser = allUsers.find(u => u._id === member || u._id === member?.userId || u._id === member?._id || u._id === member?.user);
+                              const name = (member.user?.name || member.userId?.name || member.name || matchedUser?.name || '?');
+                              return (
+                                <div
+                                  key={i}
+                                  title={name}
+                                  className="w-6 h-6 rounded-md bg-blue-100 border-2 border-white flex items-center justify-center text-[9px] font-bold text-blue-700 shadow-sm uppercase"
+                                >
+                                  {name !== '?' ? name.charAt(0) : '?'}
+                                </div>
+                              );
+                            })}
+                            {(project.members?.length ?? 0) > 4 && (
+                              <div className="w-6 h-6 rounded-md bg-gray-100 border-2 border-white flex items-center justify-center text-[9px] font-bold text-slate-500 shadow-sm">
+                                +{project.members!.length - 4}
+                              </div>
+                            )}
+                          </div>
+                          {/* Right side: Actions */}
+                          <div className="flex items-center gap-4 pt-2">
+                            <Link
+                              href={`/projects/${project._id}`}
+                              className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-500 transition-colors"
+                            >
+                              Open <ArrowRight className="w-3.5 h-3.5" />
+                            </Link>
+                            <button
+                              onClick={() => { setEditingProject(project); setIsModalOpen(true); }}
+                              className="text-xs font-bold text-slate-500 hover:text-gray-900 transition-colors"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => setDeletingProject(project)}
+                              className="text-xs font-bold text-red-400 hover:text-red-600 transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       </div>
  
