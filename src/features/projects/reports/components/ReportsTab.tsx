@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Calendar, CheckCircle2, Circle, Clock, MessageSquare,
   User, Image as ImageIcon, X, ChevronRight, Loader2, BarChart2,
-  TrendingUp, Activity, Download
+  TrendingUp, Activity, Download, Mail, FileText, Wrench, AlertCircle
 } from 'lucide-react';
 import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
@@ -12,12 +12,16 @@ import { SkeletonLoader } from '@/components/skeletons/SkeletonLoader';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '@/providers/AuthContext';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 
 interface ReportsTabProps {
   projectId: string;
 }
 
 export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
+  const { project: contextProject } = useProjectContext();
+  const { user } = useAuth();
   const [reportType, setReportType] = useState<'Daily' | 'Monthly'>('Daily');
   const [milestones, setMilestones] = useState<any[]>([]);
   const [members, setMembers] = useState<any[]>([]);
@@ -26,6 +30,8 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
   const [project, setProject] = useState<any>(null);
   const [issues, setIssues] = useState<any[]>([]);
   const [snags, setSnags] = useState<any[]>([]);
+  const [downloadingPDF, setDownloadingPDF] = useState(false);
+  const [emailing, setEmailing] = useState(false);
 
   const toast = useToast();
 
@@ -40,9 +46,12 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [msRes, usersRes] = await Promise.all([
+        const [msRes, usersRes, projectRes, issuesRes, snagsRes] = await Promise.all([
           api.get(`/projects/${projectId}/milestones`),
-          api.get(`/users?projectId=${projectId}`)
+          api.get(`/users?projectId=${projectId}`),
+          api.get(`/projects/${projectId}`),
+          api.get(`/projects/${projectId}/issues`),
+          api.get(`/projects/${projectId}/snags`)
         ]);
 
         const msData = Array.isArray(msRes.data)
@@ -54,6 +63,10 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
 
         const rawUsers = Array.isArray(usersRes.data) ? usersRes.data : [];
         setMembers(rawUsers);
+
+        setProject(projectRes.data);
+        setIssues(Array.isArray(issuesRes.data) ? issuesRes.data : []);
+        setSnags(Array.isArray(snagsRes.data) ? snagsRes.data : []);
       } catch (err) {
         console.error(err);
         toast.error('Failed to load reports data');
@@ -64,7 +77,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
     fetchData();
   }, [projectId]);
 
-  const { chartData, groupedTasks, totalFiltered } = useMemo(() => {
+  const { chartData, groupedTasks, totalFiltered, rangeLogs, rangeIssues, rangeSnags } = useMemo(() => {
     const allCompletedTasks: any[] = [];
     milestones.forEach(m => {
       if (m.tasks) {
@@ -80,12 +93,31 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
       }
     });
 
-    const cData: { value: number; label: string }[] = [];
+    const startLimit = new Date();
+    if (reportType === 'Daily') {
+      startLimit.setDate(startLimit.getDate() - 7);
+    } else {
+      startLimit.setMonth(startLimit.getMonth() - 6);
+    }
+    startLimit.setHours(0, 0, 0, 0);
+
+    const endLimit = new Date();
+    endLimit.setHours(23, 59, 59, 999);
+
+    // Filter tasks
     const grouped: Record<string, any[]> = {};
     let tFiltered = 0;
+    const recentTasks = allCompletedTasks.filter(t => t.completedAtDate >= startLimit && t.completedAtDate <= endLimit);
+    recentTasks.forEach(t => {
+      if (!grouped[t.milestoneName]) grouped[t.milestoneName] = [];
+      grouped[t.milestoneName].push(t);
+      tFiltered++;
+    });
 
+    // Chart data calculation
+    const cData: { value: number; label: string }[] = [];
     if (reportType === 'Daily') {
-      // Last 7 days
+      // Last 7 days chart points
       for (let i = 6; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
@@ -97,21 +129,8 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
         ).length;
         cData.push({ value: count, label: dateStr });
       }
-
-      // Filter tasks for last 7 days for the list
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      // set hours to 0 to compare full days
-      sevenDaysAgo.setHours(0, 0, 0, 0);
-      const recentTasks = allCompletedTasks.filter(t => t.completedAtDate >= sevenDaysAgo);
-      recentTasks.forEach(t => {
-        if (!grouped[t.milestoneName]) grouped[t.milestoneName] = [];
-        grouped[t.milestoneName].push(t);
-        tFiltered++;
-      });
-
     } else {
-      // Last 6 months
+      // Last 6 months chart points
       for (let i = 5; i >= 0; i--) {
         const d = new Date();
         d.setMonth(d.getMonth() - i);
@@ -122,21 +141,41 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
         ).length;
         cData.push({ value: count, label: monthStr });
       }
-
-      // Filter tasks for last 6 months for the list
-      const sixMonthsAgo = new Date();
-      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-      sixMonthsAgo.setHours(0, 0, 0, 0);
-      const recentTasks = allCompletedTasks.filter(t => t.completedAtDate >= sixMonthsAgo);
-      recentTasks.forEach(t => {
-        if (!grouped[t.milestoneName]) grouped[t.milestoneName] = [];
-        grouped[t.milestoneName].push(t);
-        tFiltered++;
-      });
     }
 
-    return { chartData: cData, groupedTasks: grouped, totalFiltered: tFiltered };
-  }, [milestones, reportType]);
+    // Filter logs
+    const logs = (project?.auditTrail || [])
+      .filter((log: any) => {
+        const d = new Date(log.timestamp);
+        return d >= startLimit && d <= endLimit;
+      })
+      .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    // Filter issues
+    const filteredIssues = issues
+      .filter((issue: any) => {
+        const d = new Date(issue.createdAt);
+        return d >= startLimit && d <= endLimit;
+      })
+      .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    // Filter snags
+    const filteredSnags = snags
+      .filter((snag: any) => {
+        const d = new Date(snag.createdAt);
+        return d >= startLimit && d <= endLimit;
+      })
+      .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    return {
+      chartData: cData,
+      groupedTasks: grouped,
+      totalFiltered: tFiltered,
+      rangeLogs: logs,
+      rangeIssues: filteredIssues,
+      rangeSnags: filteredSnags
+    };
+  }, [milestones, reportType, project, issues, snags]);
 
   const handleExportReport = () => {
     if (Object.keys(groupedTasks).length === 0) {
@@ -176,6 +215,260 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
     a.click();
     URL.revokeObjectURL(url);
     toast.success(`${reportType} report exported successfully`);
+  };
+
+  const safeFormatDate = (dateVal: any) => {
+    if (!dateVal) return '-';
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return '-';
+    return d.toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+  const safeFormatDateTime = (dateVal: any) => {
+    if (!dateVal) return '-';
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return '-';
+    return d.toLocaleString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const handleDownloadPDF = async () => {
+    setDownloadingPDF(true);
+    try {
+      // @ts-ignore
+      const html2pdf = (await import('html2pdf.js')).default;
+      
+      const allCompletedTasks: any[] = [];
+      milestones.forEach(m => {
+        if (m.tasks) {
+          m.tasks.forEach((t: any) => {
+            if (t.isCompleted) {
+              allCompletedTasks.push({
+                ...t,
+                milestoneName: m.name,
+                completedAtDate: new Date(t.completedAt || m.updatedAt || new Date())
+              });
+            }
+          });
+        }
+      });
+
+      const startLimit = new Date();
+      if (reportType === 'Daily') {
+        startLimit.setDate(startLimit.getDate() - 7);
+      } else {
+        startLimit.setMonth(startLimit.getMonth() - 6);
+      }
+      startLimit.setHours(0, 0, 0, 0);
+
+      const endLimit = new Date();
+      endLimit.setHours(23, 59, 59, 999);
+
+      const recentTasks = allCompletedTasks.filter(t => t.completedAtDate >= startLimit && t.completedAtDate <= endLimit);
+
+      // Generate HTML string matching the PDF format
+      let htmlContent = `
+        <html>
+        <head>
+          <style>
+            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 24px; color: #1e293b; line-height: 1.5; }
+            .header { margin-bottom: 24px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px; }
+            .project-label { color: #2563eb; font-size: 14px; font-weight: bold; margin: 0; }
+            .report-title { font-size: 20px; font-weight: 800; color: #0f172a; margin: 4px 0 0 0; }
+            .gen-date { color: #64748b; font-size: 11px; margin: 4px 0 0 0; font-weight: 500; }
+            h3 { color: #0f172a; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 28px; margin-bottom: 8px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 4px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 10px; }
+            th { background-color: #f8fafc; border: 1.5px solid #e2e8f0; color: #475569; font-weight: bold; padding: 6px 8px; text-align: left; text-transform: uppercase; font-size: 8px; letter-spacing: 0.05em; }
+            td { border: 1px solid #e2e8f0; padding: 6px 8px; color: #334155; vertical-align: top; }
+            .empty { padding: 12px; text-align: center; color: #94a3b8; font-style: italic; border: 1px dashed #e2e8f0; border-radius: 8px; font-size: 10px; margin-bottom: 16px; }
+            .priority-critical { color: #dc2626; font-weight: bold; }
+            .priority-high { color: #ea580c; font-weight: bold; }
+            .priority-medium { color: #d97706; font-weight: bold; }
+            .priority-low { color: #2563eb; font-weight: bold; }
+            small { color: #64748b; font-size: 8px; display: block; margin-top: 2px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <p class="project-label">Project: ${project?.name || contextProject?.name || 'Sunrise Height'}</p>
+            <h2 class="report-title">${reportType === 'Daily' ? 'Daily Project Report (Last 7 Days)' : 'Monthly Project Report (Last 6 Months)'}</h2>
+            <p class="gen-date">Generated on: ${safeFormatDate(new Date())}</p>
+          </div>
+
+          <h3>Completed Tasks</h3>
+          ${recentTasks.length === 0 ? `
+            <div class="empty">No tasks completed in this range.</div>
+          ` : `
+            <table>
+              <thead>
+                <tr>
+                  <th>Milestone</th>
+                  <th>Task Title</th>
+                  <th>Completion Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${recentTasks.map(t => `
+                  <tr>
+                    <td style="font-weight: 600;">${t.milestoneName}</td>
+                    <td>${t.title}</td>
+                    <td>${safeFormatDate(t.completedAtDate)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `}
+
+          <h3>Reported Issues</h3>
+          ${rangeIssues.length === 0 ? `
+            <div class="empty">No issues reported in this range.</div>
+          ` : `
+            <table>
+              <thead>
+                <tr>
+                  <th>Issue Title</th>
+                  <th>Category</th>
+                  <th>Priority</th>
+                  <th>Status</th>
+                  <th>Reported Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rangeIssues.map(issue => `
+                  <tr>
+                    <td>
+                      <span style="font-weight: bold; color: #0f172a;">${issue.title}</span>
+                      ${issue.description ? `<small>${issue.description}</small>` : ''}
+                    </td>
+                    <td>${issue.category || 'Other'}</td>
+                    <td><span class="priority-${issue.priority.toLowerCase()}">${issue.priority}</span></td>
+                    <td>${issue.status}</td>
+                    <td>${safeFormatDate(issue.createdAt)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `}
+
+          <h3>Reported Snags</h3>
+          ${rangeSnags.length === 0 ? `
+            <div class="empty">No snags reported in this range.</div>
+          ` : `
+            <table>
+              <thead>
+                <tr>
+                  <th>Snag Title</th>
+                  <th>Priority</th>
+                  <th>Status</th>
+                  <th>Reported Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rangeSnags.map(snag => `
+                  <tr>
+                    <td>
+                      <span style="font-weight: bold; color: #0f172a;">${snag.title}</span>
+                      ${snag.description ? `<small>${snag.description}</small>` : ''}
+                    </td>
+                    <td><span class="priority-${snag.priority.toLowerCase()}">${snag.priority}</span></td>
+                    <td>${snag.status}</td>
+                    <td>${safeFormatDate(snag.createdAt)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `}
+
+          <h3>Activity Logs</h3>
+          ${rangeLogs.length === 0 ? `
+            <div class="empty">No activity logs in this range.</div>
+          ` : `
+            <table>
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Role</th>
+                  <th>Action</th>
+                  <th>Details</th>
+                  <th>Timestamp</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rangeLogs.map((log: any) => `
+                  <tr>
+                    <td style="font-weight: bold;">${log.userName || log.user?.name || 'System'}</td>
+                    <td style="text-transform: capitalize;">${log.userRole || log.user?.role || '-'}</td>
+                    <td><span style="font-weight: bold; color: #2563eb;">${log.action}</span></td>
+                    <td>${log.details}</td>
+                    <td>${safeFormatDateTime(log.timestamp)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `}
+        </body>
+        </html>
+      `;
+
+      const element = document.createElement('div');
+      element.innerHTML = htmlContent;
+
+      const opt = {
+        margin:       0.3,
+        filename:     `Project_Report_${project?.name || 'Details'}_${reportType}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+
+      await html2pdf().set(opt).from(element).save();
+      toast.success('PDF report downloaded successfully');
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Failed to download PDF report: ${err.message || err}`);
+    } finally {
+      setDownloadingPDF(false);
+    }
+  };
+
+  const handleEmailReport = async () => {
+    const targetEmail = user?.email;
+    if (!targetEmail) {
+      toast.error('Could not determine logged-in user email');
+      return;
+    }
+    setEmailing(true);
+    try {
+      const startLimit = new Date();
+      if (reportType === 'Daily') {
+        startLimit.setDate(startLimit.getDate() - 7);
+      } else {
+        startLimit.setMonth(startLimit.getMonth() - 6);
+      }
+      startLimit.setHours(0, 0, 0, 0);
+
+      await api.post(`/projects/${projectId}/email-report`, {
+        reportType,
+        startDate: startLimit.toISOString(),
+        endDate: new Date().toISOString(),
+        customTargetEmail: targetEmail,
+      });
+      toast.success(`Report PDF sent successfully to ${targetEmail}`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to send email report');
+    } finally {
+      setEmailing(false);
+    }
   };
 
   // SVG Chart calculation parameters (shrunk for neat high-density UI)
@@ -233,11 +526,39 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
 
             <button
               onClick={handleExportReport}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 border border-gray-200 rounded-xl text-xs font-bold text-slate-600 transition-all shadow-sm active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 border border-gray-200 rounded-xl text-xs font-bold text-slate-600 transition-all shadow-sm active:scale-95 cursor-pointer"
               title="Export Report to CSV"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Export Report</span>
+              <span>Export CSV</span>
+            </button>
+
+            {/* <button
+              onClick={handleDownloadPDF}
+              disabled={downloadingPDF}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 border border-emerald-700/10 rounded-xl text-xs font-bold text-white transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+              title="Download PDF Report"
+            >
+              {downloadingPDF ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+              ) : (
+                <FileText className="w-3.5 h-3.5" />
+              )}
+              <span>{downloadingPDF ? 'Downloading...' : 'Download PDF'}</span>
+            </button> */}
+
+            <button
+              onClick={handleEmailReport}
+              disabled={emailing}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 border border-blue-700/10 rounded-xl text-xs font-bold text-white transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+              title="Email PDF Report"
+            >
+              {emailing ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+              ) : (
+                <Mail className="w-3.5 h-3.5" />
+              )}
+              <span>{emailing ? 'Emailing...' : 'Email PDF'}</span>
             </button>
           </div>
 
@@ -368,11 +689,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
                             </p>
                             <p className="text-[9px] text-slate-400 mt-0.5 flex items-center gap-1 font-medium">
                               <Calendar className="w-2.5 h-2.5" />
-                              {new Date(task.completedAtDate).toLocaleDateString('en-IN', {
-                                day: 'numeric',
-                                month: 'short',
-                                year: 'numeric'
-                              })}
+                              {safeFormatDate(task.completedAtDate)}
                             </p>
                           </div>
                         </div>
@@ -382,6 +699,164 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+
+        {/* Reported Issues Section */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Reported Issues</h3>
+          {rangeIssues.length === 0 ? (
+            <div className="py-6 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-white">
+              <AlertCircle className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+              <p className="text-slate-400 font-medium text-xs">No issues reported in this range.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-gray-50/75 border-b border-gray-200 text-slate-500 font-black uppercase tracking-wider text-[10px]">
+                    <th className="p-3">Issue Title</th>
+                    <th className="p-3">Category</th>
+                    <th className="p-3">Priority</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3">Reported Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 font-medium text-slate-700">
+                  {rangeIssues.map((issue, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/50">
+                      <td className="p-3">
+                        <div className="font-bold text-slate-900">{issue.title}</div>
+                        {issue.description && <div className="text-[10px] text-slate-400 mt-0.5 font-medium">{issue.description}</div>}
+                      </td>
+                      <td className="p-3 text-slate-500">{issue.category || 'Other'}</td>
+                      <td className="p-3">
+                        <span className={cn(
+                          'px-2 py-0.5 rounded-full text-[9px] font-bold border',
+                          issue.priority === 'Critical' ? 'bg-red-50 text-red-700 border-red-100' :
+                          issue.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                          'bg-blue-50 text-blue-700 border-blue-100'
+                        )}>
+                          {issue.priority}
+                        </span>
+                      </td>
+                      <td className="p-3">
+                        <span className={cn(
+                          'px-2 py-0.5 rounded-full text-[9px] font-bold border',
+                          issue.status === 'Resolved' || issue.status === 'Closed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'
+                        )}>
+                          {issue.status}
+                        </span>
+                      </td>
+                      <td className="p-3 text-slate-400">
+                        {safeFormatDate(issue.createdAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Reported Snags Section */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Reported Snags</h3>
+          {rangeSnags.length === 0 ? (
+            <div className="py-6 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-white">
+              <Wrench className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+              <p className="text-slate-400 font-medium text-xs">No snags reported in this range.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-gray-50/75 border-b border-gray-200 text-slate-500 font-black uppercase tracking-wider text-[10px]">
+                    <th className="p-3">Snag Title</th>
+                    <th className="p-3">Priority</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3">Reported Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 font-medium text-slate-700">
+                  {rangeSnags.map((snag, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/50">
+                      <td className="p-3">
+                        <div className="font-bold text-slate-900">{snag.title}</div>
+                        {snag.description && <div className="text-[10px] text-slate-400 mt-0.5 font-medium">{snag.description}</div>}
+                      </td>
+                      <td className="p-3">
+                        <span className={cn(
+                          'px-2 py-0.5 rounded-full text-[9px] font-bold border',
+                          snag.priority === 'Critical' ? 'bg-red-50 text-red-700 border-red-100' :
+                          snag.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                          'bg-blue-50 text-blue-700 border-blue-100'
+                        )}>
+                          {snag.priority}
+                        </span>
+                      </td>
+                      <td className="p-3">
+                        <span className={cn(
+                          'px-2 py-0.5 rounded-full text-[9px] font-bold border',
+                          snag.status === 'Resolved' || snag.status === 'Closed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'
+                        )}>
+                          {snag.status}
+                        </span>
+                      </td>
+                      <td className="p-3 text-slate-400">
+                        {safeFormatDate(snag.createdAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Activity Logs Section */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Activity Logs</h3>
+          {rangeLogs.length === 0 ? (
+            <div className="py-6 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-white">
+              <Activity className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+              <p className="text-slate-400 font-medium text-xs">No activity logs in this range.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-gray-50/75 border-b border-gray-200 text-slate-500 font-black uppercase tracking-wider text-[10px]">
+                    <th className="p-3">User</th>
+                    <th className="p-3">Role</th>
+                    <th className="p-3">Action</th>
+                    <th className="p-3">Details</th>
+                    <th className="p-3">Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 font-medium text-slate-700">
+                  {rangeLogs.map((log: any, idx: number) => (
+                    <tr key={idx} className="hover:bg-slate-50/50">
+                      <td className="p-3">
+                        <div className="font-bold text-slate-900">{log.userName || log.user?.name || 'System'}</div>
+                      </td>
+                      <td className="p-3 text-slate-500 capitalize">{log.userRole || log.user?.role || '-'}</td>
+                      <td className="p-3">
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
+                          {log.action}
+                        </span>
+                      </td>
+                      <td className="p-3 text-slate-600 max-w-[250px] truncate" title={log.details}>
+                        {log.details}
+                      </td>
+                      <td className="p-3 text-slate-400">
+                        {safeFormatDateTime(log.timestamp)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
@@ -438,11 +913,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
                       <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Completed On</h5>
                       <p className="text-xs font-medium text-slate-700 mt-1 flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                        {new Date(selectedTask.completedAtDate).toLocaleDateString('en-IN', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric'
-                        })}
+                        {safeFormatDate(selectedTask.completedAtDate)}
                       </p>
                     </div>
                   </div>

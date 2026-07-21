@@ -42,21 +42,23 @@ const STATUS_FILTERS = ['All', 'Open', 'In Progress', 'Escalated', 'Resolved', '
 type StatusFilter = typeof STATUS_FILTERS[number];
 
 export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = 'Issue' }) => {
-  const [issues, setIssues]             = useState<any[]>([]);
-  const [loading, setLoading]           = useState(true);
-  const [activeType, setActiveType]     = useState<'Issue' | 'Snag'>(initialType);
-  const [isModalOpen, setIsModalOpen]   = useState(false);
+  const [issues, setIssues] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeType, setActiveType] = useState<'Issue' | 'Snag'>(initialType);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<any>(null);
   const [editingIssue, setEditingIssue] = useState<any>(null);
   const [isEscalationOpen, setIsEscalationOpen] = useState(false);
-  const [searchQuery, setSearchQuery]   = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
-  const [deletingId, setDeletingId]     = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [escalationMatrix, setEscalationMatrix] = useState<any>(null);
 
   // Snag specific modals
   const [assigningSnag, setAssigningSnag] = useState<any>(null);
   const [completingSnag, setCompletingSnag] = useState<any>(null);
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
 
   const toast = useToast();
   const { user } = useAuth();
@@ -166,41 +168,94 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
     }
   };
 
+  const handleBulkSendDrafts = async () => {
+    const draftSnags = issues.filter(i => i.status === 'Draft');
+    if (draftSnags.length === 0) return;
+
+    if (!window.confirm(`Send all ${draftSnags.length} draft snags for fixing?`)) return;
+
+    setBulkSubmitting(true);
+    try {
+      await Promise.all(
+        draftSnags.map(snag =>
+          api.patch(`/snags/${snag._id}`, {
+            status: 'In Progress',
+            resolutionDetails: 'Sent for rectification.'
+          })
+        )
+      );
+
+      await api.patch(`/projects/${projectId}`, {
+        auditAction: 'SnagUpdated',
+        auditDetails: `${draftSnags.length} snags updated to In Progress.`
+      });
+
+      toast.success(`${draftSnags.length} snags sent for fixing successfully!`);
+      fetchIssues();
+      fetchProject();
+    } catch (error) {
+      toast.error('Failed to bulk send snags');
+    } finally {
+      setBulkSubmitting(false);
+    }
+  };
+
+  const handleFinalizeSnagging = async () => {
+    if (!window.confirm('Are you sure you want to finalize the snagging phase? This will set the project status to Snagging Completed.')) return;
+
+    setFinalizing(true);
+    try {
+      await api.patch(`/projects/${projectId}`, {
+        status: 'Snagging Completed',
+        auditAction: 'StatusChange',
+        auditDetails: 'Snagging phase finalized by inspector.'
+      });
+
+      toast.success('Snagging phase finalized successfully!');
+      fetchIssues();
+      fetchProject();
+    } catch (error) {
+      toast.error('Failed to finalize snagging phase');
+    } finally {
+      setFinalizing(false);
+    }
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'Critical': return 'text-red-700 bg-red-100 border-red-200';
-      case 'High':     return 'text-orange-700 bg-orange-100 border-orange-200';
-      case 'Medium':   return 'text-amber-700 bg-amber-100 border-amber-200';
-      default:         return 'text-blue-700 bg-blue-100 border-blue-200';
+      case 'High': return 'text-orange-700 bg-orange-100 border-orange-200';
+      case 'Medium': return 'text-amber-700 bg-amber-100 border-amber-200';
+      default: return 'text-blue-700 bg-blue-100 border-blue-200';
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Resolved':
-      case 'Closed':      return 'text-emerald-700 bg-emerald-100 border-emerald-200';
+      case 'Closed': return 'text-emerald-700 bg-emerald-100 border-emerald-200';
       case 'In Progress': return 'text-blue-700 bg-blue-100 border-blue-200';
-      case 'Escalated':   return 'text-purple-700 bg-purple-100 border-purple-200';
-      default:            return 'text-slate-600 bg-gray-100 border-gray-200';
+      case 'Escalated': return 'text-purple-700 bg-purple-100 border-purple-200';
+      default: return 'text-slate-600 bg-gray-100 border-gray-200';
     }
   };
 
   const getSnagStatusBadgeClass = (status: string) => {
     switch (status) {
-      case 'Resolved':    return 'text-emerald-700 bg-emerald-50 border border-emerald-100';
-      case 'Draft':       return 'text-slate-600 bg-slate-50 border border-slate-150';
-      default:            return 'text-amber-700 bg-amber-50 border border-amber-100';
+      case 'Resolved': return 'text-emerald-700 bg-emerald-50 border border-emerald-100';
+      case 'Draft': return 'text-slate-600 bg-slate-50 border border-slate-150';
+      default: return 'text-amber-700 bg-amber-50 border border-amber-100';
     }
   };
 
   const getFilterActiveClass = (f: StatusFilter) => {
     switch (f) {
-      case 'Escalated':   return 'bg-purple-600 text-white border-purple-600';
+      case 'Escalated': return 'bg-purple-600 text-white border-purple-600';
       case 'Resolved':
-      case 'Closed':      return 'bg-emerald-600 text-white border-emerald-600';
+      case 'Closed': return 'bg-emerald-600 text-white border-emerald-600';
       case 'In Progress': return 'bg-blue-500 text-white border-blue-500';
-      case 'My Task':     return 'bg-amber-50 text-white border-amber-500';
-      default:            return 'bg-blue-600 text-white border-blue-600';
+      case 'My Task': return 'bg-amber-50 text-white border-amber-500';
+      default: return 'bg-blue-600 text-white border-blue-600';
     }
   };
 
@@ -232,7 +287,7 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
         </div>
 
         <div className="flex items-center space-x-3">
-          <div className="flex p-1 bg-gray-100 border border-gray-200 rounded-xl">
+          {/* <div className="flex p-1 bg-gray-100 border border-gray-200 rounded-xl">
             <button
               onClick={() => setActiveType('Issue')}
               className={cn('px-4 py-1.5 rounded-lg text-xs font-bold transition-all', activeType === 'Issue' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-500 hover:text-gray-900')}
@@ -245,7 +300,7 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
             >
               Snags
             </button>
-          </div>
+          </div> */}
           {activeType === 'Issue' && (
             <button
               onClick={() => { fetchEscalationMatrix(); setIsEscalationOpen(true); }}
@@ -254,6 +309,38 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
               <GitBranch className="w-4 h-4" />
               <span>Escalation Matrix</span>
             </button>
+          )}
+          {activeType === 'Snag' && project?.status === 'Under Snagging' && (
+            <>
+              {issues.filter(i => i.status === 'Draft').length > 0 && canAssignSnagging && (
+                <button
+                  onClick={handleBulkSendDrafts}
+                  disabled={bulkSubmitting}
+                  className="flex items-center space-x-2 bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 hover:border-amber-300 px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer shadow-sm"
+                >
+                  {bulkSubmitting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Wrench className="w-4 h-4" />
+                  )}
+                  <span>Send Drafts ({issues.filter(i => i.status === 'Draft').length})</span>
+                </button>
+              )}
+              {isInspector && (
+                <button
+                  onClick={handleFinalizeSnagging}
+                  disabled={finalizing}
+                  className="flex items-center space-x-2 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer shadow-sm"
+                >
+                  {finalizing ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CheckCircle className="w-4 h-4" />
+                  )}
+                  <span>Finalize Snagging</span>
+                </button>
+              )}
+            </>
           )}
           {(activeType === 'Issue' || isInspector || canAssignSnagging || user?.role?.name === 'Admin') && (
             <button
@@ -284,9 +371,9 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               { label: 'Open / Draft', value: typeIssues.filter(i => i.status === 'Open' || i.status === 'Draft').length, color: 'text-blue-600' },
-              { label: 'Critical',    value: typeIssues.filter(i => i.priority === 'Critical').length,  color: 'text-red-600' },
+              { label: 'Critical', value: typeIssues.filter(i => i.priority === 'Critical').length, color: 'text-red-600' },
               { label: 'In Progress', value: typeIssues.filter(i => i.status === 'In Progress').length, color: 'text-amber-600' },
-              { label: 'Resolved',    value: typeIssues.filter(i => i.status === 'Resolved').length,    color: 'text-emerald-600' },
+              { label: 'Resolved', value: typeIssues.filter(i => i.status === 'Resolved').length, color: 'text-emerald-600' },
             ].map((stat, i) => (
               <GlassCard key={i} className="p-4 border-gray-200" gradient>
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">{stat.label}</p>
@@ -308,7 +395,7 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
                     <p className="text-[10px] text-slate-500">Configured sequential progression for resolving critical issues.</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
                   {escalationMatrix.levels.map((lvl: any, idx: number) => {
                     const userName = lvl.user?.name || 'Unassigned';

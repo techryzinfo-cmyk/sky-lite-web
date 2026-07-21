@@ -27,7 +27,7 @@ const ALL_TABS = [
   { id: 'materials',    name: 'Materials',      icon: Package },
   { id: 'site-survey',  name: 'Site Survey',    icon: ClipboardList },
   { id: 'attendance',   name: 'Attendance',     icon: Clock },
-  { id: 'issues',       name: 'Issues & Snags', icon: AlertCircle },
+  { id: 'issues',       name: 'Snags', icon: AlertCircle },
   { id: 'risks',        name: 'Risks',          icon: ShieldAlert },
   { id: 'handover',     name: 'Handover',       icon: ClipboardCheck },
   { id: 'audit',        name: 'Audit Trail',    icon: History },
