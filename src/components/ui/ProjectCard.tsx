@@ -192,11 +192,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               <div
                 key={i}
                 title={name}
-<<<<<<< HEAD
-                className="w-6 h-6 rounded-md bg-blue-100 border-2 border-white flex items-center justify-center text-[9px] font-bold text-blue-700 uppercase"
-=======
                 className="w-6 h-6 rounded bg-blue-50 border-2 border-white flex items-center justify-center text-[10px] font-bold text-blue-600 shadow-sm"
->>>>>>> c0733174a6154d4786deeaad2ae73fd971a5b080
               >
                 {name !== '?' ? name.charAt(0) : '?'}
               </div>
