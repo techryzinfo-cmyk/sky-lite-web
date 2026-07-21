@@ -7,6 +7,7 @@ import { useAuth } from '@/providers/AuthContext';
 import { useToast } from '@/providers/ToastContext';
 import api from '@/services/api.client';
 import AppInfoModal from '@/components/settings/AppInfoModal';
+import { cn } from '@/lib/utils';
 
 import {
   Bell,
@@ -69,32 +70,38 @@ const Row = ({
   subtitle,
   right,
   onClick,
-}: any) => (
-  <button
-    onClick={onClick}
-    className="w-full px-6 py-5 flex justify-between items-center hover:bg-slate-50 transition"
-  >
-    <div className="flex items-center gap-4">
-      <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center">
-        <Icon className="w-5 h-5 text-blue-600" />
-      </div>
-
-      <div className="text-left">
-        <div className="font-semibold text-slate-900">
-          {title}
+}: any) => {
+  const Component = onClick ? 'button' : 'div';
+  return (
+    <Component
+      {...(onClick ? { type: 'button', onClick } : {})}
+      className={cn(
+        "w-full px-6 py-5 flex justify-between items-center transition text-left",
+        onClick ? "hover:bg-slate-50 cursor-pointer" : ""
+      )}
+    >
+      <div className="flex items-center gap-4">
+        <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center">
+          <Icon className="w-5 h-5 text-blue-600" />
         </div>
 
-        {subtitle && (
-          <div className="text-sm text-slate-500 mt-1">
-            {subtitle}
+        <div className="text-left">
+          <div className="font-semibold text-slate-900">
+            {title}
           </div>
-        )}
-      </div>
-    </div>
 
-    {right}
-  </button>
-);
+          {subtitle && (
+            <div className="text-sm text-slate-500 mt-1">
+              {subtitle}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {right}
+    </Component>
+  );
+};
 
 
 

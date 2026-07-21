@@ -431,14 +431,14 @@ export default function ProjectsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-black text-gray-900">Projects</h1>
+            <h1 className="text-3xl font-extrabold text-gray-900">Projects</h1>
             <p className="text-slate-500 mt-1">Manage and track your construction projects.</p>
           </div>
           <button
             onClick={() => { setEditingProject(null); setIsModalOpen(true); }}
-            className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-bold transition-all active:scale-[0.98] shadow-sm shadow-blue-600/20"
+            className="flex items-center justify-center space-x-1.5 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-[0.98] shadow-sm shadow-blue-600/10"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4" />
             <span>New Project</span>
           </button>
         </div>
@@ -491,7 +491,7 @@ export default function ProjectsPage() {
         <SkeletonLoader loading={loading} preset="card-grid">
           {filteredProjects.length > 0 && !loading ? (
             viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {filteredProjects.map((project) => (
                   <ProjectCard
                     key={project._id}
@@ -514,7 +514,7 @@ export default function ProjectsPage() {
                 {/* Table header — md+ only */}
                 <div className="hidden md:grid md:grid-cols-[1fr_120px_110px_120px_110px] gap-4 px-6 py-3 border-b border-gray-100 bg-gray-50">
                   {['Project', 'Client', 'Timeline', 'Status', ''].map(h => (
-                    <span key={h} className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{h}</span>
+                    <span key={h} className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{h}</span>
                   ))}
                 </div>
  
@@ -542,7 +542,7 @@ export default function ProjectsPage() {
                             <p className="text-sm font-bold text-gray-900 truncate">{project.name}</p>
                             <p className="text-[10px] text-slate-500 truncate mt-0.5">{project.description || 'No description'}</p>
                           </div>
-                          <span className={cn('shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border', statusColor)}>
+                          <span className={cn('shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border', statusColor)}>
                             {project.status}
                           </span>
                         </div>
@@ -607,7 +607,7 @@ export default function ProjectsPage() {
                           <p className="text-[10px] font-bold text-slate-500">{startStr}</p>
                           <p className="text-[10px] text-slate-400">→ {endStr}</p>
                         </div>
-                        <span className={cn('px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border w-fit', statusColor)}>
+                        <span className={cn('px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border w-fit', statusColor)}>
                           {project.status}
                         </span>
                         <div className="flex items-center gap-2">

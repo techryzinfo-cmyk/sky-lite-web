@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, Package, Scale, ArrowDownLeft, ArrowUpRight, MessageSquare, Info } from 'lucide-react';
+import { X, Loader2, Package, Scale, ArrowDownLeft, ArrowUpRight, MessageSquare, Info, Pencil } from 'lucide-react';
 import { useToast } from '@/providers/ToastContext';
 import api from '@/services/api.client';
 import { cn } from '@/lib/utils';
@@ -13,8 +13,10 @@ interface MaterialModalProps {
   onSuccess: () => void;
   projectId: string;
   initialData?: any;
-  mode?: 'create' | 'stock-in' | 'stock-out';
+  mode?: 'create' | 'stock-in' | 'stock-out' | 'edit';
 }
+
+const PREDEFINED_UNITS = ['Bags', 'kg', 'Tons', 'Liters', 'Meters', 'Nos', 'Feet', 'Sq.Ft', 'Cu.Ft', 'Cum'];
 
 export const MaterialModal: React.FC<MaterialModalProps> = ({
   isOpen,
@@ -33,6 +35,7 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({
     quantity: 0,
     note: '',
   });
+
 
   useEffect(() => {
     if (initialData) {
@@ -64,6 +67,12 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({
           initialStock: formData.quantity,
         });
         toast.success('Material added successfully!');
+      } else if (mode === 'edit') {
+        await api.patch(`/materials/${initialData._id}`, {
+          name: formData.name,
+          unit: formData.unit,
+        });
+        toast.success('Material updated successfully!');
       } else {
         const type = mode === 'stock-in' ? 'Received' : 'Used';
         await api.post(`/projects/${projectId}/materials/bulk-action`, {
@@ -87,12 +96,14 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({
 
   const getTitle = () => {
     if (mode === 'create') return 'Add New Material';
+    if (mode === 'edit') return 'Edit Material';
     if (mode === 'stock-in') return 'Material Stock In';
     return 'Material Stock Out';
   };
 
   const getIcon = () => {
     if (mode === 'create') return <Package className="w-6 h-6 text-blue-600" />;
+    if (mode === 'edit') return <Pencil className="w-6 h-6 text-blue-600" />;
     if (mode === 'stock-in') return <ArrowDownLeft className="w-6 h-6 text-emerald-600" />;
     return <ArrowUpRight className="w-6 h-6 text-red-600" />;
   };
@@ -132,7 +143,7 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
-                {mode === 'create' ? (
+                {mode === 'create' || mode === 'edit' ? (
                   <>
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-slate-600 ml-1">Material Name</label>
@@ -143,35 +154,40 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({
                           required
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
                           placeholder="e.g. Cement, Steel Bars"
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className={cn("grid gap-4", mode === 'create' ? "grid-cols-2" : "grid-cols-1")}>
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-600 ml-1">Unit</label>
                         <div className="relative group">
-                          <Scale className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                          <input
-                            type="text"
+                          <Scale className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors z-10" />
+                          <select
                             required
                             value={formData.unit}
                             onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                            className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                            placeholder="e.g. Bags, kg"
-                          />
+                            className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          >
+                            <option value="">Select Unit</option>
+                            {PREDEFINED_UNITS.map((u) => (
+                              <option key={u} value={u}>{u}</option>
+                            ))}
+                          </select>
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-600 ml-1">Initial Stock</label>
-                        <input
-                          type="number"
-                          value={formData.quantity}
-                          onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                        />
-                      </div>
+                      {mode === 'create' && (
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-600 ml-1">Initial Stock</label>
+                          <input
+                            type="number"
+                            value={formData.quantity}
+                            onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
+                            className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          />
+                        </div>
+                      )}
                     </div>
                   </>
                 ) : (
@@ -228,7 +244,7 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({
                   </button>
                   <button
                     type="submit"
-                    disabled={isLoading || (mode !== 'create' && formData.quantity <= 0)}
+                    disabled={isLoading || (mode !== 'create' && mode !== 'edit' && formData.quantity <= 0)}
                     className={cn(
                       "flex-2 py-3 px-8 rounded-xl font-bold transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg flex items-center justify-center space-x-2 text-white",
                       mode === 'stock-in' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/20' :
@@ -242,7 +258,7 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({
                         <span>Processing...</span>
                       </>
                     ) : (
-                      <span>{mode === 'create' ? 'Add Material' : mode === 'stock-in' ? 'Confirm Addition' : 'Confirm Removal'}</span>
+                      <span>{mode === 'create' ? 'Add Material' : mode === 'edit' ? 'Save Changes' : mode === 'stock-in' ? 'Confirm Addition' : 'Confirm Removal'}</span>
                     )}
                   </button>
                 </div>

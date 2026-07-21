@@ -125,16 +125,16 @@ export function ProjectDetailsTab() {
   const daysRem = calculateDaysRemaining();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-5">
       {/* ── Active Site Survey Banner ── */}
       {project.siteSurveyor && project.status === 'Site Survey' && (
-        <div className="flex items-center space-x-4 p-5 bg-blue-50 border border-blue-100 rounded-2xl">
-          <div className="p-3 rounded-xl bg-white border border-blue-200 text-blue-600 shadow-sm shrink-0">
-            <Compass className="w-6 h-6 animate-spin-slow" />
+        <div className="flex items-center space-x-3 p-4 bg-blue-50 border border-blue-100 rounded-2xl">
+          <div className="p-2 rounded-lg bg-white border border-blue-200 text-blue-600 shadow-sm shrink-0">
+            <Compass className="w-5 h-5 animate-spin-slow" />
           </div>
           <div>
-            <h4 className="text-sm font-bold text-blue-800 uppercase tracking-wider">Active Site Survey</h4>
-            <p className="text-xs text-blue-600 mt-1">
+            <h4 className="text-xs font-bold text-blue-800 uppercase tracking-wider">Active Site Survey</h4>
+            <p className="text-[11px] text-blue-600 mt-0.5">
               Assigned to <span className="font-extrabold text-blue-900">{(project.siteSurveyor as any).name || 'Site Surveyor'}</span>.
             </p>
           </div>
@@ -143,37 +143,37 @@ export function ProjectDetailsTab() {
 
       {/* ── Pending Budget Action Banner ── */}
       {canApproveBudget && pendingRequests.length > 0 && (
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 bg-red-50 border border-red-100 rounded-2xl">
-          <div className="flex items-start space-x-3">
-            <div className="p-2.5 rounded-xl bg-white border border-red-200 text-red-600 shadow-sm shrink-0 mt-0.5">
-              <AlertTriangle className="w-5 h-5" />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-red-50 border border-red-100 rounded-2xl">
+          <div className="flex items-start space-x-2.5">
+            <div className="p-2 rounded-lg bg-white border border-red-200 text-red-600 shadow-sm shrink-0 mt-0.5">
+              <AlertTriangle className="w-4.5 h-4.5" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-red-800">Pending Budget Approvals ({pendingRequests.length})</h4>
-              <p className="text-xs text-red-600 mt-1">
+              <h4 className="text-xs font-bold text-red-800">Pending Budget Approvals ({pendingRequests.length})</h4>
+              <p className="text-[11px] text-red-600 mt-0.5">
                 There are active budget lifecycle change requests awaiting your approval.
               </p>
             </div>
           </div>
           <button
             onClick={() => setShowBudgetHist(true)}
-            className="flex items-center justify-center space-x-1.5 px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-500 transition-colors shadow-sm self-start sm:self-center"
+            className="flex items-center justify-center space-x-1 px-3 py-1.5 bg-red-600 text-white rounded-xl text-[11px] font-bold hover:bg-red-500 transition-colors shadow-sm self-start sm:self-center"
           >
             <span>View Requests</span>
-            <ChevronRight className="w-3.5 h-3.5" />
+            <ChevronRight className="w-3 h-3" />
           </button>
         </div>
       )}
 
       {/* ── Under Snagging Banner ── */}
       {project.status === 'Under Snagging' && (
-        <div className="flex items-center space-x-4 p-5 bg-amber-50 border border-amber-100 rounded-2xl">
-          <div className="p-3 rounded-xl bg-white border border-amber-200 text-amber-600 shadow-sm shrink-0">
-            <Clock className="w-6 h-6 animate-pulse" />
+        <div className="flex items-center space-x-3 p-4 bg-amber-50 border border-amber-100 rounded-2xl">
+          <div className="p-2 rounded-lg bg-white border border-amber-200 text-amber-600 shadow-sm shrink-0">
+            <Clock className="w-5 h-5 animate-pulse" />
           </div>
           <div>
-            <h4 className="text-sm font-bold text-amber-800 uppercase tracking-wider">Project Under Snagging</h4>
-            <p className="text-xs text-amber-600 mt-1">
+            <h4 className="text-xs font-bold text-amber-800 uppercase tracking-wider">Project Under Snagging</h4>
+            <p className="text-[11px] text-amber-600 mt-0.5">
               Quality assurance audits are ongoing. Check Handover tab for status.
             </p>
           </div>
@@ -182,13 +182,13 @@ export function ProjectDetailsTab() {
 
       {/* ── Snagging Completed Banner ── */}
       {project.status === 'Snagging Completed' && (
-        <div className="flex items-center space-x-4 p-5 bg-emerald-50 border border-emerald-100 rounded-2xl">
-          <div className="p-3 rounded-xl bg-white border border-emerald-200 text-emerald-600 shadow-sm shrink-0">
-            <CheckCircle2 className="w-6 h-6" />
+        <div className="flex items-center space-x-3 p-4 bg-emerald-50 border border-emerald-100 rounded-2xl">
+          <div className="p-2 rounded-lg bg-white border border-emerald-200 text-emerald-600 shadow-sm shrink-0">
+            <CheckCircle2 className="w-5 h-5" />
           </div>
           <div>
-            <h4 className="text-sm font-bold text-emerald-800 uppercase tracking-wider">Snagging Completed</h4>
-            <p className="text-xs text-emerald-600 mt-1">
+            <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Snagging Completed</h4>
+            <p className="text-[11px] text-emerald-600 mt-0.5">
               The quality inspection phase is finished. Ready for handover operations.
             </p>
           </div>
@@ -196,38 +196,38 @@ export function ProjectDetailsTab() {
       )}
 
       {/* ── Bento Grid ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
         
         {/* Bento Card 1: Project Details Hero */}
-        <GlassCard className="p-6 md:p-8 border-gray-200 lg:col-span-2 flex flex-col justify-between" gradient>
+        <GlassCard className="p-4.5 md:p-5 border-gray-200 lg:col-span-2 flex flex-col justify-between" gradient>
           <div>
-            <div className="flex items-center space-x-2">
-              <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-100">
+            <div className="flex items-center space-x-1.5">
+              <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-100">
                 {project.status || 'Planning'}
               </span>
-              <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
+              <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
                 {project.category?.name || 'General'}
               </span>
             </div>
             
-            <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight mt-4">
+            <h2 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight mt-2.5">
               {project.name}
             </h2>
-            <p className="text-slate-500 mt-3 text-sm leading-relaxed">
+            <p className="text-slate-500 mt-2 text-xs leading-relaxed">
               {project.description || 'No description provided.'}
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 bg-slate-50 border border-slate-100 rounded-2xl p-4 mt-8">
+          <div className="grid grid-cols-2 gap-3 bg-slate-50 border border-slate-100 rounded-xl p-3 mt-4">
             <div>
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Start Date</span>
-              <span className="text-sm font-bold text-slate-800 mt-1 block">
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Start Date</span>
+              <span className="text-xs font-bold text-slate-800 mt-0.5 block">
                 {project.startDate ? new Date(project.startDate).toLocaleDateString() : 'N/A'}
               </span>
             </div>
             <div>
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Target Date</span>
-              <span className="text-sm font-bold text-slate-800 mt-1 block">
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Target Date</span>
+              <span className="text-xs font-bold text-slate-800 mt-0.5 block">
                 {project.endDate ? new Date(project.endDate).toLocaleDateString() : 'N/A'}
               </span>
             </div>
@@ -237,72 +237,72 @@ export function ProjectDetailsTab() {
         {/* Bento Card 2: Total Budget */}
         <GlassCard
           onClick={() => setShowBudgetHist(true)}
-          className="p-6 border-gray-200 flex flex-col justify-between hover:border-blue-500/30 hover:shadow-md cursor-pointer transition-all duration-300 group"
+          className="p-4.5 md:p-5 border-gray-200 flex flex-col justify-between hover:border-blue-500/30 hover:shadow-md cursor-pointer transition-all duration-300 group"
           gradient
         >
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Budget</span>
-              <History className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Budget</span>
+              <History className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 transition-colors" />
             </div>
             
-            <h3 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight mt-6">
+            <h3 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight mt-4">
               {formatCurrency(project.budgetHistory?.[project.budgetHistory.length - 1]?.amount || 0, project.currency || '$')}
             </h3>
-            <p className="text-xs text-slate-400 mt-2">Latest Approved Base Budget</p>
+            <p className="text-[10px] text-slate-400 mt-1">Latest Approved Base Budget</p>
           </div>
           
-          <div className="text-[10px] font-black text-blue-600 uppercase tracking-wider mt-6 group-hover:translate-x-1 transition-transform flex items-center space-x-1">
+          <div className="text-[9px] font-black text-blue-600 uppercase tracking-wider mt-4 group-hover:translate-x-1 transition-transform flex items-center space-x-0.5">
             <span>Budget Lifecycle</span>
-            <ChevronRight className="w-3.5 h-3.5" />
+            <ChevronRight className="w-3 h-3" />
           </div>
         </GlassCard>
 
         {/* Bento Card 3: Days Remaining */}
-        <GlassCard className="p-6 border-gray-200 flex flex-col justify-between" gradient>
+        <GlassCard className="p-4.5 md:p-5 border-gray-200 flex flex-col justify-between" gradient>
           <div>
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Days Remaining</span>
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Days Remaining</span>
             
-            <h3 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight mt-6">
+            <h3 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight mt-4">
               {daysRem !== 'N/A' ? `${daysRem} Days` : 'N/A'}
             </h3>
-            <p className="text-xs text-slate-400 mt-2">Time Remaining Until Target Handover</p>
+            <p className="text-[10px] text-slate-400 mt-1">Time Remaining Until Target Handover</p>
           </div>
-          <div className="flex items-center space-x-1.5 text-slate-400 mt-6">
-            <Clock className="w-4 h-4" />
-            <span className="text-[10px] font-bold uppercase tracking-wider">Scheduled Target</span>
+          <div className="flex items-center space-x-1 text-slate-400 mt-4">
+            <Clock className="w-3.5 h-3.5" />
+            <span className="text-[9px] font-bold uppercase tracking-wider">Scheduled Target</span>
           </div>
         </GlassCard>
 
         {/* Bento Card 4: Coordination Team */}
-        <GlassCard className="p-6 border-gray-200 lg:col-span-2 flex flex-col justify-between" gradient>
+        <GlassCard className="p-4.5 md:p-5 border-gray-200 lg:col-span-2 flex flex-col justify-between" gradient>
           <div>
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-2">
-                <Users className="w-5 h-5 text-slate-700" />
-                <h3 className="text-base font-bold text-slate-900">Coordination Team</h3>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-1.5">
+                <Users className="w-4.5 h-4.5 text-slate-700" />
+                <h3 className="text-sm xl:text-base font-bold text-slate-900">Coordination Team</h3>
               </div>
               <button
                 onClick={() => setIsTeamModalOpen(true)}
-                className="flex items-center space-x-1 px-3 py-1.5 bg-blue-50 border border-blue-100 hover:border-blue-300 text-blue-600 rounded-xl text-xs font-black uppercase transition-all"
+                className="flex items-center space-x-0.5 px-2 py-1 bg-blue-50 border border-blue-100 hover:border-blue-300 text-blue-600 rounded-lg text-[10px] font-black uppercase transition-all"
               >
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className="w-3 h-3" />
                 <span>Manage</span>
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               
               {/* Creator display */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-xs font-black text-white shrink-0">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-xs font-black text-white shrink-0">
                   {(project.createdBy?.name || 'S').charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-slate-900 truncate">
+                  <p className="text-[11px] font-bold text-slate-900 truncate">
                     {project.createdBy?.name || 'Manager'}
                   </p>
-                  <p className="text-[10px] text-slate-400 truncate">
+                  <p className="text-[9px] text-slate-400 truncate">
                     {project.createdBy?.email || 'admin@creator'}
                   </p>
                 </div>
@@ -314,13 +314,13 @@ export function ProjectDetailsTab() {
                 const name = u.name || member.name || 'Member';
                 const email = u.email || member.email || '—';
                 return (
-                  <div key={i} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-xs font-black text-blue-700 shrink-0">
+                  <div key={i} className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center space-x-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-xs font-black text-blue-700 shrink-0">
                       {name.charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-slate-900 truncate">{name}</p>
-                      <p className="text-[10px] text-slate-400 truncate">{email}</p>
+                      <p className="text-[11px] font-bold text-slate-900 truncate">{name}</p>
+                      <p className="text-[9px] text-slate-400 truncate">{email}</p>
                     </div>
                   </div>
                 );

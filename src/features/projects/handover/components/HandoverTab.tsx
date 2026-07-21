@@ -370,14 +370,14 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
     const Icon = icon;
 
     return (
-      <div className="bg-white border border-slate-150 rounded-2xl overflow-hidden shadow-sm">
+      <div className="bg-white border border-slate-100/70 rounded-2xl overflow-hidden shadow-sm">
         <button
           type="button"
           onClick={() => toggleSection(key)}
           className="w-full flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors"
         >
           <div className="flex items-center space-x-3 text-left">
-            <div className={cn('p-2.5 rounded-xl border shrink-0', isOk ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-amber-50 border-amber-100 text-amber-600')}>
+            <div className={cn('p-2 rounded-xl border border-transparent shrink-0', isOk ? 'bg-emerald-50/80 text-emerald-600' : 'bg-amber-50/80 text-amber-600')}>
               <Icon className="w-5 h-5" />
             </div>
             <div>
@@ -389,7 +389,7 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
           </div>
 
           <div className="flex items-center space-x-2">
-            <span className={cn('px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider', isOk ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-150')}>
+            <span className={cn('px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider', isOk ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/20' : 'bg-amber-50 text-amber-700 border border-amber-200/20')}>
               {isOk ? 'PASSED' : 'PENDING'}
             </span>
             {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
@@ -432,7 +432,7 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
     const savedCertUrl = handoverAudit?.details?.match(/Certificate URL:\s*(.*?)(?=\.\s*\w+:|$)/)?.[1] || '';
 
     return (
-      <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="space-y-6">
         <GlassCard className="p-8 text-center border-emerald-200 overflow-hidden relative" gradient>
           <div className="absolute top-0 right-0 p-8 opacity-5">
             <Award className="w-64 h-64 text-emerald-600" />
@@ -533,13 +533,13 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
 
   // ── Render Handover Tab Layout ──
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6">
       {/* Tab Header Card */}
-      <div className="flex items-center space-x-4 p-5 bg-white border border-slate-150 rounded-3xl shadow-sm">
+      <div className="flex items-center space-x-4 p-4.5 bg-white/85 backdrop-blur-md border border-slate-200/50 rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05),inset_0_1px_1px_rgba(255,255,255,0.8)]">
         <div className={cn(
-          'p-3 rounded-2xl border shrink-0',
-          currentStatus === 'Pending Handover' ? 'bg-amber-50 border-amber-100 text-amber-600' :
-          currentStatus === 'Handover Rejected' ? 'bg-red-50 border-red-100 text-red-600' : 'bg-blue-50 border-blue-100 text-blue-600'
+          'p-2.5 rounded-xl border border-transparent shrink-0',
+          currentStatus === 'Pending Handover' ? 'bg-amber-50/80 text-amber-600' :
+          currentStatus === 'Handover Rejected' ? 'bg-red-50/80 text-red-600' : 'bg-blue-50/80 text-blue-600'
         )}>
           {currentStatus === 'Pending Handover' ? (
             <Clock className="w-7 h-7 animate-pulse" />
@@ -660,6 +660,17 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
           {/* Readiness validation lists */}
           {validationData && (
             <div className="space-y-3">
+              {!validationData.isValid && (
+                <div className="bg-amber-50/60 border border-amber-200/30 rounded-xl p-3.5 mb-3 text-xs text-amber-800 flex items-start space-x-3">
+                  <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-600" />
+                  <div className="space-y-1">
+                    <p className="font-bold">Project is not ready for handover!</p>
+                    <p className="opacity-90 leading-relaxed">
+                      Please resolve all issues, complete all milestones/tasks, and approve drawings, BOQ items, and active risks to initiate the handover process.
+                    </p>
+                  </div>
+                </div>
+              )}
               <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 ml-1">Handover Validation Checks</h4>
               
               {/* Checklist Group Cards */}
@@ -800,7 +811,7 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
             {currentStatus === 'Pending Handover' ? (
               (project.handoverApprover?._id || project.handoverApprover) === currentUserId ? (
                 /* Approver box */
-                <div className="bg-amber-50/30 border border-amber-200 rounded-3xl p-5 text-center space-y-4">
+                <div className="bg-amber-50/20 border border-amber-200/30 rounded-2xl p-4.5 text-center space-y-4">
                   <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl w-fit mx-auto border border-amber-100">
                     <Clock className="w-6 h-6 animate-pulse" />
                   </div>
@@ -829,7 +840,7 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
                 </div>
               ) : (
                 /* Waiting for approver notice */
-                <div className="bg-slate-50 border border-slate-200 rounded-3xl p-5 text-center space-y-3">
+                <div className="bg-slate-50 border border-slate-200/40 rounded-3xl p-5 text-center space-y-3">
                   <div className="p-3 bg-white border text-slate-500 rounded-2xl w-fit mx-auto shadow-sm">
                     <Clock className="w-5 h-5 animate-pulse" />
                   </div>
@@ -846,12 +857,12 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
             ) : currentStatus === 'Handover Rejected' ? (
               /* Handover Rejection box */
               <div className="space-y-4">
-                <div className="bg-red-50 border border-red-200 rounded-3xl p-5 space-y-3">
+                <div className="bg-red-50/60 border border-red-200/30 rounded-2xl p-4.5 space-y-3">
                   <div className="flex items-center space-x-2 text-red-700">
                     <XOctagon className="w-5 h-5 shrink-0" />
                     <h4 className="text-sm font-bold">Handover Request Rejected</h4>
                   </div>
-                  <p className="text-xs text-red-600 font-medium bg-white rounded-2xl p-4 border border-red-100/50 leading-relaxed italic">
+                  <p className="text-xs text-red-600 font-medium bg-white/80 rounded-xl p-3.5 border border-red-100/30 leading-relaxed italic">
                     "{(project as any).handoverRejectionReason || 'No details provided.'}"
                   </p>
                 </div>
@@ -878,15 +889,13 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
                     <span>Request Project Handover</span>
                   </button>
                 ) : (
-                  <div className="bg-amber-50/50 border border-amber-200 rounded-3xl p-4 text-xs flex items-start space-x-3 text-amber-800">
-                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
-                    <div className="space-y-1">
-                      <p className="font-bold">Project is not ready for handover!</p>
-                      <p className="opacity-90 leading-relaxed">
-                        Please resolve all issues, complete all milestones/tasks, and approve drawings, BOQ items, and active risks to initiate the handover process.
-                      </p>
-                    </div>
-                  </div>
+                  <button
+                    disabled
+                    className="w-full py-3 bg-slate-100 text-slate-400 rounded-xl text-sm font-bold cursor-not-allowed flex items-center justify-center space-x-2 border border-slate-200"
+                  >
+                    <ClipboardCheck className="w-4 h-4 text-slate-400" />
+                    <span>Request Project Handover</span>
+                  </button>
                 )}
               </div>
             )}

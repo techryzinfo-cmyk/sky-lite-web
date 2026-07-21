@@ -41,7 +41,7 @@ export default function OnboardingPage() {
     <div className="min-h-screen flex items-center justify-center p-6 bg-[#F8FAFF]">
       <div className="w-full max-w-2xl">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-black tracking-tight text-gray-900 mb-2">
+          <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 mb-2">
             SKY<span className="text-blue-600">LITE</span>
           </h1>
         </div>

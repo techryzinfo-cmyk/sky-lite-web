@@ -148,22 +148,19 @@ import {
   ThumbsUp,
 } from 'lucide-react';
 import Cookies from 'js-cookie';
+import { useAuth } from '@/providers/AuthContext';
 
 export default function SuperAdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { logout } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
 
-  const logout = () => {
-    localStorage.removeItem('saToken');
-    localStorage.removeItem('superAdmin');
-
-    Cookies.remove('saToken');
-
-    router.replace('/login');
+  const handleLogout = async () => {
+    await logout();
   };
 
   const tabs = [
@@ -220,7 +217,7 @@ export default function SuperAdminLayout({
               </button>
 
               <button
-                onClick={logout}
+                onClick={handleLogout}
                 className="hover:text-red-300 transition"
               >
                 <LogOut className="w-5 h-5" />

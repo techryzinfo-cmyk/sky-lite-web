@@ -391,24 +391,26 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                     <SkeletonLoader loading={loadingModal} preset="modal">
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         {categories.map((cat, i) => {
-                          const colors = [
-                            'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100',
-                            'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100',
-                            'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100',
-                            'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100',
-                            'bg-red-50 border-red-200 text-red-700 hover:bg-red-100',
-                            'bg-cyan-50 border-cyan-200 text-cyan-700 hover:bg-cyan-100',
+                          const iconColors = [
+                            'text-blue-500 bg-blue-50 border-blue-100',
+                            'text-purple-500 bg-purple-50 border-purple-100',
+                            'text-emerald-500 bg-emerald-50 border-emerald-100',
+                            'text-amber-500 bg-amber-50 border-amber-100',
+                            'text-red-500 bg-red-50 border-red-100',
+                            'text-cyan-500 bg-cyan-50 border-cyan-100',
                           ];
-                          const c = colors[i % colors.length];
+                          const c = iconColors[i % iconColors.length];
                           return (
                             <button
                               key={cat._id}
                               type="button"
                               onClick={() => { setSelectedCategory(cat); setStep('template'); }}
-                              className={`flex flex-col items-center gap-3 p-6 rounded-2xl border-2 font-bold text-sm transition-all ${c}`}
+                              className="flex items-center gap-3 p-2.5 rounded-2xl border border-slate-200 bg-white hover:border-blue-500 hover:bg-slate-50/50 transition-all text-left font-bold text-slate-700 hover:text-blue-700 hover:shadow-sm"
                             >
-                              <FolderOpen className="w-8 h-8" />
-                              <span className="text-center leading-tight">{cat.name}</span>
+                              <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center border shrink-0", c)}>
+                                <FolderOpen className="w-4 h-4" />
+                              </div>
+                              <span className="truncate text-xs leading-none">{cat.name}</span>
                             </button>
                           );
                         })}
@@ -417,10 +419,12 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                           <button
                             type="button"
                             onClick={() => { setIsAddingCategory(true); setNewCategoryName(''); }}
-                            className="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-dashed border-slate-300 text-slate-500 hover:text-slate-800 hover:border-slate-400 bg-slate-50 hover:bg-slate-100 font-bold text-sm transition-all"
+                            className="flex items-center gap-3 p-2.5 rounded-2xl border border-dashed border-slate-300 text-slate-500 hover:text-slate-800 hover:border-slate-450 hover:bg-slate-50 font-bold text-xs transition-all"
                           >
-                            <Plus className="w-8 h-8" />
-                            <span className="text-center leading-tight">Add Category</span>
+                            <div className="w-8 h-8 rounded-lg border border-dashed border-slate-250 flex items-center justify-center shrink-0">
+                              <Plus className="w-4 h-4" />
+                            </div>
+                            <span>Add Category</span>
                           </button>
                         )}
 
