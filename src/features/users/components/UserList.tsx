@@ -24,6 +24,7 @@ import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
 import { UserModal } from '@/features/users/components/UserModal';
 import { Pagination, usePagination } from '@/components/shared/Pagination';
+import { cn } from '@/lib/utils';
 
 export const UserList = () => {
   const [users, setUsers] = useState<any[]>([]);
@@ -189,91 +190,71 @@ export const UserList = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {pagedUsers.map((user, idx) => (
-          <GlassCard key={user._id || `user-${idx}`} className="p-6 border-gray-200 group hover:border-blue-500/50 transition-all" gradient>
-            <div className="flex items-start justify-between mb-6">
+        {pagedUsers.map((user, idx) => {
+          let roleName = typeof user.role === 'object' ? user.role?.name : user.role;
+          if (!roleName && user.projects?.length > 0) {
+            const firstProjectRole = user.projects.find((p: any) => p.role)?.role;
+            if (firstProjectRole) {
+              roleName = typeof firstProjectRole === 'object' ? firstProjectRole.name : firstProjectRole;
+            } else {
+              roleName = 'Project Access';
+            }
+          }
+          
+          const getRoleStyle = (r: string) => {
+            switch (r?.toLowerCase()) {
+              case 'administrator': return { bg: 'bg-red-100', text: 'text-red-500', border: 'border-red-100', dot: 'bg-red-500' };
+              case 'site manager': return { bg: 'bg-amber-100', text: 'text-amber-600', border: 'border-amber-100', dot: 'bg-amber-600' };
+              case 'contractor': return { bg: 'bg-blue-100', text: 'text-blue-600', border: 'border-blue-100', dot: 'bg-blue-600' };
+              default: return { bg: 'bg-slate-100', text: 'text-slate-500', border: 'border-slate-100', dot: 'bg-slate-500' };
+            }
+          };
+          const rStyle = getRoleStyle(roleName);
+          const initials = user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2);
+
+          return (
+            <GlassCard key={user._id || `user-${idx}`} className="p-4 border-gray-200 transition-all flex items-center justify-between" gradient>
               <div className="flex items-center space-x-4">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-xl font-black text-white shadow-lg shadow-blue-600/20">
-                  {user.name.charAt(0)}
+                <div className="relative">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-lg font-black text-white">
+                    {initials}
+                  </div>
+                  {roleName && roleName !== 'No Role' && (
+                    <div className={cn("absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white", rStyle.dot)} />
+                  )}
                 </div>
+
                 <div>
-                  <h4 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{user.name}</h4>
-                  <div className="flex items-center space-x-1.5 mt-1">
-                    <Shield className="w-3 h-3 text-blue-500" />
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.1em]">
-                      {typeof user.role === 'object' ? user.role?.name : user.role}
-                    </span>
-                  </div>
+                  <h4 className="text-base font-bold text-slate-900">{user.name}</h4>
+                  <p className="text-xs font-semibold text-slate-400 mt-0.5 mb-1.5">{user.email}</p>
+                  
+                  {roleName && roleName !== 'No Role' && (
+                    <div className={cn("inline-flex items-center px-2 py-1 rounded-lg border", rStyle.bg, rStyle.border)}>
+                      <span className={cn("text-[10px] font-black uppercase tracking-wider", rStyle.text)}>
+                        {roleName}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="relative" ref={openMenuId === user._id ? menuRef : null}>
-                <button
-                  onClick={() => setOpenMenuId(openMenuId === user._id ? null : user._id)}
-                  className="p-2 text-slate-400 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100"
-                >
-                  <MoreVertical className="w-5 h-5" />
-                </button>
-                {openMenuId === user._id && (
-                  <div className="absolute right-0 top-9 w-40 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
-                    <button
-                      onClick={() => openEdit(user)}
-                      className="w-full flex items-center space-x-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      <Pencil className="w-4 h-4 text-slate-400" />
-                      <span>Edit Member</span>
-                    </button>
-                    <button
-                      onClick={() => openDelete(user)}
-                      className="w-full flex items-center space-x-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      <span>Remove</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center space-x-3 text-slate-500">
-                <Mail className="w-4 h-4 shrink-0" />
-                <span className="text-sm truncate">{user.email}</span>
-              </div>
-              {(user.phoneNumber || user.mobile || user.phone) && (
-                <div className="flex items-center space-x-3 text-slate-500">
-                  <Phone className="w-4 h-4 shrink-0" />
-                  <span className="text-sm">{user.phoneNumber || user.mobile || user.phone}</span>
-                </div>
-              )}
-              <div className="flex items-center space-x-3 text-slate-500">
-                <Clock className="w-4 h-4 shrink-0" />
-                <span className="text-sm">Joined {new Date(user.createdAt).toLocaleDateString()}</span>
-              </div>
-              {typeof user.role === 'object' && user.role?.permissions?.length > 0 && (
-                <div className="flex items-center space-x-3 text-slate-500">
-                  <Shield className="w-4 h-4 shrink-0 text-blue-400" />
-                  <span className="text-sm">
-                    {user.role.permissions.includes('*') ? 'Full access' : `${user.role.permissions.length} permissions`}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-6 pt-6 border-t border-gray-100 flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Active</span>
+                <button
+                  onClick={() => openEdit(user)}
+                  className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 transition-colors"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => openDelete(user)}
+                  className="w-9 h-9 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-100 hover:border-red-200 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
-              <button
-                onClick={() => openEdit(user)}
-                className="text-[10px] font-black text-blue-600 hover:text-blue-500 uppercase tracking-widest transition-colors"
-              >
-                Edit Profile
-              </button>
-            </div>
-          </GlassCard>
-        ))}
+            </GlassCard>
+          );
+        })}
 
         {filteredUsers.length === 0 && (
           <div className="col-span-full py-40 flex flex-col items-center justify-center text-center">

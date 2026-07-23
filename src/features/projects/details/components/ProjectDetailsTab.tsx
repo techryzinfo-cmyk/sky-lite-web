@@ -210,8 +210,13 @@ export function ProjectDetailsTab() {
               </span>
             </div>
             
-            <h2 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight mt-2.5">
+            <h2 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight mt-2.5 flex items-baseline">
               {project.name}
+              {project.projectCode && (
+                <span className="text-sm md:text-base font-medium text-slate-500 ml-2">
+                  ({project.projectCode})
+                </span>
+              )}
             </h2>
             <p className="text-slate-500 mt-2 text-xs leading-relaxed">
               {project.description || 'No description provided.'}
@@ -271,6 +276,36 @@ export function ProjectDetailsTab() {
           <div className="flex items-center space-x-1 text-slate-400 mt-4">
             <Clock className="w-3.5 h-3.5" />
             <span className="text-[9px] font-bold uppercase tracking-wider">Scheduled Target</span>
+          </div>
+        </GlassCard>
+
+        {/* Bento Card 4: Project Area */}
+        <GlassCard className="p-4.5 md:p-5 border-gray-200 flex flex-col justify-between" gradient>
+          <div className="flex flex-col h-full justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Project Area</span>
+                <Map className="w-3.5 h-3.5 text-slate-400" />
+              </div>
+              <h3 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight mt-4">
+                {project.area ? `${Number(project.area).toLocaleString()} ${project.areaUnit ? project.areaUnit.toUpperCase() : 'SQFT'}` : 'N/A'}
+              </h3>
+              <p className="text-[10px] text-slate-400 mt-1">Total Site Area</p>
+            </div>
+            
+            {project?.siteLocation?.latitude != null && project?.siteLocation?.longitude != null && (
+              <div className="mt-4">
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${project.siteLocation.latitude},${project.siteLocation.longitude}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  <Map className="w-3.5 h-3.5" />
+                  <span className="text-xs font-bold">Map</span>
+                </a>
+              </div>
+            )}
           </div>
         </GlassCard>
 
