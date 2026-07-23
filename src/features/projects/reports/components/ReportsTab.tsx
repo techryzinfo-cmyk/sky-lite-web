@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Calendar, CheckCircle2, Circle, Clock, MessageSquare,
   User, Image as ImageIcon, X, ChevronRight, Loader2, BarChart2,
-  TrendingUp, Activity, Download, Mail, FileText, Wrench, AlertCircle
+  TrendingUp, Activity, Download, Mail, FileText, Wrench, AlertCircle, XOctagon
 } from 'lucide-react';
 import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/providers/AuthContext';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
+import { hasProjectPermission } from '@/lib/permissions';
 
 interface ReportsTabProps {
   projectId: string;
@@ -46,7 +47,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [msRes, usersRes, projectRes, issuesRes, snagsRes] = await Promise.all([
+        const results = await Promise.allSettled([
           api.get(`/projects/${projectId}/milestones`),
           api.get(`/users?projectId=${projectId}`),
           api.get(`/projects/${projectId}`),
@@ -54,21 +55,36 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
           api.get(`/projects/${projectId}/snags`)
         ]);
 
-        const msData = Array.isArray(msRes.data)
-          ? msRes.data
-          : Array.isArray(msRes.data?.milestones)
-            ? msRes.data.milestones
+        results.forEach(res => {
+          if (res.status === 'rejected' && res.reason?.response?.status !== 403) {
+            console.error(res.reason);
+          }
+        });
+
+        const getData = (res: any) => res.status === 'fulfilled' ? res.value.data : null;
+        const [msRes, usersRes, projectRes, issuesRes, snagsRes] = results;
+
+        const msDataRaw = getData(msRes);
+        const msData = Array.isArray(msDataRaw)
+          ? msDataRaw
+          : Array.isArray(msDataRaw?.milestones)
+            ? msDataRaw.milestones
             : [];
         setMilestones(msData);
 
-        const rawUsers = Array.isArray(usersRes.data) ? usersRes.data : [];
+        const usersData = getData(usersRes);
+        const rawUsers = Array.isArray(usersData) ? usersData : [];
         setMembers(rawUsers);
 
-        setProject(projectRes.data);
-        setIssues(Array.isArray(issuesRes.data) ? issuesRes.data : []);
-        setSnags(Array.isArray(snagsRes.data) ? snagsRes.data : []);
-      } catch (err) {
-        console.error(err);
+        setProject(getData(projectRes));
+        
+        const issuesData = getData(issuesRes);
+        setIssues(Array.isArray(issuesData) ? issuesData : []);
+        
+        const snagsData = getData(snagsRes);
+        setSnags(Array.isArray(snagsData) ? snagsData : []);
+      } catch (err: any) {
+        if (err.response?.status !== 403) console.error(err);
         toast.error('Failed to load reports data');
       } finally {
         setLoading(false);
@@ -425,9 +441,9 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
       const opt = {
         margin:       0.3,
         filename:     `Project_Report_${project?.name || 'Details'}_${reportType}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
+        image:        { type: 'jpeg' as const, quality: 0.98 },
         html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+        jsPDF:        { unit: 'in' as const, format: 'letter' as const, orientation: 'portrait' as const }
       };
 
       await html2pdf().set(opt).from(element).save();
@@ -492,6 +508,22 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
     if (chartPoints.length === 0) return '';
     return `${linePath} L ${chartPoints[chartPoints.length - 1].x} 110 L ${chartPoints[0].x} 110 Z`;
   }, [chartPoints, linePath]);
+
+  const canViewReports = hasProjectPermission(user, contextProject, 'reports:view');
+
+  if (!canViewReports) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 bg-white/60 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm mt-4">
+        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+          <XOctagon className="w-8 h-8 text-slate-400" />
+        </div>
+        <h2 className="text-xl font-bold text-slate-900 mb-2">Access Denied</h2>
+        <p className="text-slate-500 text-sm max-w-sm text-center mb-6">
+          You do not have the required "Reports Management" permission to view this tab.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <SkeletonLoader loading={loading} preset="list">

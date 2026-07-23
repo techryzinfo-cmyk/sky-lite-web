@@ -322,6 +322,7 @@ import { SendForSurveyModal } from '@/features/projects/site-survey/components/S
 import { SurveyModal } from '@/features/projects/plans/components/SurveyModal';
 import { Plus, Search, Filter, LayoutGrid, List, FolderOpen, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import api from '@/services/api.client';
 import { Project } from '@/types';
 import { cn } from '@/lib/utils';
@@ -340,7 +341,9 @@ export default function ProjectsPage() {
   const [isSurveyAssignOpen, setIsSurveyAssignOpen] = useState(false);
   const [isSurveyModalOpen, setIsSurveyModalOpen] = useState(false);
   const [surveyProject, setSurveyProject] = useState<Project | null>(null);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
   const toast = useToast();
+  const pathname = usePathname();
  
   const fetchProjects = async () => {
     try {
@@ -355,8 +358,32 @@ export default function ProjectsPage() {
       setLoading(false);
     }
   };
+
+  const fetchUsers = async () => {
+    try {
+      const r = await api.get('/users');
+      setAllUsers(r.data?.users || r.data || []);
+    } catch (e) {
+      console.error('Failed to fetch users', e);
+    }
+  };
  
-  useEffect(() => { fetchProjects(); }, []);
+  useEffect(() => {
+    fetchProjects();
+    fetchUsers();
+    
+    // Refresh on focus and visibility change to ensure fresh data after returning from other pages
+    const handleFocus = () => fetchProjects();
+    const handleVisibility = () => document.visibilityState === 'visible' && fetchProjects();
+    
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [pathname]);
  
   const handleDelete = async () => {
     if (!deletingProject) return;
@@ -406,7 +433,7 @@ export default function ProjectsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-extrabold text-gray-900">
+            <h1 className="text-3xl font-semibold text-gray-900">
               My <span className="text-blue-600">Projects</span>
             </h1>
             <p className="text-slate-500 mt-1">Manage and track your construction projects.</p>
@@ -458,7 +485,7 @@ export default function ProjectsPage() {
                   key={status}
                   onClick={() => setStatusFilter(status)}
                   className={cn(
-                    "whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95",
+                    "whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-medium transition-all active:scale-95",
                     statusFilter === status 
                       ? "bg-blue-600 text-white shadow-sm shadow-blue-600/20" 
                       : "bg-white/80 border border-slate-200 text-slate-600 hover:bg-slate-50"
@@ -489,7 +516,7 @@ export default function ProjectsPage() {
           ) : (
             <div className="flex flex-col items-center justify-center py-20 text-center bg-white/40 backdrop-blur-xl border border-white/60 rounded-3xl shadow-sm">
               <FolderOpen className="w-12 h-12 text-slate-300 mb-4" />
-              <h3 className="text-xl font-extrabold text-slate-700 mb-1">No active projects</h3>
+              <h3 className="text-xl font-semibold text-slate-700 mb-1">No active projects</h3>
               <p className="text-slate-400 text-sm max-w-xs mb-6">
                 {searchQuery || statusFilter !== 'All'
                   ? "We couldn't find any projects matching your search."
@@ -498,7 +525,7 @@ export default function ProjectsPage() {
               {!searchQuery && statusFilter === 'All' && (
                 <button
                   onClick={() => setIsModalOpen(true)}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm shadow-blue-600/20"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-all active:scale-95 shadow-sm shadow-blue-600/20"
                 >
                   <Plus className="w-4 h-4" />
                   Create Project
@@ -529,6 +556,8 @@ export default function ProjectsPage() {
         onClose={() => setIsSurveyModalOpen(false)}
         onSuccess={fetchProjects}
         projectId={surveyProject?._id || ''}
+        project={surveyProject}
+        projectType={surveyProject?.projectType}
       />
  
       <ConfirmModal

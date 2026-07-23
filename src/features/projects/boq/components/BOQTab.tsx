@@ -15,6 +15,7 @@ import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
 import { useSocket } from '@/providers/SocketContext';
 import { cn, formatCurrency } from '@/lib/utils';
+import { hasProjectPermission } from '@/lib/permissions';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 import { BOQModal } from '@/features/projects/boq/components/BOQModal';
 import { BOQImportModal } from '@/features/projects/boq/components/BOQImportModal';
@@ -63,13 +64,13 @@ const StatusBadge = ({ status, size = 'sm' }: { status: string; size?: 'xs' | 's
 const StatCard = ({
   label, value, icon: Icon, accent, bg, sub,
 }: { label: string; value: string | number; icon: React.ElementType; accent: string; bg: string; sub?: string }) => (
-  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-5 flex items-center gap-3 sm:gap-4 min-w-0">
-    <div className={cn('w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0', bg)}>
+  <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-5 flex items-center gap-3 sm:gap-4 min-w-0 transition-shadow duration-200 hover:shadow-md">
+    <div className={cn('w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0', bg)}>
       <Icon className={cn('w-5 h-5', accent)} />
     </div>
     <div className="min-w-0 flex-1">
       <p className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider truncate">{label}</p>
-      <p className="text-xl sm:text-2xl font-black text-gray-900 mt-0.5 leading-none truncate">{value}</p>
+      <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-0.5 leading-none truncate">{value}</p>
       {sub && <p className="text-[10px] text-slate-400 mt-0.5">{sub}</p>}
     </div>
   </div>
@@ -110,11 +111,11 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
   const { socket } = useSocket();
 
   // ── Permissions (mirror mobile's isAdmin / canApprove) ──────────────────
-  const isAdmin = (user?.role as any)?.name === 'Admin' || (user?.role as any)?.permissions?.includes('*');
-  const canApprove = isAdmin || (user?.role as any)?.permissions?.includes('boq:approve');
-  const canUpdate = isAdmin || (user?.role as any)?.permissions?.includes('boq:update');
-  const canDelete = isAdmin || (user?.role as any)?.permissions?.includes('boq:delete');
-  const canCreate = isAdmin || (user?.role as any)?.permissions?.includes('boq:create');
+  const isAdmin = user?.role?.name === 'Admin' || user?.role?.permissions?.includes('*');
+  const canApprove = hasProjectPermission(user, project, 'boq:approve');
+  const canUpdate = hasProjectPermission(user, project, 'boq:update');
+  const canDelete = hasProjectPermission(user, project, 'boq:delete');
+  const canCreate = hasProjectPermission(user, project, 'boq:create');
 
   // ── Fetch BOQ ────────────────────────────────────────────────────────────
   const fetchBOQ = useCallback(async () => {
@@ -272,7 +273,7 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
       <div className="space-y-5 sm:space-y-6 pb-20 sm:pb-6">
 
         {/* ── Stat cards ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             label="Total BOQ Value"
             value={formatCurrency(totalBOQAmount, project?.currency || '$')}
@@ -316,7 +317,7 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
               placeholder="Search groups or items..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              className="w-full bg-white border border-gray-200 rounded-lg py-2 pl-9 pr-4 text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors shadow-sm"
             />
           </div>
 
@@ -324,7 +325,7 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
-            className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer w-full sm:w-auto"
+            className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors cursor-pointer w-full sm:w-auto shadow-sm"
           >
             {['All', 'Draft', 'Pending', 'Approved', 'Rejected'].map(s => (
               <option key={s} value={s}>{s === 'All' ? 'All Status' : s}</option>
@@ -335,21 +336,15 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
           <div className="flex items-center gap-2">
             <button
               onClick={fetchBOQ}
-              className="p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-slate-500 hover:text-gray-900 hover:bg-gray-100 transition-all"
+              className="p-2 bg-white border border-gray-200 rounded-lg text-slate-500 hover:text-gray-900 hover:bg-gray-50 transition-colors shadow-sm"
               title="Refresh"
             >
               <RefreshCw className="w-4 h-4" />
             </button>
-            <button
-              onClick={handleExportCSV}
-              className="flex items-center gap-1.5 px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-gray-100 transition-all"
-            >
-              <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Export</span>
-            </button>
+
             <button
               onClick={() => setIsImportModalOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-gray-100 transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-gray-50 transition-colors shadow-sm"
             >
               <Upload className="w-4 h-4" />
               <span className="hidden sm:inline">Import</span>
@@ -357,7 +352,7 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
             {canCreate && (
               <button
                 onClick={() => { setSelectedItem(null); setIsNewVersion(false); setIsModalOpen(true); }}
-                className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 rounded-xl text-sm font-bold text-white hover:bg-blue-500 transition-all shadow-md shadow-blue-600/20"
+                className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-blue-700 transition-colors shadow-sm"
               >
                 <Plus className="w-4 h-4" />
                 <span>New BOQ</span>
@@ -395,22 +390,22 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
         ) : (
           <div className="space-y-6">
             {/* ─────────────────────────────────────────────────────────────────
-              DESKTOP TABLE
+              PROFESSIONAL DATA TABLE
             ───────────────────────────────────────────────────────────────── */}
-            <div className="hidden sm:block overflow-hidden rounded-2xl border border-gray-200 shadow-sm bg-white">
+            <div className="overflow-hidden rounded-xl border border-gray-200 shadow-sm bg-white">
               <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
+                <table className="min-w-full text-sm text-left">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="w-10 px-4 py-3.5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">#</th>
-                      <th className="px-4 py-3.5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Item No.</th>
-                      <th className="px-4 py-3.5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[200px]">Item Description</th>
-                      <th className="px-4 py-3.5 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Unit</th>
-                      <th className="px-4 py-3.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Quantity</th>
-                      <th className="px-4 py-3.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Unit Cost</th>
-                      <th className="px-4 py-3.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Cost</th>
-                      <th className="px-4 py-3.5 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                      <th className="px-4 py-3.5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
+                      <th className="w-12 px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">#</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Item No.</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider min-w-[240px]">Item Description</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-center">Unit</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-right">Quantity</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-right">Unit Cost</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-right">Total Cost</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-center">Status</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -422,14 +417,14 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
                       return (
                         <React.Fragment key={groupName}>
                           {/* Group Header Row */}
-                          <tr className="bg-slate-50 border-y border-slate-200 group">
+                          <tr className="bg-gray-50/50 group border-b border-gray-200">
                             <td colSpan={6} className="px-4 py-3">
                               <div className="flex items-center gap-3">
-                                <div className="w-1.5 h-6 bg-blue-500 rounded-full" />
-                                <span className="font-black text-gray-900 text-sm uppercase tracking-wider">{groupName}</span>
+                                <div className="w-1 h-5 bg-blue-500 rounded-sm" />
+                                <span className="font-semibold text-gray-900 text-sm uppercase tracking-wide">{groupName}</span>
                               </div>
                             </td>
-                            <td className="px-4 py-3 text-right font-black text-gray-900">
+                            <td className="px-4 py-3 text-right font-semibold text-gray-900">
                               {formatCurrency(totalCost, project?.currency || '$')}
                             </td>
                             <td className="px-4 py-3 text-center">
@@ -441,7 +436,7 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
                                   <button
                                     onClick={e => handleDeleteGroup(groupItems, e)}
                                     title="Delete Group"
-                                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
                                   >
                                     <Trash2 className="w-4 h-4" />
                                   </button>
@@ -458,46 +453,46 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
                             const rowStyle = STATUS_STYLES[item.status as StatusKey]?.row ?? '';
   
                             return (
-                              <tr key={item._id} className={cn('transition-colors group/item hover:bg-blue-50/40', rowStyle)}>
-                                <td className="px-4 py-3 text-slate-400 text-xs font-mono">{idx + 1}</td>
+                              <tr key={item._id} className={cn('transition-colors group/item hover:bg-gray-50/80', rowStyle)}>
+                                <td className="px-4 py-3 text-slate-500 text-xs font-mono">{idx + 1}</td>
                                 <td className="px-4 py-3">
                                   {item.itemNumber
-                                    ? <span className="font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">{item.itemNumber}</span>
+                                    ? <span className="font-mono text-xs font-medium text-blue-700 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md">{item.itemNumber}</span>
                                     : <span className="text-slate-300 text-xs">—</span>}
                                 </td>
                                 <td className="px-4 py-3">
                                   <div className="flex items-center gap-2">
-                                    <p className="font-semibold text-gray-900 leading-snug">{item.itemDescription}</p>
+                                    <p className="font-medium text-gray-900">{item.itemDescription}</p>
                                     {(item as any).version > 1 && (
-                                      <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                      <span className="text-[10px] font-medium bg-gray-100 border border-gray-200 text-gray-700 px-2 py-0.5 rounded-full whitespace-nowrap">
                                         v{(item as any).version}
                                       </span>
                                     )}
                                   </div>
                                   {item.remark && (
-                                    <p className="text-xs text-slate-400 italic mt-0.5 truncate max-w-xs">{item.remark}</p>
+                                    <p className="text-xs text-slate-500 mt-0.5 truncate max-w-md">{item.remark}</p>
                                   )}
                                   {item.status === 'Pending' && (item as any).requestedApproverName && (
-                                    <p className="text-[10px] text-amber-600 font-semibold mt-0.5">
-                                      ↗ Awaiting: {(item as any).requestedApproverName}
+                                    <p className="text-[11px] text-amber-700 font-medium mt-1">
+                                      Pending: {(item as any).requestedApproverName}
                                     </p>
                                   )}
                                 </td>
                                 <td className="px-4 py-3 text-center text-slate-500 text-xs">{item.unit || '—'}</td>
-                                <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                                <td className="px-4 py-3 text-right font-medium text-gray-900">
                                   {Number(item.quantity).toLocaleString('en-IN')}
                                 </td>
                                 <td className="px-4 py-3 text-right text-slate-600">
                                   {formatCurrency(Number(item.unitCost), project?.currency || '$')}
                                 </td>
-                                <td className="px-4 py-3 text-right font-bold text-blue-700">
+                                <td className="px-4 py-3 text-right font-semibold text-gray-900">
                                   {formatCurrency(Number(item.totalCost || 0), project?.currency || '$')}
                                 </td>
                                 <td className="px-4 py-3 text-center">
                                   <StatusBadge status={item.status} />
                                 </td>
                                 <td className="px-4 py-3">
-                                  <div className="flex items-center justify-end gap-0.5">
+                                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
                                     {isUpdating ? (
                                       <Loader2 className="w-4 h-4 animate-spin text-blue-500 mx-2" />
                                     ) : (
@@ -505,39 +500,39 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
                                         {canApproveThis && item.status === 'Pending' && (
                                           <>
                                             <button onClick={() => handleUpdateItemStatus(item, 'Approved')}
-                                              title="Approve" className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
+                                              title="Approve" className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors">
                                               <CheckCircle2 className="w-4 h-4" />
                                             </button>
                                             <button onClick={() => handleUpdateItemStatus(item, 'Rejected')}
-                                              title="Reject" className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                                              title="Reject" className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors">
                                               <XCircle className="w-4 h-4" />
                                             </button>
                                           </>
                                         )}
                                         {item.status === 'Draft' && (
                                           <button onClick={() => setApproversItem(item)}
-                                            title="Send for Approval" className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                                            title="Send for Approval" className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors">
                                             <Send className="w-4 h-4" />
                                           </button>
                                         )}
                                         {item.status === 'Approved' ? (
                                           <button onClick={() => { setSelectedItem(item); setIsNewVersion(true); setIsModalOpen(true); }}
-                                            title="Create New Version" className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors">
+                                            title="Create New Version" className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-md transition-colors">
                                             <GitBranch className="w-4 h-4" />
                                           </button>
                                         ) : canUpdate && (
                                           <button onClick={() => { setSelectedItem(item); setIsNewVersion(false); setIsModalOpen(true); }}
-                                            title="Edit" className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                            title="Edit" className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors">
                                             <Edit2 className="w-4 h-4" />
                                           </button>
                                         )}
                                         <button onClick={() => setViewingItem(item)}
-                                          title="View Details" className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors">
+                                          title="View Details" className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors">
                                           <History className="w-4 h-4" />
                                         </button>
                                         {canDelete && (
                                           <button onClick={() => handleDeleteItem(item)}
-                                            title="Delete" className="p-1.5 text-transparent group-hover/item:text-slate-300 hover:!text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                                            title="Delete" className="p-1.5 text-transparent group-hover/item:text-slate-400 hover:!text-red-600 hover:bg-red-50 rounded-md transition-colors">
                                             <Trash2 className="w-4 h-4" />
                                           </button>
                                         )}
@@ -552,146 +547,11 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
                       );
                     })}
                   </tbody>
-                  {filteredGroups.length > 0 && (
-                    <tfoot>
-                      <tr className="border-t-2 border-gray-200 bg-gray-50">
-                        <td colSpan={6} className="px-4 py-3.5 text-right text-xs font-black text-slate-500 uppercase tracking-widest">
-                          Grand Total
-                        </td>
-                        <td className="px-4 py-3.5 text-right font-black text-gray-900 text-base">
-                          {formatCurrency(totalBOQAmount, project?.currency || '$')}
-                        </td>
-                        <td colSpan={2} />
-                      </tr>
-                    </tfoot>
-                  )}
+             
                 </table>
               </div>
             </div>
 
-            {/* ─────────────────────────────────────────────────────────────────
-              MOBILE LIST
-            ───────────────────────────────────────────────────────────────── */}
-            <div className="sm:hidden space-y-6">
-              {filteredGroups.map(groupName => {
-                const groupItems = groupedItems[groupName];
-                const status = getGroupStatus(groupItems);
-                const totalCost = groupItems.reduce((s, i) => s + ((i as any).effectiveTotalCost !== undefined ? (i as any).effectiveTotalCost : (i.totalCost || 0)), 0);
-
-                return (
-                  <div key={groupName} className="space-y-3">
-                    {/* Group Header */}
-                    <div className="flex items-center justify-between px-2 pb-1 border-b-2 border-slate-100">
-                      <div className="flex items-center gap-2">
-                        <div className="w-1 h-5 bg-blue-500 rounded-full" />
-                        <span className="font-bold text-gray-900 text-sm uppercase">{groupName}</span>
-                      </div>
-                      <span className="font-black text-gray-900 text-sm">{formatCurrency(totalCost, project?.currency || '$')}</span>
-                    </div>
-
-                    {/* Group Items */}
-                    {groupItems.map((item, idx) => {
-                      const isUpdating = updatingItemId === item._id;
-                      const isTargetApprover = String(user?.id || user?._id) === String((item as any).requestedApprover);
-                      const canApproveThis = canApprove || isTargetApprover;
-
-                      return (
-                        <div key={item._id} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-                          <div className="px-4 pt-3 pb-2 border-b border-gray-100">
-                            <div className="flex items-start gap-2.5">
-                              <span className="w-5 h-5 rounded bg-blue-100 flex items-center justify-center text-blue-700 text-[10px] font-black flex-shrink-0 mt-0.5">
-                                {idx + 1}
-                              </span>
-                              <div className="flex-1 min-w-0">
-                                {item.itemNumber && (
-                                  <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-0.5">{item.itemNumber}</p>
-                                )}
-                                <p className="font-semibold text-gray-900 text-sm leading-snug">{item.itemDescription}</p>
-                                {item.remark && (
-                                  <p className="text-[10px] text-slate-400 italic mt-0.5">"{item.remark}"</p>
-                                )}
-                              </div>
-                              <StatusBadge status={item.status} size="xs" />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-3 gap-px bg-gray-100">
-                            <div className="bg-white px-2 py-2 text-center">
-                              <p className="text-[9px] uppercase tracking-wider text-slate-400 mb-0.5">Quantity</p>
-                              <p className="font-bold text-xs text-gray-900">{Number(item.quantity).toLocaleString('en-IN')} {item.unit || ''}</p>
-                            </div>
-                            <div className="bg-white px-2 py-2 text-center">
-                              <p className="text-[9px] uppercase tracking-wider text-slate-400 mb-0.5">Unit Cost</p>
-                              <p className="font-bold text-xs text-gray-900">{formatCurrency(Number(item.unitCost), project?.currency || '$')}</p>
-                            </div>
-                            <div className="bg-blue-50 px-2 py-2 text-center">
-                              <p className="text-[9px] uppercase tracking-wider text-blue-400 mb-0.5">Total Cost</p>
-                              <p className="font-black text-xs text-blue-700">{formatCurrency(Number(item.totalCost || 0), project?.currency || '$')}</p>
-                            </div>
-                          </div>
-                          <div className="px-3 py-2 flex items-center justify-between gap-2 border-t border-gray-50 bg-gray-50/50">
-                            <span className="text-[10px] font-bold text-slate-400 bg-gray-200 px-2 py-0.5 rounded-full">
-                              v{(item as any).version || 1}
-                            </span>
-                            {item.status === 'Pending' && (item as any).requestedApproverName && (
-                              <p className="text-[10px] text-amber-600 font-semibold flex-1 text-center truncate">
-                                ↗ {(item as any).requestedApproverName}
-                              </p>
-                            )}
-                            <div className="flex items-center gap-0.5 justify-end flex-1">
-                              {isUpdating ? (
-                                <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-                              ) : (
-                                <>
-                                  {canApproveThis && item.status === 'Pending' && (
-                                    <>
-                                      <button onClick={() => handleUpdateItemStatus(item, 'Approved')}
-                                        className="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors">
-                                        <CheckCircle2 className="w-4 h-4" />
-                                      </button>
-                                      <button onClick={() => handleUpdateItemStatus(item, 'Rejected')}
-                                        className="p-1.5 text-red-500 hover:bg-red-100 rounded-lg transition-colors">
-                                        <XCircle className="w-4 h-4" />
-                                      </button>
-                                    </>
-                                  )}
-                                  {item.status === 'Draft' && (
-                                    <button onClick={() => setApproversItem(item)}
-                                      className="p-1.5 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-colors">
-                                      <Send className="w-4 h-4" />
-                                    </button>
-                                  )}
-                                  {item.status === 'Approved' ? (
-                                    <button onClick={() => { setSelectedItem(item); setIsNewVersion(true); setIsModalOpen(true); }}
-                                      className="p-1.5 text-amber-600 hover:bg-amber-100 rounded-lg transition-colors">
-                                      <GitBranch className="w-4 h-4" />
-                                    </button>
-                                  ) : canUpdate && (
-                                    <button onClick={() => { setSelectedItem(item); setIsNewVersion(false); setIsModalOpen(true); }}
-                                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors">
-                                      <Edit2 className="w-4 h-4" />
-                                    </button>
-                                  )}
-                                  <button onClick={() => setViewingItem(item)}
-                                    className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-100 rounded-lg transition-colors">
-                                    <History className="w-4 h-4" />
-                                  </button>
-                                  {canDelete && (
-                                    <button onClick={() => handleDeleteItem(item)}
-                                      className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-100 rounded-lg transition-colors">
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  )}
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
-            </div>
           </div>
         )}
 

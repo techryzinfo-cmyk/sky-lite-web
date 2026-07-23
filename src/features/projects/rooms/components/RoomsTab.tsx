@@ -10,6 +10,9 @@ import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
 import { useRouter } from 'next/navigation';
+import { useSocket } from '@/providers/SocketContext';
+import { hasProjectPermission } from '@/lib/permissions';
+import { useProjectContext } from '../../contexts/ProjectContext';
 
 const ROOM_TYPES = [
   'Living Room', 'Bedroom', 'Master Bedroom', 'Kitchen', 'Bathroom',
@@ -49,7 +52,7 @@ export const RoomsTab: React.FC<RoomsTabProps> = ({ projectId, project }) => {
   const toast = useToast();
   const { user } = useAuth();
   const router = useRouter();
-  const isAdmin = user?.role?.permissions?.includes('*');
+  const isAdmin = hasProjectPermission(user, project, 'rooms:manage');
 
   const fetchData = async () => {
     setLoading(true);

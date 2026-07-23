@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
+import { hasProjectPermission } from '@/lib/permissions';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 import { IssueModal } from '@/features/projects/issues/components/IssueModal';
 import { IssueDetailModal } from '@/features/projects/issues/components/IssueDetailModal';
@@ -272,9 +273,10 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
     return i.status === statusFilter;
   });
 
+  // ── Permissions ────────────────────────────────────────────────────────
   const isInspector = ((project?.snaggedBy as any)?._id || project?.snaggedBy) === currentUserId;
-  const canAssignSnagging = user?.role?.permissions?.includes('*') || user?.role?.permissions?.includes('snag:assign') || user?.role?.name === 'Admin';
-  const canCompleteSnag = user?.role?.permissions?.includes('*') || user?.role?.permissions?.includes('snag:complete') || user?.role?.name === 'Admin';
+  const canAssignSnagging = hasProjectPermission(user, project, 'snag:assign');
+  const canCompleteSnag = hasProjectPermission(user, project, 'snag:complete');
   const isSnaggingActive = project?.status === 'Under Snagging' || project?.status === 'Snagging Completed';
 
   return (

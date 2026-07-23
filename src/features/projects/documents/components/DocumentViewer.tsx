@@ -8,8 +8,10 @@ import {
   ChevronRight, PanelRightClose, PanelRightOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
+import { useSocket } from '@/providers/SocketContext';
+import { useProjectContext } from '../../contexts/ProjectContext';
+import { hasProjectPermission } from '@/lib/permissions';
 import api from '@/services/api.client';
 import { uploadToCloudinary } from '@/lib/upload';
 
@@ -58,7 +60,8 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
   const toast = useToast();
   const { user } = useAuth();
-  const isAdmin = user?.role?.name === 'Admin';
+  const { project } = useProjectContext();
+  const isAdmin = hasProjectPermission(user, project, 'land:delete') || user?.role?.name === 'Admin';
 
   const loadAnnotations = useCallback(async () => {
     if (!projectId || !document?._id) return;

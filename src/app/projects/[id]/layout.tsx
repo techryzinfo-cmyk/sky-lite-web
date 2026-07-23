@@ -12,28 +12,28 @@ import {
   TrendingUp, GanttChart, ClipboardList, CreditCard,
   ChevronLeft, Pencil, MessageSquare,
   ClipboardCheck, History, LayoutGrid, Sofa, LayoutDashboard, Clock,
+  Lock, ArrowRight
 } from 'lucide-react';
 
 // ── All tab definitions ────────────────────────────────────────
 const ALL_TABS = [
- 
   { id: 'details',      name: 'Details',        icon: Info },
-  { id: 'boq',          name: 'BOQ',            icon: FileText },
-  { id: 'milestones',   name: 'Milestones',     icon: Calendar },
-  { id: 'reports',      name: 'Reports',        icon: TrendingUp },
-  { id: 'transactions', name: 'Transactions',   icon: CreditCard },
-  { id: 'plans',        name: 'Drawings',          icon: Map },
+  { id: 'site-survey',  name: 'Survey',         icon: ClipboardList },
+  { id: 'plans',        name: 'Drawings',       icon: Map },
   { id: 'documents',    name: 'Documents',      icon: Files },
-  { id: 'materials',    name: 'Materials',      icon: Package },
-  { id: 'site-survey',  name: 'Site Survey',    icon: ClipboardList },
-  { id: 'attendance',   name: 'Attendance',     icon: Clock },
-  { id: 'issues',       name: 'Snags', icon: AlertCircle },
-  { id: 'risks',        name: 'Risks',          icon: ShieldAlert },
-  { id: 'handover',     name: 'Handover',       icon: ClipboardCheck },
-  { id: 'audit',        name: 'Audit Trail',    icon: History },
-  { id: 'chat',         name: 'Chat',           icon: MessageSquare },
+  { id: 'boq',          name: 'BOQ',            icon: FileText },
   { id: 'rooms',        name: 'Rooms',          icon: LayoutGrid },
   { id: 'ffe',          name: 'FFE',            icon: Sofa },
+  { id: 'milestones',   name: 'Milestone',      icon: Calendar },
+  { id: 'materials',    name: 'Material',       icon: Package },
+  { id: 'attendance',   name: 'Attendance',     icon: Clock },
+  { id: 'issues',       name: 'Snags',          icon: AlertCircle },
+  { id: 'risks',        name: 'Risk',           icon: ShieldAlert },
+  { id: 'transactions', name: 'Transactions',   icon: CreditCard },
+  { id: 'reports',      name: 'Reports',        icon: TrendingUp },
+  { id: 'audit',        name: 'Audit',          icon: History },
+  { id: 'handover',     name: 'Handover',       icon: ClipboardCheck },
+  { id: 'chat',         name: 'Chat',           icon: MessageSquare },
 ] as const;
 
 type TabId = typeof ALL_TABS[number]['id'];
@@ -79,6 +79,10 @@ const statusBadgeColor: Record<string, string> = {
   'Cancelled':           'bg-red-50/80 text-red-700 border-red-200/60 shadow-[0_1px_2px_rgba(239,68,68,0.02)]',
 };
 
+const RESTRICTED_TABS = [
+  'plans', 'rooms', 'ffe', 'boq', 'milestones', 'audit', 'materials', 'transactions', 'risks', 'issues', 'handover', 'attendance', 'reports'
+];
+
 // ── Inner layout ───────────────────────────────────────────────
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const { project, loading, fetchProject, projectId } = useProjectContext();
@@ -88,6 +92,9 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 
   const visibleTabs = getVisibleTabs(project?.projectType, project?.siteSurveyor);
   const activeTab = (ALL_TABS as readonly { id: string }[]).find(t => pathname.includes(`/${t.id}`))?.id || 'dashboard';
+
+  const isSurveyPending = project?.status === 'Site Survey' || (project?.status === 'Initialized' && project?.needSiteSurvey);
+  const isRestrictedTab = isSurveyPending && RESTRICTED_TABS.includes(activeTab);
 
   const headerContent = project ? (
     <div className="flex items-center justify-between w-full pr-4">
@@ -165,7 +172,28 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
 
-              {children}
+              {isRestrictedTab ? (
+                <div className="flex flex-col items-center justify-center py-24 bg-white/60 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm mt-4">
+                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                    <Lock className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <h2 className="text-xl font-bold text-slate-900 mb-2">Section Locked</h2>
+                  <p className="text-slate-500 text-sm max-w-sm text-center mb-6">
+                    Please complete and approve the Site Survey to unlock this section.
+                  </p>
+                  {visibleTabs.find(t => t.id === 'site-survey') && (
+                    <button
+                      onClick={() => router.push(`/projects/${projectId}/site-survey`)}
+                      className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors shadow-sm"
+                    >
+                      <span>Go to Survey</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                children
+              )}
             </div>
 
             <CreateProjectModal

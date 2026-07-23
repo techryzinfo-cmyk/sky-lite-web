@@ -306,24 +306,24 @@ export default function MilestoneDetailPage() {
         </button>
 
         {/* ── Milestone header ── */}
-        <GlassCard className="p-6 border-gray-200" gradient>
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div className="flex items-start gap-4 flex-1 min-w-0">
-              <div className="w-12 h-12 rounded-2xl bg-blue-100 border border-blue-200 flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
                 <Flag className="w-6 h-6 text-blue-600" />
               </div>
               <div className="flex-1 min-w-0">
-                <h1 className="text-2xl font-bold text-gray-900 leading-tight">{milestone.name}</h1>
+                <h1 className="text-xl font-semibold text-gray-900 leading-tight truncate">{milestone.name}</h1>
                 {milestone.description && (
-                  <p className="text-sm text-slate-500 mt-1 leading-relaxed">{milestone.description}</p>
+                  <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">{milestone.description}</p>
                 )}
-                <div className="flex flex-wrap items-center gap-3 mt-3">
+                <div className="flex flex-wrap items-center gap-3 mt-4">
                   <div className="flex items-center gap-2">
                     {savingStatus && <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin" />}
                     <select
                       value={milestone.status || 'Pending'}
                       onChange={e => handleStatusChange(e.target.value as MilestoneStatus)}
-                      className={cn('px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border cursor-pointer focus:outline-none appearance-none', getStatusStyle(milestone.status))}
+                      className={cn('px-2.5 py-1 rounded-md text-[10px] font-medium border cursor-pointer focus:outline-none appearance-none', getStatusStyle(milestone.status))}
                     >
                       {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
@@ -335,7 +335,7 @@ export default function MilestoneDetailPage() {
                     </span>
                   )}
                   {milestone.completedAt && (
-                    <span className="flex items-center gap-1.5 text-xs text-emerald-600">
+                    <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       Completed {new Date(milestone.completedAt).toLocaleDateString()}
                     </span>
@@ -345,25 +345,25 @@ export default function MilestoneDetailPage() {
             </div>
 
             {/* Progress ring */}
-            <div className="flex flex-col items-center gap-1 shrink-0">
-              <div className="relative w-20 h-20">
-                <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
-                  <circle cx="40" cy="40" r="32" fill="none" stroke="#e5e7eb" strokeWidth="8" />
+            <div className="flex flex-col items-center gap-2 shrink-0">
+              <div className="relative w-16 h-16">
+                <svg className="w-16 h-16 -rotate-90" viewBox="0 0 80 80">
+                  <circle cx="40" cy="40" r="32" fill="none" stroke="#f3f4f6" strokeWidth="6" />
                   <circle
                     cx="40" cy="40" r="32" fill="none"
                     stroke={milestone.status === 'Completed' ? '#10b981' : milestone.status === 'On Hold' ? '#f59e0b' : '#3b82f6'}
-                    strokeWidth="8" strokeLinecap="round"
+                    strokeWidth="6" strokeLinecap="round"
                     strokeDasharray={`${2 * Math.PI * 32}`}
                     strokeDashoffset={`${2 * Math.PI * 32 * (1 - progress / 100)}`}
                     className="transition-all duration-500"
                   />
                 </svg>
-                <span className="absolute inset-0 flex items-center justify-center text-lg font-bold text-gray-900">{progress}%</span>
+                <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-gray-900">{progress}%</span>
               </div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{completedCount}/{tasks.length} Tasks</p>
+              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{completedCount}/{tasks.length} Tasks</p>
             </div>
           </div>
-        </GlassCard>
+        </div>
 
         {/* ── Task list ── */}
         <div className="space-y-4">
@@ -371,7 +371,7 @@ export default function MilestoneDetailPage() {
             <h2 className="text-lg font-bold text-gray-900">Tasks</h2>
             <button
               onClick={() => setShowAddTask(v => !v)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-all shadow-sm"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-all shadow-sm"
             >
               <Plus className="w-4 h-4" />
               Add Task
@@ -382,11 +382,11 @@ export default function MilestoneDetailPage() {
           <AnimatePresence>
             {showAddTask && (
               <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
-                <GlassCard className="p-5 border-blue-200 bg-blue-50/30" gradient>
-                  <p className="text-xs font-bold text-blue-700 uppercase tracking-wider mb-4">New Task</p>
+                <div className="p-5 border border-blue-100 bg-blue-50/30 rounded-xl shadow-sm">
+                  <p className="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-4">New Task</p>
                   <div className="space-y-3">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Title *</label>
+                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Title *</label>
                       <input
                         autoFocus type="text" value={addTaskForm.title}
                         onChange={e => setAddTaskForm(p => ({ ...p, title: e.target.value }))}
@@ -395,14 +395,14 @@ export default function MilestoneDetailPage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Description</label>
+                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Description</label>
                       <input type="text" value={addTaskForm.description}
                         onChange={e => setAddTaskForm(p => ({ ...p, description: e.target.value }))}
                         className={inputCls} placeholder="Optional details..." />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Start Date</label>
+                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Start Date</label>
                         <input type="date" value={addTaskForm.startDate}
                           onChange={e => {
                             const s = e.target.value;
@@ -415,7 +415,7 @@ export default function MilestoneDetailPage() {
                           className={inputCls} />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">End Date</label>
+                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">End Date</label>
                         <input type="date" value={addTaskForm.endDate}
                           min={addTaskForm.startDate || undefined}
                           onChange={e => setAddTaskForm(p => ({ ...p, endDate: e.target.value }))}
@@ -423,7 +423,7 @@ export default function MilestoneDetailPage() {
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assign To</label>
+                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Assign To</label>
                       <select value={addTaskForm.assignedTo}
                         onChange={e => setAddTaskForm(p => ({ ...p, assignedTo: e.target.value }))}
                         className={inputCls}>
@@ -435,31 +435,31 @@ export default function MilestoneDetailPage() {
                       <button
                         type="button"
                         onClick={() => { setShowAddTask(false); setAddTaskForm({ title: '', description: '', startDate: '', endDate: '', assignedTo: '' }); }}
-                        className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-slate-600 transition-all"
+                        className="flex-1 py-2.5 rounded-md bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-slate-600 transition-all"
                       >
                         Cancel
                       </button>
                       <button
                         type="button" onClick={handleAddTask}
                         disabled={isSavingAdd || !addTaskForm.title.trim()}
-                        className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-sm font-bold text-white transition-all flex items-center justify-center gap-2"
+                        className="flex-1 py-2.5 rounded-md bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-sm font-medium text-white transition-all flex items-center justify-center gap-2"
                       >
                         {isSavingAdd ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4" />Add Task</>}
                       </button>
                     </div>
                   </div>
-                </GlassCard>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
 
           {tasks.length === 0 && !showAddTask && (
-            <div className="flex flex-col items-center justify-center py-24 border-2 border-dashed border-gray-200 rounded-3xl">
+            <div className="flex flex-col items-center justify-center py-24 border-2 border-dashed border-gray-200 rounded-xl">
               <AlertCircle className="w-12 h-12 text-gray-300 mb-4" />
               <p className="text-slate-500 font-medium">No tasks yet.</p>
               <button
                 onClick={() => setShowAddTask(true)}
-                className="mt-3 text-sm font-bold text-blue-600 hover:text-blue-500 transition-colors"
+                className="mt-3 text-sm font-medium text-blue-600 hover:text-blue-500 transition-colors"
               >
                 + Add the first task
               </button>
@@ -473,7 +473,7 @@ export default function MilestoneDetailPage() {
             const isExpanded  = expandedTask === i;
 
             return (
-              <GlassCard key={i} className={cn('border transition-all', task.isCompleted ? 'border-emerald-100 bg-emerald-50/40' : 'border-gray-200 hover:border-blue-200')} gradient>
+              <div key={i} className={cn('bg-white rounded-xl shadow-sm border transition-all overflow-hidden', task.isCompleted ? 'border-emerald-100 bg-emerald-50/20' : 'border-gray-200 hover:border-blue-200')}>
 
                 {/* Task header row — click anywhere to open submit form (incomplete) or toggle detail (completed) */}
                 <div
@@ -739,7 +739,7 @@ export default function MilestoneDetailPage() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </GlassCard>
+              </div>
             );
           })}
         </div>

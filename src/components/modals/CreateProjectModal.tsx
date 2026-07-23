@@ -7,13 +7,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Loader2, ChevronLeft, ChevronRight, FolderOpen,
   FileText, Zap, Upload, Trash2, MapPin, Check,
-  HardHat, Sofa, Plus, Navigation,
+  HardHat, Sofa, Plus, Navigation, Eye,
 } from 'lucide-react';
 import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
 import api from '@/services/api.client';
 import { uploadToCloudinary } from '@/lib/upload';
 import { cn } from '@/lib/utils';
+import dynamic from 'next/dynamic';
+
+const LocationPickerMap = dynamic(
+  () => import('./LocationPickerMap').then(mod => mod.LocationPickerMap),
+  { ssr: false }
+);
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -34,7 +40,9 @@ const emptyForm = {
   siteLocationLongitude: '',
   attendanceRadius: 100,
   area: '',
+  areaUnit: 'sqft',
   budget: '',
+  currency: 'AED',
   description: '',
   startDate: '',
   endDate: '',
@@ -63,13 +71,22 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   const [newCategoryName, setNewCategoryName] = useState('');
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [isMapOpen, setIsMapOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewType, setPreviewType] = useState<'image' | 'pdf' | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(true);
 
   // ── Form state ──
   const [form, setForm] = useState(emptyForm);
   const [documents, setDocuments] = useState<{ name: string; url: string; size: number; mimeType: string }[]>([]);
   const [uploadingDoc, setUploadingDoc] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const docInputRef = useRef<HTMLInputElement>(null);
+
+  const [drawings, setDrawings] = useState<{ name: string; url: string; size: number; mimeType: string }[]>([]);
+  const [uploadingDrawing, setUploadingDrawing] = useState(false);
+  const drawingInputRef = useRef<HTMLInputElement>(null);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // ── Date validation ──
   const [dateErrors, setDateErrors] = useState<{ startDate?: string; endDate?: string }>({});
@@ -87,7 +104,9 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
         siteLocationLongitude: initialData.siteLocation?.longitude?.toString() || '',
         attendanceRadius: initialData.attendanceRadius ?? 100,
         area: initialData.area || '',
+        areaUnit: initialData.areaUnit || 'sqft',
         budget: '',
+        currency: initialData.currency || 'AED',
         description: initialData.description || '',
         startDate: initialData.startDate ? initialData.startDate.split('T')[0] : '',
         endDate: initialData.endDate ? initialData.endDate.split('T')[0] : '',
@@ -95,10 +114,12 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
         projectType: (initialData.projectType as 'Construction' | 'Interior') || 'Construction',
       });
       setDocuments(initialData.documents || []);
+      // If we need to fetch drawings for editing, we could, but editing existing drawings isn't explicitly requested here
     } else {
       setStep('category');
       setForm(emptyForm);
       setDocuments([]);
+      setDrawings([]);
       setSelectedCategory(null);
       setSelectedTemplate(null);
       setIsCustom(false);
@@ -248,6 +269,26 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
     }
   };
 
+  const handleDrawingUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(e.target.files || []);
+    if (!picked.length) return;
+    setUploadingDrawing(true);
+    try {
+      const uploaded = await Promise.all(
+        picked.map(async f => {
+          const url = await uploadToCloudinary(f);
+          return { name: f.name, url, size: f.size, mimeType: f.type };
+        })
+      );
+      setDrawings(prev => [...prev, ...uploaded]);
+    } catch {
+      toast.error('Drawing upload failed');
+    } finally {
+      setUploadingDrawing(false);
+      e.target.value = '';
+    }
+  };
+
   const handleSelectTemplate = (tpl: any) => {
     setSelectedTemplate(tpl);
     setIsCustom(false);
@@ -298,6 +339,8 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
           attendanceRadius: form.attendanceRadius ? Number(form.attendanceRadius) : 100,
         };
         if (form.area) payload.area = Number(form.area);
+        payload.areaUnit = form.areaUnit;
+        payload.currency = form.currency;
         await api.patch(`/projects/${projectId}`, payload);
         toast.success('Project updated successfully!');
       } else {
@@ -311,7 +354,10 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
           needSiteSurvey: form.needSiteSurvey,
           projectType: form.projectType,
           budget: form.budget ? form.budget : undefined,
+          currency: form.currency,
+          areaUnit: form.areaUnit,
           documents: documents.length > 0 ? documents : undefined,
+          drawings: drawings.length > 0 ? drawings : undefined,
           siteLocation: siteLocationObj,
           attendanceRadius: form.attendanceRadius ? Number(form.attendanceRadius) : 100,
         };
@@ -561,6 +607,14 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                               </>
                             )}
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsMapOpen(true)}
+                            className="flex items-center gap-1 text-[11px] font-bold text-slate-600 hover:text-slate-900 transition-colors bg-white border border-gray-200 px-2 py-1 rounded-md"
+                          >
+                            <MapPin className="w-3 h-3" />
+                            <span>Map</span>
+                          </button>
                         </div>
                         <div className="relative">
                           <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -597,18 +651,41 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className={labelCls}>Project Area (sqft)</label>
-                          <input type="number" value={form.area}
-                            onChange={e => setForm(f => ({ ...f, area: e.target.value }))}
-                            className={inputCls} placeholder="e.g. 2400"
-                          />
+                          <label className={labelCls}>Project Area</label>
+                          <div className="flex border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500">
+                            <input type="number" value={form.area}
+                              onChange={e => setForm(f => ({ ...f, area: e.target.value }))}
+                              className="w-full bg-gray-50 py-3 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none text-sm" placeholder="e.g. 2400"
+                            />
+                            <select
+                              value={form.areaUnit}
+                              onChange={e => setForm(f => ({ ...f, areaUnit: e.target.value as 'sqft' | 'sqm' }))}
+                              className="bg-gray-100 border-l border-gray-200 text-sm font-semibold text-slate-600 px-3 outline-none cursor-pointer"
+                            >
+                              <option value="sqft">SQFT</option>
+                              <option value="sqm">SQM</option>
+                            </select>
+                          </div>
                         </div>
                         <div>
-                          <label className={labelCls}>Budget ($)</label>
-                          <input type="number" value={form.budget}
-                            onChange={e => setForm(f => ({ ...f, budget: e.target.value }))}
-                            className={inputCls} placeholder="e.g. 50,00,000"
-                          />
+                          <label className={labelCls}>Est Budget</label>
+                          <div className="flex border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500">
+                            <select
+                              value={form.currency}
+                              onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}
+                              className="bg-gray-100 border-r border-gray-200 text-sm font-semibold text-slate-600 px-3 outline-none cursor-pointer"
+                            >
+                              <option value="AED">AED</option>
+                              <option value="USD">USD</option>
+                              <option value="INR">INR</option>
+                              <option value="EUR">EUR</option>
+                              <option value="GBP">GBP</option>
+                            </select>
+                            <input type="number" value={form.budget}
+                              onChange={e => setForm(f => ({ ...f, budget: e.target.value }))}
+                              className="w-full bg-gray-50 py-3 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none text-sm" placeholder="e.g. 50000"
+                            />
+                          </div>
                         </div>
                       </div>
 
@@ -694,6 +771,71 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                       </div>
                     </div>
 
+                    {/* Technical Drawings */}
+                    {!isEditing && (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">Technical Drawings</h3>
+                          <button
+                            type="button" onClick={() => drawingInputRef.current?.click()}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-xl text-xs font-bold text-blue-700 hover:bg-blue-100 transition-all"
+                            disabled={uploadingDrawing}
+                          >
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Add Drawing</span>
+                          </button>
+                        </div>
+                        <input ref={drawingInputRef} type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={handleDrawingUpload} />
+
+                        {drawings.length > 0 ? (
+                          <div className="space-y-2">
+                            {drawings.map((doc, i) => (
+                              <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                                <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+                                  <FileText className="w-4 h-4 text-blue-500" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-bold text-gray-900 truncate">{doc.name}</p>
+                                  <p className="text-[10px] text-slate-400">{(doc.size / 1024).toFixed(1)} KB</p>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setPreviewUrl(doc.url);
+                                      setPreviewType(doc.mimeType?.startsWith('image') ? 'image' : 'pdf');
+                                      setIsPreviewLoading(true);
+                                    }}
+                                    className="p-1 text-slate-400 hover:text-blue-500 transition-colors"
+                                    title="Preview"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </button>
+                                  <button type="button" onClick={() => setDrawings(prev => prev.filter((_, j) => j !== i))} className="p-1 text-slate-400 hover:text-red-500 transition-colors" title="Remove">
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                            {uploadingDrawing && (
+                              <div className="flex items-center gap-2 p-3 border border-dashed border-blue-200 rounded-xl text-blue-500">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span className="text-xs font-semibold">Uploading...</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <button
+                            type="button" onClick={() => drawingInputRef.current?.click()}
+                            className="w-full border border-dashed border-gray-300 rounded-xl p-5 text-center text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-all text-xs font-semibold"
+                            disabled={uploadingDrawing}
+                          >
+                            {uploadingDrawing ? 'Uploading...' : 'No drawings attached. Upload CAD/PDF files.'}
+                          </button>
+                        )}
+                      </div>
+                    )}
+
                     {/* Documents */}
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
@@ -707,7 +849,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                           <span>Add File</span>
                         </button>
                       </div>
-                      <input ref={docInputRef} type="file" multiple className="hidden" onChange={handleDocUpload} />
+                      <input ref={docInputRef} type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={handleDocUpload} />
 
                       {documents.length > 0 ? (
                         <div className="space-y-2">
@@ -720,9 +862,23 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                                 <p className="text-xs font-bold text-gray-900 truncate">{doc.name}</p>
                                 <p className="text-[10px] text-slate-400">{(doc.size / 1024).toFixed(1)} KB</p>
                               </div>
-                              <button type="button" onClick={() => setDocuments(prev => prev.filter((_, j) => j !== i))} className="text-slate-400 hover:text-red-500 transition-colors">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPreviewUrl(doc.url);
+                                    setPreviewType(doc.mimeType?.startsWith('image') ? 'image' : 'pdf');
+                                    setIsPreviewLoading(true);
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-blue-500 transition-colors"
+                                  title="Preview"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <button type="button" onClick={() => setDocuments(prev => prev.filter((_, j) => j !== i))} className="p-1 text-slate-400 hover:text-red-500 transition-colors" title="Remove">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             </div>
                           ))}
                           {uploadingDoc && (
@@ -750,7 +906,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                       </button>
                       <button
                         type="submit"
-                        disabled={isSubmitting || uploadingDoc || hasDateErrors}
+                        disabled={isSubmitting || uploadingDoc || uploadingDrawing || hasDateErrors}
                         className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all disabled:opacity-50 shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
                       >
                         {isSubmitting
@@ -823,6 +979,65 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                         </div>
                       </div>
                     </form>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
+
+            <LocationPickerMap
+              isOpen={isMapOpen}
+              onClose={() => setIsMapOpen(false)}
+              onSelectLocation={(lat, lng) => setForm(f => ({
+                ...f,
+                siteLocationLatitude: lat.toFixed(6),
+                siteLocationLongitude: lng.toFixed(6)
+              }))}
+              initialLat={form.siteLocationLatitude ? Number(form.siteLocationLatitude) : undefined}
+              initialLng={form.siteLocationLongitude ? Number(form.siteLocationLongitude) : undefined}
+            />
+
+            <AnimatePresence>
+              {previewUrl && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+                  <motion.div
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    onClick={() => setPreviewUrl(null)}
+                    className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="w-full max-w-5xl relative z-10 bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[90vh]"
+                  >
+                    <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                      <h3 className="text-lg font-black text-gray-900">Document Preview</h3>
+                      <button type="button" onClick={() => setPreviewUrl(null)} className="p-2 text-slate-400 hover:text-gray-900 bg-gray-50 rounded-xl transition-colors">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-auto bg-gray-100 flex items-center justify-center p-4 relative">
+                      {isPreviewLoading && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                        </div>
+                      )}
+                      {previewType === 'image' ? (
+                        <img 
+                          src={previewUrl} 
+                          alt="Preview" 
+                          onLoad={() => setIsPreviewLoading(false)}
+                          className={cn("max-w-full max-h-full object-contain rounded-lg shadow-sm transition-opacity duration-300", isPreviewLoading ? "opacity-0" : "opacity-100")} 
+                        />
+                      ) : (
+                        <iframe 
+                          src={previewUrl} 
+                          onLoad={() => setIsPreviewLoading(false)}
+                          className={cn("w-full h-full rounded-lg shadow-sm border-0 transition-opacity duration-300", isPreviewLoading ? "opacity-0" : "opacity-100")} 
+                          title="PDF Preview" 
+                        />
+                      )}
+                    </div>
                   </motion.div>
                 </div>
               )}

@@ -24,6 +24,8 @@ import { cn } from '@/lib/utils';
 import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
+import { hasProjectPermission, hasAnyProjectPermissionPrefix } from '@/lib/permissions';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 import { RiskModal } from '@/features/projects/risks/components/RiskModal';
 import { RiskDetailModal } from '@/features/projects/risks/components/RiskDetailModal';
 import { RiskMitigationModal } from '@/features/projects/risks/components/RiskMitigationModal';
@@ -85,6 +87,7 @@ const getImpactColor = (label: string) => {
 };
 
 export const RisksTab: React.FC<RisksTabProps> = ({ projectId }) => {
+  const { project } = useProjectContext();
   const [risks, setRisks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -98,11 +101,10 @@ export const RisksTab: React.FC<RisksTabProps> = ({ projectId }) => {
   const toast = useToast();
   const { user } = useAuth();
 
-  const isAdmin = user?.role?.name === 'Admin' || user?.role?.permissions?.includes('*');
-  const canView = isAdmin || user?.role?.permissions?.some((p: string) => p.startsWith('escalation:'));
-  const canCreate = isAdmin || user?.role?.permissions?.includes('escalation:create');
-  const canUpdate = isAdmin || user?.role?.permissions?.includes('escalation:update');
-  const canDelete = isAdmin || user?.role?.permissions?.includes('escalation:delete');
+  const canView = hasAnyProjectPermissionPrefix(user, project, 'escalation:');
+  const canCreate = hasProjectPermission(user, project, 'escalation:create');
+  const canUpdate = hasProjectPermission(user, project, 'escalation:update');
+  const canDelete = hasProjectPermission(user, project, 'escalation:delete');
 
   const fetchRisks = async () => {
     try {

@@ -10,6 +10,8 @@ import api from '@/services/api.client';
 import { uploadToCloudinary } from '@/lib/upload';
 import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
+import { hasProjectPermission } from '@/lib/permissions';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 import { DocumentViewer } from '@/features/projects/documents/components/DocumentViewer';
 import { UserPickerModal } from '@/components/modals/UserPickerModal';
 
@@ -36,7 +38,11 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
 
   const toast = useToast();
   const { user } = useAuth();
-  const isAdmin = user?.role?.name === 'Admin';
+  const { project } = useProjectContext();
+  
+  const canDeleteDocument = hasProjectPermission(user, project, 'plans:delete');
+  const canCreatePlans = hasProjectPermission(user, project, 'plans:create');
+  const canEditPlans = hasProjectPermission(user, project, 'plans:update') || hasProjectPermission(user, project, 'plans:edit');
 
   // Single folder-level call to get all annotation counts
   useEffect(() => {

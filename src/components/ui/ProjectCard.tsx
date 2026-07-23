@@ -24,6 +24,7 @@ interface ProjectCardProps {
   onDelete?: (project: Project) => void;
   onSendForSurvey?: (project: Project) => void;
   onCompleteSurvey?: (project: Project) => void;
+  allUsers?: any[];
 }
 
 const statusColors: Record<string, string> = {
@@ -49,7 +50,7 @@ const STATUS_PROGRESS: Record<string, number> = {
 };
 
 export const ProjectCard: React.FC<ProjectCardProps> = ({
-  project, onEdit, onDelete, onSendForSurvey, onCompleteSurvey,
+  project, onEdit, onDelete, onSendForSurvey, onCompleteSurvey, allUsers = [],
 }) => {
   const progress = STATUS_PROGRESS[project.status] ?? 10;
   const { user } = useAuth();
@@ -73,9 +74,8 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   const progressColorClass = isFinished ? 'bg-emerald-500' : 'bg-blue-600';
 
   return (
-    <GlassCard
-      className="group hover:border-blue-200 hover:shadow-md transition-all duration-300 flex flex-col h-full shadow-sm relative p-0 overflow-hidden rounded-2xl bg-white border border-slate-200/60"
-      gradient={false}
+    <div
+      className="group hover:border-blue-200 hover:shadow-md transition-all duration-300 flex flex-col h-full shadow-sm relative p-0 overflow-hidden rounded-xl bg-white border border-gray-200"
     >
       <Link href={`/projects/${project._id}`} className="flex flex-col flex-1 outline-none">
         
@@ -86,16 +86,16 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               <Users className="w-5 h-5 text-blue-600" />
             </div>
             <div className="min-w-0">
-              <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 block truncate">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500 block truncate">
                 {categoryName || 'General'}
               </span>
-              <h3 className="text-sm font-extrabold text-slate-800 group-hover:text-blue-600 transition-colors line-clamp-1 leading-snug tracking-tight mt-0.5">
+              <h3 className="text-base font-semibold text-slate-800 group-hover:text-blue-600 transition-colors line-clamp-1 leading-snug tracking-tight mt-0.5">
                 {project.name}
               </h3>
             </div>
           </div>
           <span className={cn(
-            'px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider border shrink-0',
+            'px-2 py-1 rounded-md text-[9px] font-medium uppercase tracking-wider border shrink-0',
             statusColor
           )}>
             {project.status?.replace(/ /g, '')}
@@ -135,8 +135,8 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
             {/* Progress Bar */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-400 tracking-wider">PROGRESS</span>
-                <span className="text-[10px] font-black text-slate-700">{Math.round(progress)}%</span>
+                <span className="text-[10px] font-medium text-slate-500 tracking-wider">PROGRESS</span>
+                <span className="text-[10px] font-semibold text-slate-700">{Math.round(progress)}%</span>
               </div>
               <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                 <div
@@ -173,7 +173,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
         {/* Date */}
         <div className="flex items-center gap-1.5 text-blue-500">
           <Calendar className="w-3.5 h-3.5" />
-          <span className="text-[10px] font-extrabold">
+          <span className="text-[10px] font-medium">
             {project.startDate ? new Date(project.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'No date'}
           </span>
         </div>
@@ -237,6 +237,6 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
           <AlertCircle className="w-2.5 h-2.5 text-white" />
         </div>
       )}
-    </GlassCard>
+    </div>
   );
 };
