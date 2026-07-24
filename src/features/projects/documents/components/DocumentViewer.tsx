@@ -10,6 +10,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/AuthContext';
 import { useSocket } from '@/providers/SocketContext';
+import { useToast } from '@/providers/ToastContext';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import { hasProjectPermission } from '@/lib/permissions';
 import api from '@/services/api.client';
