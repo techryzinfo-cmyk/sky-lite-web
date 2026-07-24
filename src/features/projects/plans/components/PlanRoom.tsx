@@ -43,6 +43,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
   const canDeleteDocument = hasProjectPermission(user, project, 'plans:delete');
   const canCreatePlans = hasProjectPermission(user, project, 'plans:create');
   const canEditPlans = hasProjectPermission(user, project, 'plans:update') || hasProjectPermission(user, project, 'plans:edit');
+  const isAdmin = user?.role?.name === 'Admin' || (user?.role?.permissions?.includes('*') ?? false);
 
   // Single folder-level call to get all annotation counts
   useEffect(() => {

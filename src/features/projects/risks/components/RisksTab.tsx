@@ -105,6 +105,7 @@ export const RisksTab: React.FC<RisksTabProps> = ({ projectId }) => {
   const canCreate = hasProjectPermission(user, project, 'escalation:create');
   const canUpdate = hasProjectPermission(user, project, 'escalation:update');
   const canDelete = hasProjectPermission(user, project, 'escalation:delete');
+  const isAdmin = user?.role?.name === 'Admin' || (user?.role?.permissions?.includes('*') ?? false);
 
   const fetchRisks = async () => {
     try {
