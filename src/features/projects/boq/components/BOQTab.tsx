@@ -111,7 +111,7 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
   const { socket } = useSocket();
 
   // ── Permissions (mirror mobile's isAdmin / canApprove) ──────────────────
-  const isAdmin = user?.role?.name === 'Admin' || user?.role?.permissions?.includes('*');
+  const isAdmin = user?.role?.name === 'Admin' || (user?.role?.permissions?.includes('*') ?? false);
   const canApprove = hasProjectPermission(user, project, 'boq:approve');
   const canUpdate = hasProjectPermission(user, project, 'boq:update');
   const canDelete = hasProjectPermission(user, project, 'boq:delete');
