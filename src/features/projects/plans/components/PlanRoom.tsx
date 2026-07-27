@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ArrowLeft, Upload, FileText, Trash2, CheckCircle2, XCircle,
   Clock, Eye, Send, Loader2, UserCheck, MessageSquare, PenLine,
@@ -14,6 +14,7 @@ import { hasProjectPermission } from '@/lib/permissions';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 import { DocumentViewer } from '@/features/projects/documents/components/DocumentViewer';
 import { UserPickerModal } from '@/components/modals/UserPickerModal';
+import { PlanAnnotator } from './PlanAnnotator';
 
 interface PlanRoomProps {
   folder: any;
@@ -33,6 +34,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
   const [isUploading, setIsUploading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [viewingDoc, setViewingDoc] = useState<any>(null);
+  const [annotatingDoc, setAnnotatingDoc] = useState<any>(null);
   const [annotationCounts, setAnnotationCounts] = useState<Record<string, number>>({});
   const [approverDocId, setApproverDocId] = useState<string | null>(null);
 
@@ -45,21 +47,21 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
   const canEditPlans = hasProjectPermission(user, project, 'plans:update') || hasProjectPermission(user, project, 'plans:edit');
   const isAdmin = user?.role?.name === 'Admin' || (user?.role?.permissions?.includes('*') ?? false);
 
-  // Single folder-level call to get all annotation counts
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await api.get(`/projects/${projectId}/folders/${folder._id}/annotations`);
-        const counts: Record<string, number> = {};
-        (res.data || []).forEach((ann: any) => {
-          const docId = typeof ann.document === 'object' ? ann.document._id : ann.document;
-          if (docId) counts[docId] = (counts[docId] || 0) + 1;
-        });
-        setAnnotationCounts(counts);
-      } catch { /* annotations are optional */ }
-    };
-    load();
+  const fetchAnnotationCounts = useCallback(async () => {
+    try {
+      const res = await api.get(`/projects/${projectId}/folders/${folder._id}/annotations`);
+      const counts: Record<string, number> = {};
+      (res.data || []).forEach((ann: any) => {
+        const docId = typeof ann.document === 'object' ? ann.document._id : ann.document;
+        if (docId) counts[docId] = (counts[docId] || 0) + 1;
+      });
+      setAnnotationCounts(counts);
+    } catch { /* annotations are optional */ }
   }, [projectId, folder._id]);
+
+  useEffect(() => {
+    fetchAnnotationCounts();
+  }, [fetchAnnotationCounts]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -250,7 +252,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
                   {/* Annotate — opens viewer in annotation mode */}
                   {projectId && (
                     <button
-                      onClick={() => setViewingDoc(doc)}
+                      onClick={() => setAnnotatingDoc(doc)}
                       className={cn(
                         'flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all',
                         annCount > 0
@@ -324,6 +326,18 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
         onClose={() => setViewingDoc(null)}
         document={viewingDoc}
         projectId={projectId}
+      />
+
+      <PlanAnnotator
+        isOpen={!!annotatingDoc}
+        onClose={() => setAnnotatingDoc(null)}
+        document={annotatingDoc}
+        projectId={projectId}
+        folderId={folder._id}
+        onUpdate={() => {
+          fetchAnnotationCounts();
+          onUpdate();
+        }}
       />
 
       <UserPickerModal

@@ -186,10 +186,7 @@ export const OverviewDashboard = () => {
       {/* Welcome Greeting Header */}
       <div className="flex items-center justify-between bg-blue-50/70 border border-blue-100 rounded-2xl p-4 md:p-5">
         <div className="space-y-1">
-          <div className="flex items-center space-x-1.5 text-blue-600">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Command Center</span>
-          </div>
+
           <h2 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">
             Good {getTimeOfDay()}, {user?.name?.split(' ')[0] || 'User'}
           </h2>

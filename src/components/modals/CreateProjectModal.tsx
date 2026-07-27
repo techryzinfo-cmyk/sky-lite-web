@@ -5,7 +5,7 @@ import { SkeletonLoader } from '@/components/skeletons/SkeletonLoader';
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, Loader2, ChevronLeft, ChevronRight, FolderOpen,
+  X, Loader2, ChevronLeft, ChevronRight, ChevronDown, FolderOpen,
   FileText, Zap, Upload, Trash2, MapPin, Check,
   HardHat, Sofa, Plus, Navigation, Eye,
 } from 'lucide-react';
@@ -65,6 +65,8 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [isCustom, setIsCustom] = useState(false);
   const [loadingModal, setLoadingModal] = useState(false);
+  const [currencies, setCurrencies] = useState<any[]>([]);
+  const [isCurrencyDropdownOpen, setIsCurrencyDropdownOpen] = useState(false);
   
   // Category creation state
   const [isAddingCategory, setIsAddingCategory] = useState(false);
@@ -130,13 +132,46 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   const fetchModalData = async () => {
     setLoadingModal(true);
     try {
-      const [catRes, tempRes] = await Promise.all([
+      const [catRes, tempRes, currencyRes] = await Promise.all([
         api.get('/template-categories'),
         api.get('/templates'),
+        api.get('/projects/currencies').catch(() => ({ data: null }))
       ]);
       setCategories(catRes.data);
       setTemplates(tempRes.data);
-    } catch {
+      
+      const resData = currencyRes?.data;
+      let currArray = null;
+      if (Array.isArray(resData)) currArray = resData;
+      else if (resData && typeof resData === 'object') {
+        if (Array.isArray(resData.data)) currArray = resData.data;
+        else if (Array.isArray(resData.currencies)) currArray = resData.currencies;
+        else if (Array.isArray(resData.items)) currArray = resData.items;
+      }
+      
+      if (currArray && currArray.length > 0) {
+        setCurrencies(currArray);
+      } else {
+        console.log("Could not find array in backend currency response:", resData);
+        // Fallback to a huge list of global currencies if the backend API isn't available
+        try {
+          const publicApiRes = await fetch('https://open.er-api.com/v6/latest/USD').then(r => r.json());
+          if (publicApiRes && publicApiRes.rates) {
+            const allCurrencies = Object.keys(publicApiRes.rates).map(code => ({ code, name: code }));
+            setCurrencies(allCurrencies);
+          }
+        } catch (e) {
+          setCurrencies([
+            { code: 'AED', name: 'AED' },
+            { code: 'USD', name: 'USD' },
+            { code: 'INR', name: 'INR' },
+            { code: 'EUR', name: 'EUR' },
+            { code: 'GBP', name: 'GBP' }
+          ]);
+        }
+      }
+    } catch (err) {
+      console.error(err);
       toast.error('Failed to load categories');
     } finally {
       setLoadingModal(false);
@@ -588,7 +623,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 
                       <div>
                         <div className="flex items-center justify-between mb-1.5 ml-0.5">
-                          <label className="text-xs font-bold text-slate-600">Site Address</label>
+                          <label className="text-xs font-bold text-slate-600">Site Location</label>
                           <button
                             type="button"
                             onClick={handleGetCurrentLocation}
@@ -625,23 +660,9 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 gap-4">
                         <div>
-                          <label className={labelCls}>Latitude</label>
-                          <input type="number" step="any" value={form.siteLocationLatitude}
-                            onChange={e => setForm(f => ({ ...f, siteLocationLatitude: e.target.value }))}
-                            className={inputCls} placeholder="e.g. 25.078"
-                          />
-                        </div>
-                        <div>
-                          <label className={labelCls}>Longitude</label>
-                          <input type="number" step="any" value={form.siteLocationLongitude}
-                            onChange={e => setForm(f => ({ ...f, siteLocationLongitude: e.target.value }))}
-                            className={inputCls} placeholder="e.g. 55.135"
-                          />
-                        </div>
-                        <div>
-                          <label className={labelCls}>Radius (meters)</label>
+                          <label className={labelCls}>Attendance Radius</label>
                           <input type="number" value={form.attendanceRadius}
                             onChange={e => setForm(f => ({ ...f, attendanceRadius: Number(e.target.value) || 0 }))}
                             className={inputCls} placeholder="e.g. 100"
@@ -669,21 +690,40 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                         </div>
                         <div>
                           <label className={labelCls}>Est Budget</label>
-                          <div className="flex border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500">
-                            <select
-                              value={form.currency}
-                              onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}
-                              className="bg-gray-100 border-r border-gray-200 text-sm font-semibold text-slate-600 px-3 outline-none cursor-pointer"
-                            >
-                              <option value="AED">AED</option>
-                              <option value="USD">USD</option>
-                              <option value="INR">INR</option>
-                              <option value="EUR">EUR</option>
-                              <option value="GBP">GBP</option>
-                            </select>
+                          <div className="flex border border-gray-200 rounded-xl relative focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 bg-white shadow-sm">
+                            <div className="relative flex items-center bg-gray-100 border-r border-gray-200 cursor-pointer min-w-[80px] rounded-l-xl hover:bg-gray-200 transition-colors" onClick={() => setIsCurrencyDropdownOpen(!isCurrencyDropdownOpen)}>
+                              <div className="flex-1 px-3 py-3 text-sm font-semibold text-slate-600 flex items-center justify-between">
+                                <span>{form.currency}</span>
+                                <ChevronDown className="w-3.5 h-3.5 ml-1 opacity-50" />
+                              </div>
+                              {isCurrencyDropdownOpen && (
+                                <>
+                                  <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setIsCurrencyDropdownOpen(false); }} />
+                                  <div className="absolute top-full left-0 mt-2 w-28 max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl z-50 custom-scrollbar">
+                                    {currencies.map((c, i) => {
+                                      const val = typeof c === 'string' ? c : (c.code || c.id || c._id || c.currency || c.name);
+                                      const label = typeof c === 'string' ? c : (c.name || c.code || c.currency || val);
+                                      return (
+                                        <div 
+                                          key={i} 
+                                          className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer text-slate-700 font-medium transition-colors"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setForm(f => ({ ...f, currency: val }));
+                                            setIsCurrencyDropdownOpen(false);
+                                          }}
+                                        >
+                                          {label}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </>
+                              )}
+                            </div>
                             <input type="number" value={form.budget}
                               onChange={e => setForm(f => ({ ...f, budget: e.target.value }))}
-                              className="w-full bg-gray-50 py-3 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none text-sm" placeholder="e.g. 50000"
+                              className="w-full bg-gray-50 py-3 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none text-sm rounded-r-xl" placeholder="e.g. 50000"
                             />
                           </div>
                         </div>
