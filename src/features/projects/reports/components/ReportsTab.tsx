@@ -415,7 +415,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
                   <th>Role</th>
                   <th>Action</th>
                   <th>Details</th>
-                  <th>Timestamp</th>
+                  <th>Date</th>
                 </tr>
               </thead>
               <tbody>
@@ -425,7 +425,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
                     <td style="text-transform: capitalize;">${log.userRole || log.user?.role || '-'}</td>
                     <td><span style="font-weight: bold; color: #2563eb;">${log.action}</span></td>
                     <td>${log.details}</td>
-                    <td>${safeFormatDateTime(log.timestamp)}</td>
+                    <td>${safeFormatDate(log.timestamp)}</td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -864,7 +864,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
                     <th className="p-3">Role</th>
                     <th className="p-3">Action</th>
                     <th className="p-3">Details</th>
-                    <th className="p-3">Timestamp</th>
+                    <th className="p-3">Date</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 font-medium text-slate-700">
@@ -883,7 +883,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
                         {log.details}
                       </td>
                       <td className="p-3 text-slate-400">
-                        {safeFormatDateTime(log.timestamp)}
+                        {safeFormatDate(log.timestamp)}
                       </td>
                     </tr>
                   ))}

@@ -214,8 +214,8 @@ export const UserList = () => {
 
           return (
             <GlassCard key={user._id || `user-${idx}`} className="p-4 border-gray-200 transition-all flex items-center justify-between" gradient>
-              <div className="flex items-center space-x-4">
-                <div className="relative">
+              <div className="flex items-center space-x-4 flex-1 min-w-0 pr-2">
+                <div className="relative shrink-0">
                   <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-lg font-black text-white">
                     {initials}
                   </div>
@@ -224,9 +224,9 @@ export const UserList = () => {
                   )}
                 </div>
 
-                <div>
-                  <h4 className="text-base font-bold text-slate-900">{user.name}</h4>
-                  <p className="text-xs font-semibold text-slate-400 mt-0.5 mb-1.5">{user.email}</p>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-base font-bold text-slate-900 break-words">{user.name}</h4>
+                  <p className="text-xs font-semibold text-slate-400 mt-0.5 mb-1.5 break-all whitespace-normal" title={user.email}>{user.email}</p>
                   
                   {roleName && roleName !== 'No Role' && (
                     <div className={cn("inline-flex items-center px-2 py-1 rounded-lg border", rStyle.bg, rStyle.border)}>
@@ -238,7 +238,7 @@ export const UserList = () => {
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 shrink-0">
                 <button
                   onClick={() => openEdit(user)}
                   className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 transition-colors"

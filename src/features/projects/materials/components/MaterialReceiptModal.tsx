@@ -22,6 +22,7 @@ export const MaterialReceiptModal: React.FC<MaterialReceiptModalProps> = ({
   materials
 }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [vendors, setVendors] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     vendorName: '',
     challanNumber: '',
@@ -31,6 +32,12 @@ export const MaterialReceiptModal: React.FC<MaterialReceiptModalProps> = ({
   const [items, setItems] = useState([{ materialId: '', quantity: 0, unit: '' }]);
 
   const toast = useToast();
+
+  React.useEffect(() => {
+    if (isOpen) {
+      api.get('/vendors').then(res => setVendors(res.data)).catch(console.error);
+    }
+  }, [isOpen]);
 
   const handleAddItem = () => {
     setItems([...items, { materialId: '', quantity: 0, unit: '' }]);
@@ -121,14 +128,17 @@ export const MaterialReceiptModal: React.FC<MaterialReceiptModalProps> = ({
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Vendor Name</label>
                     <div className="relative group">
                       <Truck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                      <input
-                        type="text"
+                      <select
                         required
                         value={formData.vendorName}
                         onChange={(e) => setFormData({ ...formData, vendorName: e.target.value })}
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 pl-10 pr-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"
-                        placeholder="Vendor Name"
-                      />
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 pl-10 pr-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm appearance-none"
+                      >
+                        <option value="" disabled>Select Vendor</option>
+                        {vendors.map(v => (
+                          <option key={v._id} value={v.name}>{v.name}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                   <div className="space-y-2">

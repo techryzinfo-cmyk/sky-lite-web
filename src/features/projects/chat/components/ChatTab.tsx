@@ -158,7 +158,7 @@ export function ChatTab({ projectId }: ChatTabProps) {
         const res = await api.patch(`/projects/${projectId}/messages/${editingMsg._id}`, {
           content: inputText.trim(),
         });
-        setMessages(prev => prev.map(m => m._id === editingMsg._id ? res.data : m));
+        setMessages(prev => prev.map(m => m._id === editingMsg._id ? { ...m, ...res.data, content: inputText.trim(), isEdited: true } : m));
         setEditingMsg(null);
         setInputText('');
       } else {
@@ -172,14 +172,21 @@ export function ChatTab({ projectId }: ChatTabProps) {
           attachments,
           replyTo: replyingTo?._id,
         });
-        setMessages(prev => prev.some(m => m._id === res.data._id) ? prev : [...prev, res.data]);
+        
+        const newMessage = { ...res.data };
+        if (!newMessage.sender && !newMessage.senderId) {
+          newMessage.sender = currentUserId;
+          newMessage.senderName = user?.name || 'Me';
+        }
+        
+        setMessages(prev => prev.some(m => m._id === newMessage._id) ? prev : [...prev, newMessage]);
         scrollToBottom();
         setInputText('');
         clearFile();
         setReplyingTo(null);
       }
     } catch {
-      toast.error('Failed to send message');
+      toast.error(editingMsg ? 'Failed to edit message' : 'Failed to send message');
     } finally {
       setIsSending(false);
     }
@@ -242,7 +249,11 @@ export function ChatTab({ projectId }: ChatTabProps) {
           </div>
         ) : (
           messages.map((msg) => {
-            const isMe = msg.sender === currentUserId;
+            const rawSenderId = typeof msg.sender === 'object' && msg.sender !== null ? (msg.sender._id || msg.sender.id) : (msg.sender || msg.senderId || msg.userId);
+            const isMe = Boolean(
+              (rawSenderId && currentUserId && String(rawSenderId) === String(currentUserId)) ||
+              (msg.senderName && user?.name && String(msg.senderName).trim().toLowerCase() === String(user.name).trim().toLowerCase())
+            );
             const time = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
             return (
@@ -290,7 +301,7 @@ export function ChatTab({ projectId }: ChatTabProps) {
                       ))}
 
                       {msg.content && (
-                        <p className={cn('text-[14px] leading-relaxed whitespace-pre-wrap', isMe ? 'text-blue-50' : 'text-gray-700')}>
+                        <p className={cn('text-[14px] leading-relaxed whitespace-pre-wrap break-words', isMe ? 'text-blue-50' : 'text-gray-700')}>
                           {msg.content}
                         </p>
                       )}

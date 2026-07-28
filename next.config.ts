@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // @ts-ignore
-  allowedDevOrigins: ['*'],
+  allowedDevOrigins: ['localhost', '127.0.0.1', '192.168.1.3'],
   async rewrites() {
     return [
       {

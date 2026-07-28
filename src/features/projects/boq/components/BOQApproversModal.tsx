@@ -64,11 +64,28 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
       return;
     }
     setSaving(true);
+    
+    // Compute display name of selected approver
+    const user = approvers.find(u => u._id === selectedApproverId);
+    let displayName = 'Unknown User';
+    if (user) {
+      const projectMemberData = projectMembers.find(m => m._id === user._id);
+      displayName = projectMemberData?.name || user.name || 'Unknown User';
+      if (displayName && displayName.length > 25 && !displayName.includes(' ') && user.email) {
+        const emailPrefix = user.email.split('@')[0];
+        displayName = emailPrefix
+          .split(/[._-]/)
+          .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(' ');
+      }
+    }
+
     try {
       await api.patch(`/projects/${projectId}/boq/bulk-status`, {
         itemIds: [item._id],
         status: 'Pending',
         requestedApproverId: selectedApproverId,
+        requestedApproverName: displayName,
       });
       toast.success('Item sent for approval');
       onSuccess();

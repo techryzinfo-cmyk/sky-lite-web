@@ -24,15 +24,15 @@ import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
 import { useSocket } from '@/providers/SocketContext';
 import { Transaction, MaterialPurchase } from '@/types';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatExactCurrency } from '@/lib/utils';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 
 interface TransactionsTabProps {
   projectId: string;
 }
 
-type TxType = 'Incoming' | 'Outgoing';
-type FilterType = 'All' | 'Incoming' | 'Outgoing';
+type TxType = 'Incoming' | 'Outgoing' | 'Debit Note';
+type FilterType = 'All' | 'Incoming' | 'Outgoing' | 'Debit Note';
 
 interface LedgerItem {
   _id: string;
@@ -51,14 +51,16 @@ interface LedgerItem {
 const TX_TYPES: { value: TxType; label: string; description: string; color: string; bg: string; icon: React.ElementType }[] = [
   { value: 'Incoming', label: 'Incoming Funds', description: 'Money received from client or HO', color: 'text-emerald-700', bg: 'bg-emerald-50', icon: ArrowDownLeft },
   { value: 'Outgoing', label: 'Outgoing Payment', description: 'Money paid to vendor or labor', color: 'text-red-600', bg: 'bg-red-50', icon: ArrowUpRight },
+  { value: 'Debit Note', label: 'Debit Note', description: 'Adjustments or refunds received', color: 'text-amber-600', bg: 'bg-amber-50', icon: AlertTriangle },
 ];
 
-const FILTERS: FilterType[] = ['All', 'Incoming', 'Outgoing'];
+const FILTERS: FilterType[] = ['All', 'Incoming', 'Outgoing', 'Debit Note'];
 
 function getTxMeta(item: LedgerItem) {
   switch (item.type) {
     case 'Incoming': return { color: 'text-emerald-700', bg: 'bg-emerald-50', icon: ArrowDownLeft, prefix: '+' };
     case 'Outgoing': return { color: 'text-red-600', bg: 'bg-red-50', icon: ArrowUpRight, prefix: '-' };
+    case 'Debit Note': return { color: 'text-amber-600', bg: 'bg-amber-50', icon: AlertTriangle, prefix: '+' };
     default: return { color: 'text-blue-600', bg: 'bg-blue-50', icon: CreditCard, prefix: '' };
   }
 }
@@ -113,7 +115,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
   }, [socket, fetchData]);
 
   const ledger: LedgerItem[] = transactions
-    .filter((t) => t.type === 'Incoming' || t.type === 'Outgoing')
+    .filter((t) => t.type === 'Incoming' || t.type === 'Outgoing' || t.type === 'Debit Note')
     .map((t) => ({
       _id: t._id,
       type: t.type,
@@ -143,7 +145,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
     (acc, item) => {
       if (item.type === 'Outgoing') {
         acc.outgoing += item.amount;
-      } else if (item.type === 'Incoming') {
+      } else if (item.type === 'Incoming' || item.type === 'Debit Note') {
         acc.incoming += item.amount;
       }
       return acc;
@@ -354,7 +356,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Net Balance</span>
           </div>
           <p className={`text-3xl font-black mt-1 ${netBalance >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
-            {formatCurrency(netBalance, (project as any)?.currency || '$')}
+            {formatExactCurrency(netBalance, (project as any)?.currency || '$')}
           </p>
         </div>
 
@@ -364,7 +366,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
           </div>
           <div>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Inflow</p>
-            <p className="text-2xl font-black text-gray-900 mt-1">{formatCurrency(totals.incoming, (project as any)?.currency || '$')}</p>
+            <p className="text-2xl font-black text-gray-900 mt-1">{formatExactCurrency(totals.incoming, (project as any)?.currency || '$')}</p>
           </div>
         </div>
 
@@ -374,7 +376,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
           </div>
           <div>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Outflow</p>
-            <p className="text-2xl font-black text-gray-900 mt-1">{formatCurrency(totals.outgoing, (project as any)?.currency || '$')}</p>
+            <p className="text-2xl font-black text-gray-900 mt-1">{formatExactCurrency(totals.outgoing, (project as any)?.currency || '$')}</p>
           </div>
         </div>
       </div>
@@ -459,7 +461,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
 
                   <div className="flex items-center space-x-2 sm:space-x-4 ml-3 sm:ml-4">
                     <p className={`text-sm sm:text-base font-black ${color} tabular-nums whitespace-nowrap`}>
-                      {prefix}{formatCurrency(item.amount, (project as any)?.currency || '$')}
+                      {prefix}{formatExactCurrency(item.amount, (project as any)?.currency || '$')}
                     </p>
                     <button
                       onClick={() => handleDownloadInvoice(item)}

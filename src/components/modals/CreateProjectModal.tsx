@@ -15,6 +15,7 @@ import api from '@/services/api.client';
 import { uploadToCloudinary } from '@/lib/upload';
 import { cn } from '@/lib/utils';
 import dynamic from 'next/dynamic';
+import countriesData from '@/data/countries.json';
 
 const LocationPickerMap = dynamic(
   () => import('./LocationPickerMap').then(mod => mod.LocationPickerMap),
@@ -65,8 +66,9 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [isCustom, setIsCustom] = useState(false);
   const [loadingModal, setLoadingModal] = useState(false);
-  const [currencies, setCurrencies] = useState<any[]>([]);
+  const [currencies, setCurrencies] = useState<any[]>(countriesData);
   const [isCurrencyDropdownOpen, setIsCurrencyDropdownOpen] = useState(false);
+  const [currencySearch, setCurrencySearch] = useState('');
   
   // Category creation state
   const [isAddingCategory, setIsAddingCategory] = useState(false);
@@ -132,44 +134,12 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   const fetchModalData = async () => {
     setLoadingModal(true);
     try {
-      const [catRes, tempRes, currencyRes] = await Promise.all([
+      const [catRes, tempRes] = await Promise.all([
         api.get('/template-categories'),
-        api.get('/templates'),
-        api.get('/projects/currencies').catch(() => ({ data: null }))
+        api.get('/templates')
       ]);
       setCategories(catRes.data);
       setTemplates(tempRes.data);
-      
-      const resData = currencyRes?.data;
-      let currArray = null;
-      if (Array.isArray(resData)) currArray = resData;
-      else if (resData && typeof resData === 'object') {
-        if (Array.isArray(resData.data)) currArray = resData.data;
-        else if (Array.isArray(resData.currencies)) currArray = resData.currencies;
-        else if (Array.isArray(resData.items)) currArray = resData.items;
-      }
-      
-      if (currArray && currArray.length > 0) {
-        setCurrencies(currArray);
-      } else {
-        console.log("Could not find array in backend currency response:", resData);
-        // Fallback to a huge list of global currencies if the backend API isn't available
-        try {
-          const publicApiRes = await fetch('https://open.er-api.com/v6/latest/USD').then(r => r.json());
-          if (publicApiRes && publicApiRes.rates) {
-            const allCurrencies = Object.keys(publicApiRes.rates).map(code => ({ code, name: code }));
-            setCurrencies(allCurrencies);
-          }
-        } catch (e) {
-          setCurrencies([
-            { code: 'AED', name: 'AED' },
-            { code: 'USD', name: 'USD' },
-            { code: 'INR', name: 'INR' },
-            { code: 'EUR', name: 'EUR' },
-            { code: 'GBP', name: 'GBP' }
-          ]);
-        }
-      }
     } catch (err) {
       console.error(err);
       toast.error('Failed to load categories');
@@ -693,30 +663,61 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                           <div className="flex border border-gray-200 rounded-xl relative focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 bg-white shadow-sm">
                             <div className="relative flex items-center bg-gray-100 border-r border-gray-200 cursor-pointer min-w-[80px] rounded-l-xl hover:bg-gray-200 transition-colors" onClick={() => setIsCurrencyDropdownOpen(!isCurrencyDropdownOpen)}>
                               <div className="flex-1 px-3 py-3 text-sm font-semibold text-slate-600 flex items-center justify-between">
-                                <span>{form.currency}</span>
+                                <span className="flex items-center gap-1.5">
+                                  <span className="flex items-center justify-center w-5 h-5 shrink-0">
+                                    {(() => {
+                                      const match = currencies.find(c => c.currencyCode === form.currency);
+                                      return match ? (
+                                        <img src={`https://flagcdn.com/w20/${match.cca2.toLowerCase()}.png`} alt={match.cca2} className="w-5 h-auto shadow-sm rounded-[2px]" />
+                                      ) : '🌍';
+                                    })()}
+                                  </span>
+                                  {form.currency}
+                                </span>
                                 <ChevronDown className="w-3.5 h-3.5 ml-1 opacity-50" />
                               </div>
                               {isCurrencyDropdownOpen && (
                                 <>
                                   <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setIsCurrencyDropdownOpen(false); }} />
-                                  <div className="absolute top-full left-0 mt-2 w-28 max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl z-50 custom-scrollbar">
-                                    {currencies.map((c, i) => {
-                                      const val = typeof c === 'string' ? c : (c.code || c.id || c._id || c.currency || c.name);
-                                      const label = typeof c === 'string' ? c : (c.name || c.code || c.currency || val);
-                                      return (
-                                        <div 
-                                          key={i} 
-                                          className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer text-slate-700 font-medium transition-colors"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setForm(f => ({ ...f, currency: val }));
-                                            setIsCurrencyDropdownOpen(false);
-                                          }}
-                                        >
-                                          {label}
-                                        </div>
-                                      );
-                                    })}
+                                  <div className="absolute top-full left-0 mt-2 w-72 max-h-80 overflow-hidden bg-white border border-gray-200 rounded-xl shadow-xl z-50 flex flex-col">
+                                    <div className="p-2 border-b border-gray-100">
+                                      <input 
+                                        type="text" 
+                                        placeholder="Search country or currency..." 
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                        value={currencySearch}
+                                        onChange={(e) => setCurrencySearch(e.target.value)}
+                                        onClick={(e) => e.stopPropagation()}
+                                      />
+                                    </div>
+                                    <div className="overflow-y-auto custom-scrollbar flex-1 p-1">
+                                      {currencies
+                                        .filter(c => 
+                                          c.name.toLowerCase().includes(currencySearch.toLowerCase()) || 
+                                          c.currencyCode.toLowerCase().includes(currencySearch.toLowerCase()) ||
+                                          c.currencyName.toLowerCase().includes(currencySearch.toLowerCase())
+                                        )
+                                        .map((c, i) => (
+                                          <div 
+                                            key={i} 
+                                            className="px-3 py-2.5 flex items-center gap-3 hover:bg-blue-50 cursor-pointer rounded-lg transition-colors"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setForm(f => ({ ...f, currency: c.currencyCode }));
+                                              setIsCurrencyDropdownOpen(false);
+                                              setCurrencySearch('');
+                                            }}
+                                          >
+                                            <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                                              <img src={`https://flagcdn.com/w40/${c.cca2.toLowerCase()}.png`} alt={c.name} className="w-6 h-auto shadow-sm rounded-sm" />
+                                            </div>
+                                            <div className="flex flex-col min-w-0">
+                                              <span className="text-sm font-bold text-gray-900 truncate">{c.name}</span>
+                                              <span className="text-[10px] text-slate-500 truncate">{c.currencyCode} · {c.currencyName}</span>
+                                            </div>
+                                          </div>
+                                      ))}
+                                    </div>
                                   </div>
                                 </>
                               )}
@@ -802,13 +803,6 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                         </div>
                       )}
 
-                      <div>
-                        <label className={labelCls}>Description</label>
-                        <textarea rows={2} value={form.description}
-                          onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                          className={`${inputCls} resize-none`} placeholder="Project overview..."
-                        />
-                      </div>
                     </div>
 
                     {/* Technical Drawings */}

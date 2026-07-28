@@ -146,7 +146,10 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
     return acc;
   }, {});
 
-  const totalBOQAmount = items.reduce((s, i) => s + ((i as any).effectiveTotalCost !== undefined ? (i as any).effectiveTotalCost : (i.totalCost || 0)), 0);
+  const totalBOQAmount = items.reduce((s, i) => {
+    if (i.status !== 'Approved') return s;
+    return s + ((i as any).effectiveTotalCost !== undefined ? (i as any).effectiveTotalCost : (i.totalCost || 0));
+  }, 0);
   const pendingCount = items.filter(i => i.status === 'Pending').length;
   const approvedCount = items.filter(i => i.status === 'Approved').length;
   const existingGroups = [...new Set(items.map(i => i.groupName))];
@@ -275,12 +278,12 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
         {/* ── Stat cards ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            label="Total BOQ Value"
+            label="Approved Grand Total"
             value={formatCurrency(totalBOQAmount, project?.currency || '$')}
             icon={DollarSign}
             accent="text-blue-600"
             bg="bg-blue-50"
-            sub={`${items.length} total items`}
+            sub={`${approvedCount} approved items`}
           />
           <StatCard
             label="BOQ Groups"
@@ -401,9 +404,9 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
                       <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Item No.</th>
                       <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider min-w-[240px]">Item Description</th>
                       <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-center">Unit</th>
-                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-right">Quantity</th>
-                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-right">Unit Cost</th>
-                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-right">Total Cost</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-right">Qty</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-right">Rate</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-right">Total</th>
                       <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-center">Status</th>
                       <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                     </tr>
@@ -412,7 +415,10 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
                     {filteredGroups.map(groupName => {
                       const groupItems = groupedItems[groupName];
                       const status = getGroupStatus(groupItems);
-                      const totalCost = groupItems.reduce((s, i) => s + ((i as any).effectiveTotalCost !== undefined ? (i as any).effectiveTotalCost : (i.totalCost || 0)), 0);
+                      const totalCost = groupItems.reduce((s, i) => {
+                        if (i.status === 'Rejected') return s;
+                        return s + ((i as any).effectiveTotalCost !== undefined ? (i as any).effectiveTotalCost : (i.totalCost || 0));
+                      }, 0);
   
                       return (
                         <React.Fragment key={groupName}>
@@ -472,9 +478,33 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
                                   {item.remark && (
                                     <p className="text-xs text-slate-500 mt-0.5 truncate max-w-md">{item.remark}</p>
                                   )}
-                                  {item.status === 'Pending' && (item as any).requestedApproverName && (
+                                  {item.status === 'Pending' && (
                                     <p className="text-[11px] text-amber-700 font-medium mt-1">
-                                      Pending: {(item as any).requestedApproverName}
+                                      Pending: {(() => {
+                                        const storedName = (item as any).requestedApproverName;
+                                        const approverObj = (item as any).requestedApprover;
+                                        const approverId = typeof approverObj === 'object' ? approverObj?._id : approverObj;
+                                        
+                                        // 1. Try to find member in project context
+                                        if (approverId && project?.members) {
+                                          const member = project.members.find((m: any) => String(m._id) === String(approverId) || String(m.user?._id) === String(approverId));
+                                          if (member?.name) {
+                                            return `${member.name}${member.email ? ` - ${member.email}` : ''}`;
+                                          }
+                                        }
+
+                                        // 2. Use populated name if available
+                                        if (typeof approverObj === 'object' && approverObj?.name) {
+                                           return `${approverObj.name}${approverObj.email ? ` - ${approverObj.email}` : ''}`;
+                                        }
+                                        
+                                        // 3. Fallback to storedName if it's not a hash
+                                        if (storedName && !(storedName.length > 25 && !storedName.includes(' '))) {
+                                          return storedName;
+                                        }
+                                        
+                                        return 'Approver';
+                                      })()}
                                     </p>
                                   )}
                                 </td>
