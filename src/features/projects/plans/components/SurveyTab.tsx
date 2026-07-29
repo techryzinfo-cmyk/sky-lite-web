@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { cn, formatCurrency } from '@/lib/utils';
+import { hasProjectPermission } from '@/lib/permissions';
 import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
@@ -63,12 +64,7 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
     (user?.id === siteSurveyorId || user?._id === siteSurveyorId)
   );
 
-  const isAdminOrManager = !!(
-    user?.role?.name === 'Admin' ||
-    user?.role?.permissions?.includes('*') ||
-    user?.role?.permissions?.includes('sitesurvey:manage') ||
-    user?.role?.permissions?.includes('sitesurvey:approve')
-  );
+  const isAdminOrManager = hasProjectPermission(user, project, 'sitesurvey:manage');
 
   const fetchSurvey = useCallback(async () => {
     if (!projectId) return;
@@ -494,6 +490,7 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
         onSuccess={fetchSurvey}
         projectId={projectId}
         projectType={project?.projectType}
+        project={project}
         existingSurvey={survey}
       />
 

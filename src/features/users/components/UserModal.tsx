@@ -7,6 +7,8 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { useToast } from '@/providers/ToastContext';
 import api from '@/services/api.client';
 import { cn } from '@/lib/utils';
+import 'react-phone-number-input/style.css';
+import PhoneInput from 'react-phone-number-input';
 
 interface UserModalProps {
   isOpen: boolean;
@@ -26,6 +28,7 @@ export const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSuccess
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProjects, setSelectedProjects] = useState<any[]>([]);
   const [selectedRole, setSelectedRole] = useState<any>(null);
+  const [projectRoles, setProjectRoles] = useState<Record<string, string>>({});
   const [isProjectPickerOpen, setIsProjectPickerOpen] = useState(false);
   const [projectSearch, setProjectSearch] = useState('');
 
@@ -66,11 +69,24 @@ export const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSuccess
       setSelectedRole(
         typeof initialData.role === 'object' ? initialData.role : null
       );
-      setSelectedProjects(initialData.projects || []);
+      
+      const pRoles: Record<string, string> = {};
+      const projArr: any[] = [];
+      (initialData.projects || []).forEach((p: any) => {
+        if (p.project) {
+          projArr.push(p.project);
+          if (p.role) pRoles[p.project._id || p.project] = p.role._id || p.role;
+        } else if (p._id) {
+          projArr.push(p);
+        }
+      });
+      setSelectedProjects(projArr);
+      setProjectRoles(pRoles);
     } else {
       setFormData({ name: '', email: '', mobile: '', password: '' });
       setSelectedRole(null);
       setSelectedProjects([]);
+      setProjectRoles({});
     }
     setProjectSearch('');
   }, [isOpen, initialData]);
@@ -82,11 +98,18 @@ export const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSuccess
   };
 
   const toggleProject = (project: any) => {
-    setSelectedProjects(prev =>
-      prev.some(p => p._id === project._id)
-        ? prev.filter(p => p._id !== project._id)
-        : [...prev, project]
-    );
+    setSelectedProjects(prev => {
+      const isSelected = prev.some(p => p._id === project._id);
+      if (isSelected) {
+        setProjectRoles(roles => {
+          const newRoles = { ...roles };
+          delete newRoles[project._id];
+          return newRoles;
+        });
+        return prev.filter(p => p._id !== project._id);
+      }
+      return [...prev, project];
+    });
   };
 
   const filteredProjects = projects.filter(p =>
@@ -95,8 +118,8 @@ export const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSuccess
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedRole) {
-      toast.error('Please select a role');
+    if (!formData.name.trim() || !formData.email.trim()) {
+      toast.error('Please enter at least a name and email.');
       return;
     }
     setIsLoading(true);
@@ -105,8 +128,11 @@ export const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSuccess
         name: formData.name,
         email: formData.email,
         phoneNumber: formData.mobile,
-        roleId: selectedRole._id,
-        projectIds: selectedProjects.map(p => p._id),
+        roleId: selectedRole?._id,
+        projects: selectedProjects.map(p => ({
+          project: p._id,
+          role: projectRoles[p._id] || undefined
+        })),
       };
       if (formData.password) payload.password = formData.password;
 
@@ -158,7 +184,7 @@ export const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSuccess
                     </div>
                     <div>
                       <h2 className="text-xl font-bold text-gray-900">
-                        {isEditing ? 'Edit Member' : 'Add New Member'}
+                        {isEditing ? 'Update Team Member' : 'Onboard New Member'}
                       </h2>
                       <p className="text-xs text-slate-500 mt-0.5">
                         {isEditing ? 'Update team member details.' : 'Invite a team member to the platform.'}
@@ -170,124 +196,70 @@ export const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSuccess
                   </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} className="space-y-6">
                   {/* Full Name */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Full Name</label>
+                  <div>
+                    <label className="block text-[11px] font-black text-blue-500 uppercase tracking-[1.5px] mb-3">Full Name</label>
                     <input
                       type="text" required value={formData.name}
                       onChange={e => setFormData(f => ({ ...f, name: e.target.value }))}
-                      className={inputCls} placeholder="e.g. Rahul Sharma"
+                      className="w-full h-[56px] bg-white/50 border border-blue-50/50 backdrop-blur-sm rounded-2xl px-4 text-[15px] font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]" 
+                      placeholder="e.g. Robert Fox"
                     />
                   </div>
 
                   {/* Email */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Email Address</label>
-                    <div className="relative group">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                      <input
-                        type="email" required value={formData.email}
-                        onChange={e => setFormData(f => ({ ...f, email: e.target.value }))}
-                        className={`${inputCls} pl-10`} placeholder="rahul@example.com"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-[11px] font-black text-blue-500 uppercase tracking-[1.5px] mb-3">Email Address</label>
+                    <input
+                      type="email" required value={formData.email}
+                      onChange={e => setFormData(f => ({ ...f, email: e.target.value }))}
+                      className="w-full h-[56px] bg-white/50 border border-blue-50/50 backdrop-blur-sm rounded-2xl px-4 text-[15px] font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]" 
+                      placeholder="name@example.com"
+                    />
                   </div>
 
-                  {/* Mobile + Password */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">Mobile Number</label>
-                      <div className="relative group">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                  {/* Mobile Number */}
+                  <div>
+                    <label className="block text-[11px] font-black text-blue-500 uppercase tracking-[1.5px] mb-3">Mobile Number</label>
+                    <input
+                      type="tel" required value={formData.mobile}
+                      onChange={e => setFormData(f => ({ ...f, mobile: e.target.value }))}
+                      className="w-full h-[56px] bg-white/50 border border-blue-50/50 backdrop-blur-sm rounded-2xl px-4 text-[15px] font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]" 
+                      placeholder="Enter mobile number"
+                    />
+                  </div>
+
+                  {/* Password */}
+                  {!isEditing && (
+                    <div>
+                      <label className="block text-[11px] font-black text-blue-500 uppercase tracking-[1.5px] mb-3">Password</label>
+                      <div className="relative">
                         <input
-                          type="tel" value={formData.mobile}
-                          onChange={e => setFormData(f => ({ ...f, mobile: e.target.value }))}
-                          className={`${inputCls} pl-10`} placeholder="+91 98765 43210"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">
-                        {isEditing ? 'New Password' : 'Password'}
-                      </label>
-                      <div className="relative group">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                        <input
-                          type="password" required={!isEditing} value={formData.password}
+                          type={showCredsPassword ? "text" : "password"} required={!isEditing} value={formData.password}
                           onChange={e => setFormData(f => ({ ...f, password: e.target.value }))}
-                          className={`${inputCls} pl-10`}
-                          placeholder={isEditing ? 'Leave blank to keep' : '••••••••'}
+                          className="w-full h-[56px] bg-white/50 border border-blue-50/50 backdrop-blur-sm rounded-2xl pl-4 pr-12 text-[15px] font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]" 
+                          placeholder="Leave blank for default"
                         />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Role Selector — pills */}
-                  <div className="space-y-3">
-                    <label className="text-sm font-bold text-slate-700">Access Role</label>
-                    <div className="flex flex-wrap gap-2">
-                      {roles.map((role, idx) => (
-                        <button
-                          key={role._id || `role-${idx}`} type="button"
-                          onClick={() => setSelectedRole(role)}
-                          className={cn(
-                            'px-4 py-2 rounded-xl border text-sm font-bold transition-all',
-                            selectedRole?._id === role._id
-                              ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
-                              : 'bg-gray-50 border-gray-200 text-slate-600 hover:border-blue-300 hover:text-blue-700'
-                          )}
-                        >
-                          {role.name}
+                        <button type="button" onClick={() => setShowCredsPassword(v => !v)} className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600">
+                          {showCredsPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
-                      ))}
-                      {roles.length === 0 && (
-                        <p className="text-sm text-slate-400">No roles available</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Projects Multi-select */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-bold text-slate-700">Assign to Projects</label>
-                      <span className="text-xs text-slate-400">{selectedProjects.length} selected</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsProjectPickerOpen(true)}
-                      className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-slate-600 hover:border-blue-300 hover:text-blue-700 transition-all"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <FolderOpen className="w-4 h-4 text-slate-400 shrink-0" />
-                        {selectedProjects.length === 0 ? (
-                          <span className="text-slate-400">Select projects...</span>
-                        ) : (
-                          <span className="truncate font-semibold">
-                            {selectedProjects.map(p => p.name).join(', ')}
-                          </span>
-                        )}
                       </div>
-                      <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
-                    </button>
-                  </div>
+                    </div>
+                  )}
+
+
 
                   {/* Footer */}
-                  <div className="pt-4 flex space-x-3 border-t border-gray-200">
-                    <button
-                      type="button" onClick={onClose}
-                      className="flex-1 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-slate-600 font-bold transition-all"
-                    >
-                      Cancel
-                    </button>
+                  <div className="pt-2">
                     <button
                       type="submit" disabled={isLoading}
-                      className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all disabled:opacity-50 shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
+                      className="w-full h-[58px] rounded-[18px] bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-[16px] font-bold transition-all disabled:opacity-50 shadow-[0_8px_16px_-6px_rgba(37,99,235,0.4)] flex items-center justify-center gap-2"
                     >
                       {isLoading ? (
-                        <><Loader2 className="w-4 h-4 animate-spin" /><span>{isEditing ? 'Saving...' : 'Adding...'}</span></>
+                        <><Loader2 className="w-5 h-5 animate-spin" /><span>{isEditing ? 'Saving...' : 'Initializing...'}</span></>
                       ) : (
-                        <span>{isEditing ? 'Save Changes' : 'Add Member'}</span>
+                        <span>{isEditing ? 'Save Changes' : 'Initialize Member'}</span>
                       )}
                     </button>
                   </div>

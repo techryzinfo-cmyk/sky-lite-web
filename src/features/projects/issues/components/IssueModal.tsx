@@ -172,33 +172,6 @@ export const IssueModal: React.FC<IssueModalProps> = ({
                     />
                   </div>
 
-                  <div className={cn(type === 'Issue' ? "grid grid-cols-2 gap-4" : "space-y-2")}>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-600 ml-1">Priority</label>
-                      <select
-                        value={formData.priority}
-                        onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all"
-                      >
-                        <option value="Low">Low</option>
-                        <option value="Medium">Medium</option>
-                        <option value="High">High</option>
-                        <option value="Critical">Critical</option>
-                      </select>
-                    </div>
-                    {type === 'Issue' && (
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-600 ml-1">Category</label>
-                        <select
-                          value={formData.category}
-                          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition-all"
-                        >
-                          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                      </div>
-                    )}
-                  </div>
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-600 ml-1">Assign To</label>

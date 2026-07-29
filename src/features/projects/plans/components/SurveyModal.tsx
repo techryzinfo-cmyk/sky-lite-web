@@ -4,13 +4,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Loader2, Map, Zap, Droplets, Mountain,
-  DollarSign, Home, Wind, Ruler, Camera, Image as ImageIcon, Trash2, Plus
+  DollarSign, Home, Wind, Ruler, Camera, Image as ImageIcon, Trash2, Plus, Info
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useToast } from '@/providers/ToastContext';
 import api from '@/services/api.client';
 import { cn } from '@/lib/utils';
 import { uploadToCloudinary } from '@/lib/upload';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
+import { formatCurrency } from '@/lib/utils';
 
 interface SurveyModalProps {
   isOpen: boolean;
@@ -18,29 +20,47 @@ interface SurveyModalProps {
   onSuccess: () => void;
   projectId: string;
   projectType?: 'Construction' | 'Interior';
+  project?: any;
   existingSurvey?: any;
 }
 
-const Toggle = ({ checked, onChange, label, subLabel, icon: Icon, activeColor = 'bg-blue-50 border-blue-300 text-blue-600' }: any) => (
-  <label className={cn(
-    'flex-1 p-4 rounded-2xl border transition-all cursor-pointer flex flex-col items-center justify-center gap-2',
-    checked ? activeColor : 'bg-gray-50 border-gray-200 text-slate-400'
-  )}>
-    <input type="checkbox" className="hidden" checked={checked} onChange={e => onChange(e.target.checked)} />
-    <Icon className="w-5 h-5" />
-    <div className="text-center">
-      <p className="text-[10px] font-black uppercase tracking-widest leading-tight">{label}</p>
-      {subLabel && <p className="text-[9px] opacity-60 mt-0.5 leading-tight">{subLabel}</p>}
+const Switch = ({ checked, onChange, activeColor = 'bg-blue-600' }: { checked: boolean; onChange: (v: boolean) => void, activeColor?: string }) => (
+  <button
+    type="button"
+    onClick={() => onChange(!checked)}
+    className={cn(
+      'w-12 h-6 rounded-full relative transition-all duration-300 ease-in-out shrink-0',
+      checked ? activeColor : 'bg-slate-300'
+    )}
+  >
+    <div className={cn(
+      'absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 ease-in-out shadow-sm',
+      checked ? 'right-1' : 'left-1'
+    )} />
+  </button>
+);
+
+const ToggleRow = ({ label, subLabel, checked, onChange, activeColor }: any) => (
+  <div className="flex items-center justify-between py-3">
+    <div className="pr-4">
+      <span className="text-sm font-bold text-slate-900 block">{label}</span>
+      {subLabel && <span className="text-xs font-medium text-slate-500 block mt-0.5">{subLabel}</span>}
     </div>
-  </label>
+    <Switch checked={checked} onChange={onChange} activeColor={activeColor} />
+  </div>
 );
 
 export const SurveyModal: React.FC<SurveyModalProps> = ({
-  isOpen, onClose, onSuccess, projectId, projectType = 'Construction', existingSurvey,
+  isOpen, onClose, onSuccess, projectId, projectType = 'Construction', project, existingSurvey,
 }) => {
   const isInterior = projectType === 'Interior';
   const toast = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  console.log(project);
+  const budgetHistory = project?.budgetHistory;
+  const currentBudgetAmount = (budgetHistory && budgetHistory.length > 0) 
+    ? budgetHistory[budgetHistory.length - 1].amount 
+    : 0;
 
   // Common fields
   const [accessibility, setAccessibility] = useState('Good');
@@ -249,36 +269,57 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
             <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
               
               {/* Section: Conditions & Utilities */}
-              <div className="space-y-4">
-                <p className="text-[10px] font-black text-slate-450 uppercase tracking-widest">
+              <div className="bg-white border border-slate-200/80 p-5 rounded-2xl shadow-sm space-y-4">
+                <p className="text-[10px] font-black text-slate-450 uppercase tracking-widest border-b border-slate-100 pb-2">
                   {isInterior ? 'Space & Condition Assessment' : 'Conditions & Utilities'}
                 </p>
                 <div>
-                  <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1 block">
+                  <label className="text-sm font-bold text-slate-900 mb-2 block">
                     {isInterior ? 'Overall Space Condition' : 'Overall Accessibility'}
                   </label>
-                  <select value={accessibility} onChange={e => setAccessibility(e.target.value)} className={inputCls}>
-                    {accessibilityOptions.map(o => <option key={o} value={o}>{o}</option>)}
-                  </select>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {accessibilityOptions.map(o => (
+                      <button
+                        key={o}
+                        type="button"
+                        onClick={() => setAccessibility(o)}
+                        className={cn(
+                          'py-2.5 rounded-xl border text-xs font-bold transition-all text-center',
+                          accessibility === o
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-sm shadow-blue-600/20'
+                            : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300'
+                        )}
+                      >
+                        {o}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex gap-3">
-                  <Toggle checked={powerAvailable} onChange={setPowerAvailable} icon={Zap}
-                    label={isInterior ? 'Electrical Points' : 'Power Ready'}
-                    subLabel={isInterior ? 'Outlets accessible' : 'Grid connection'}
-                    activeColor="bg-amber-50 border-amber-300 text-amber-600"
-                  />
-                  <Toggle checked={waterAvailable} onChange={setWaterAvailable} icon={Droplets}
-                    label={isInterior ? 'Plumbing Access' : 'Water Ready'}
-                    subLabel={isInterior ? 'Kitchen/bath lines' : 'Municipal/well'}
-                    activeColor="bg-blue-50 border-blue-300 text-blue-600"
-                  />
-                </div>
+
+                <div className="border-t border-slate-100 pt-1" />
+
+                <ToggleRow
+                  label={isInterior ? 'Electrical Points Accessible' : 'Power Infrastructure Available'}
+                  subLabel={isInterior ? 'Existing outlets and wiring in place' : 'Existing grid connections'}
+                  checked={powerAvailable}
+                  onChange={setPowerAvailable}
+                />
+
+                <div className="border-t border-slate-100 pt-1" />
+
+                <ToggleRow
+                  label={isInterior ? 'Plumbing Accessible' : 'Water Connection Available'}
+                  subLabel={isInterior ? 'Kitchen/bathroom plumbing lines' : 'Municipal or well connection'}
+                  checked={waterAvailable}
+                  onChange={setWaterAvailable}
+                />
               </div>
 
               {/* Construction-only: Terrain */}
               {!isInterior && (
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-slate-500 uppercase tracking-wider block">Terrain / Soil Notes</label>
+                <div className="bg-white border border-slate-200/80 p-5 rounded-2xl shadow-sm space-y-4">
+                  <p className="text-[10px] font-black text-slate-450 uppercase tracking-widest border-b border-slate-100 pb-2">Terrain & Soil</p>
+                  <label className="text-sm font-bold text-slate-900 block mb-1">Terrain / Soil Notes</label>
                   <textarea required rows={2.5} value={terrainNotes} onChange={e => setTerrainNotes(e.target.value)}
                     className={`${inputCls} resize-none`} placeholder="Soil type, slope, clearing needed..." />
                 </div>
@@ -288,61 +329,70 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
               {isInterior && (
                 <>
                   {/* Room Details */}
-                  <div className="space-y-4">
-                    <p className="text-[10px] font-black text-slate-450 uppercase tracking-widest">Room Details</p>
+                  <div className="bg-white border border-slate-200/80 p-5 rounded-2xl shadow-sm space-y-4">
+                    <p className="text-[10px] font-black text-slate-450 uppercase tracking-widest border-b border-slate-100 pb-2">Room Details</p>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1 block">Room Count</label>
+                        <label className="text-sm font-bold text-slate-900 mb-2 block">Room Count</label>
                         <input type="number" min="1" value={roomCount} onChange={e => setRoomCount(e.target.value)}
                           className={inputCls} placeholder="e.g. 8" />
                       </div>
                       <div>
-                        <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1 block">Ceiling Height</label>
+                        <label className="text-sm font-bold text-slate-900 mb-2 block">Ceiling Height</label>
                         <input type="text" value={ceilingHeight} onChange={e => setCeilingHeight(e.target.value)}
                           className={inputCls} placeholder="e.g. 3.2m" />
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-2 block">Natural Lighting</label>
-                      <div className="grid grid-cols-4 gap-2">
+                      <label className="text-sm font-bold text-slate-900 mb-2 block">Natural Lighting</label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {['Excellent', 'Good', 'Limited', 'None'].map(o => (
                           <button key={o} type="button" onClick={() => setNaturalLighting(o)}
-                            className={cn('py-2 rounded-xl border text-xs font-bold transition-all',
+                            className={cn('py-2.5 rounded-xl border text-xs font-bold transition-all text-center',
                               naturalLighting === o
-                                ? 'bg-amber-50 border-amber-400 text-amber-700'
-                                : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300'
+                                ? 'bg-amber-100 border-amber-400 text-amber-800'
+                                : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300'
                             )}>{o}</button>
                         ))}
                       </div>
                     </div>
-                    <div className="flex gap-3">
-                      <Toggle checked={ventilationAvailable} onChange={setVentilationAvailable} icon={Wind}
-                        label="Ventilation / AC" subLabel="Existing HVAC" activeColor="bg-cyan-50 border-cyan-300 text-cyan-600" />
-                    </div>
+
+                    <div className="border-t border-slate-100 pt-1" />
+
+                    <ToggleRow
+                      label="Ventilation / AC Available"
+                      subLabel="Existing ducting or split unit points"
+                      checked={ventilationAvailable}
+                      onChange={setVentilationAvailable}
+                      activeColor="bg-cyan-500"
+                    />
                   </div>
 
                   {/* Structural & Design */}
-                  <div className="space-y-4">
-                    <p className="text-[10px] font-black text-slate-450 uppercase tracking-widest">Structural & Design</p>
-                    <div className={cn('p-4 rounded-2xl border transition-all', structuralModification ? 'bg-orange-50 border-orange-200' : 'bg-slate-50 border-slate-250')}>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-sm font-bold text-slate-900 block">Structural Modifications Needed?</span>
-                          <span className="text-xs text-slate-400 block mt-0.5">Wall removal, partition additions, beam work</span>
-                        </div>
-                        <button type="button" onClick={() => setStructuralModification(v => !v)}
-                          className={cn('w-12 h-6 rounded-full relative transition-all', structuralModification ? 'bg-orange-500' : 'bg-slate-300')}>
-                          <div className={cn('absolute top-1 w-4 h-4 rounded-full bg-white transition-all', structuralModification ? 'right-1' : 'left-1')} />
-                        </button>
-                      </div>
-                      {structuralModification && (
+                  <div className="bg-white border border-slate-200/80 p-5 rounded-2xl shadow-sm space-y-4">
+                    <p className="text-[10px] font-black text-slate-450 uppercase tracking-widest border-b border-slate-100 pb-2">Structural & Design</p>
+                    
+                    <ToggleRow
+                      label="Structural Modifications Needed"
+                      subLabel="Wall removal, partition additions, beam work"
+                      checked={structuralModification}
+                      onChange={setStructuralModification}
+                      activeColor="bg-orange-500"
+                    />
+                    
+                    {structuralModification && (
+                      <div className="mt-2">
+                        <label className="text-sm font-bold text-slate-900 mb-2 block">Structural Notes</label>
                         <textarea rows={2.5} value={structuralNotes} onChange={e => setStructuralNotes(e.target.value)}
-                          className={`${inputCls} mt-3 resize-none bg-white`} placeholder="Describe required structural changes..." />
-                      )}
-                    </div>
+                          className={`${inputCls} resize-none`} placeholder="Describe required structural changes..." />
+                      </div>
+                    )}
+                    
+                    <div className="border-t border-slate-100 pt-1 mt-2" />
+
                     <div>
-                      <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1 block">Client Style Preference</label>
-                      <textarea rows={2} value={clientStylePreference} onChange={e => setClientStylePreference(e.target.value)}
+                      <label className="text-sm font-bold text-slate-900 mb-2 block">Client Style Preference</label>
+                      <textarea rows={3} value={clientStylePreference} onChange={e => setClientStylePreference(e.target.value)}
                         className={`${inputCls} resize-none`} placeholder="e.g. Modern minimalist, warm tones, open-plan kitchen preferred..." />
                     </div>
                   </div>
@@ -350,12 +400,14 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
               )}
 
               {/* Photo Upload Sections */}
-              <div className="space-y-4">
-                <p className="text-[10px] font-black text-slate-450 uppercase tracking-widest">Media Observations</p>
+              <div className="bg-white border border-slate-200/80 p-5 rounded-2xl shadow-sm space-y-6">
                 
                 {/* Main Observation Image */}
                 <div>
-                  <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1 block">Space Photo (Observation)</label>
+                  <p className="text-[10px] font-black text-slate-450 uppercase tracking-widest border-b border-slate-100 pb-2 mb-4">Media Observations</p>
+                  <label className="text-sm font-bold text-slate-900 mb-2 block">
+                    {isInterior ? 'Space Photo (Observation)' : 'Site Photo (Observation)'}
+                  </label>
                   <input type="file" accept="image/*" className="hidden" ref={obsInputRef} onChange={handleObsImageSelect} />
                   
                   <div
@@ -369,7 +421,7 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
                     ) : (
                       <div className="text-center p-4">
                         <Camera className="w-8 h-8 text-slate-450 mx-auto mb-1 group-hover:text-blue-500 transition-colors" />
-                        <p className="text-xs font-bold text-slate-500">Upload site observation photo</p>
+                        <p className="text-xs font-bold text-slate-500">Select {isInterior ? 'space' : 'site'} observation image</p>
                       </div>
                     )}
                   </div>
@@ -380,7 +432,7 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
                         setObservationFile(null);
                         setObservationImage('');
                       }}
-                      className="mt-2 text-xs font-bold text-red-500 flex items-center gap-1 hover:text-red-650"
+                      className="mt-3 text-xs font-bold text-red-500 flex items-center gap-1 hover:text-red-650"
                     >
                       <Trash2 className="w-3.5 h-3.5" /> Remove Image
                     </button>
@@ -390,7 +442,7 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
                 {/* Additional Room Photos (Interior-only) */}
                 {isInterior && (
                   <div>
-                    <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-2 block">Additional Space Photos</label>
+                    <label className="text-sm font-bold text-slate-900 mb-3 block border-t border-slate-100 pt-4">Additional Space Photos</label>
                     <input type="file" accept="image/*" multiple className="hidden" ref={addInputRef} onChange={handleAddPhotosSelect} />
                     
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
@@ -436,39 +488,45 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
               </div>
 
               {/* Surveyor Comments (common) */}
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-500 uppercase tracking-wider block">Surveyor Comments</label>
+              <div className="bg-white border border-slate-200/80 p-5 rounded-2xl shadow-sm space-y-4">
+                <p className="text-[10px] font-black text-slate-450 uppercase tracking-widest border-b border-slate-100 pb-2">Comments</p>
+                <label className="text-sm font-bold text-slate-900 block mb-1">Surveyor Comments</label>
                 <textarea rows={2.5} value={notes} onChange={e => setNotes(e.target.value)}
                   className={`${inputCls} resize-none`} placeholder="General observations..." />
               </div>
 
               {/* Budget Impact (common) */}
-              <div className={cn('p-4 rounded-2xl border transition-all', affectsBudget ? 'bg-red-50/50 border-red-200' : 'bg-slate-50 border-slate-250')}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <DollarSign className={cn('w-4 h-4', affectsBudget ? 'text-red-650' : 'text-slate-400')} />
-                    <div>
-                      <span className="text-sm font-bold text-slate-900 block">Affects Initial Budget?</span>
-                      <span className="text-xs text-slate-400 block mt-0.5">Does this survey require a budget update?</span>
-                    </div>
-                  </div>
-                  <button type="button" onClick={() => setAffectsBudget(v => !v)}
-                    className={cn('w-12 h-6 rounded-full relative transition-all', affectsBudget ? 'bg-red-600' : 'bg-slate-300')}>
-                    <div className={cn('absolute top-1 w-4 h-4 rounded-full bg-white transition-all', affectsBudget ? 'right-1' : 'left-1')} />
-                  </button>
-                </div>
+              <div className={cn('p-5 rounded-2xl border transition-all', affectsBudget ? 'bg-red-50/50 border-red-200' : 'bg-slate-50 border-slate-250')}>
+                <ToggleRow
+                  label="Affects Initial Budget?"
+                  subLabel="Does this survey require a budget update?"
+                  checked={affectsBudget}
+                  onChange={setAffectsBudget}
+                  activeColor="bg-red-600"
+                />
                 {affectsBudget && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-                    <div>
-                      <label className="text-[10px] font-black text-slate-450 uppercase tracking-wider mb-1 block">New Estimated Budget ($)</label>
-                      <input type="number" required value={recommendedBudget} onChange={e => setRecommendedBudget(e.target.value)}
-                        className="w-full bg-white border border-red-150 rounded-xl py-2 px-3 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 font-semibold" />
+                  <div className="mt-2 pt-4 border-t border-red-150/50 space-y-4">
+                    <div className="flex items-center gap-2 p-3 bg-blue-50/50 border border-blue-100 rounded-xl">
+                      <Info className="w-4 h-4 text-blue-500 shrink-0" />
+                      <p className="text-sm text-blue-900">
+                        Current Active Budget:{' '}
+                        <span className="font-black">
+                          {formatCurrency(currentBudgetAmount, project?.currency)}
+                        </span>
+                      </p>
                     </div>
-                    <div>
-                      <label className="text-[10px] font-black text-slate-450 uppercase tracking-wider mb-1 block">Reason</label>
-                      <input type="text" required value={budgetReason} onChange={e => setBudgetReason(e.target.value)}
-                        className="w-full bg-white border border-red-150 rounded-xl py-2 px-3 text-slate-800 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 font-semibold"
-                        placeholder="e.g. Structural modifications required" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-bold text-slate-900 mb-2 block">New Estimated Budget ({project?.currency || 'AED'})</label>
+                        <input type="number" required value={recommendedBudget} onChange={e => setRecommendedBudget(e.target.value)}
+                          className="w-full bg-white border border-red-150 rounded-xl py-2 px-3 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 font-semibold" />
+                      </div>
+                      <div>
+                        <label className="text-sm font-bold text-slate-900 mb-2 block">Reason</label>
+                        <input type="text" required value={budgetReason} onChange={e => setBudgetReason(e.target.value)}
+                          className="w-full bg-white border border-red-150 rounded-xl py-2 px-3 text-slate-800 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 font-semibold"
+                          placeholder="e.g. Structural modifications required" />
+                      </div>
                     </div>
                   </div>
                 )}

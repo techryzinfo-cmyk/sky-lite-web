@@ -36,6 +36,8 @@ import api from '@/services/api.client';
 import { uploadToCloudinary } from '@/lib/upload';
 import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
+import { hasProjectPermission } from '@/lib/permissions';
+import { useProjectContext } from '../../contexts/ProjectContext';
 
 interface Doc {
   _id: string;
@@ -45,7 +47,7 @@ interface Doc {
   size: number;
   status?: 'Pending' | 'Approved' | 'Rejected';
   uploadedAt: string;
-  uploadedBy?: { name: string; user?: string };
+  uploadedBy?: { name: string; user?: string; _id?: string };
 }
 
 interface VirtualFolder {
@@ -89,7 +91,11 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ projectId }) => {
 
   const toast = useToast();
   const { user } = useAuth();
-  const isAdmin = user?.role?.name === 'Admin';
+  const { project } = useProjectContext();
+  const canUpload = hasProjectPermission(user, project, 'land:create');
+  const canApprove = hasProjectPermission(user, project, 'land:approve');
+  const canDelete = hasProjectPermission(user, project, 'land:delete');
+  const isAdmin = hasProjectPermission(user, project, 'land:delete');
 
   const fetchDocs = async () => {
     try {
@@ -438,7 +444,7 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ projectId }) => {
           </div>
 
           {/* Upload Button (only inside local project documents folder) */}
-          {activeFolderId === 'project_docs' && (
+          {activeFolderId === 'project_docs' && canUpload && (
             <label className="flex items-center space-x-2 px-4 py-2 bg-blue-600 border border-blue-600 rounded-xl text-sm font-bold text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20 transition-all cursor-pointer w-fit">
               <Upload className="w-4 h-4" />
               <span>Upload Document</span>
@@ -595,11 +601,8 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ projectId }) => {
 
                   {filteredDocuments.map(doc => {
                     const Icon = fileIcon(doc.mimeType);
-                    const uploaderId = doc.uploadedBy?.user || doc.uploadedBy;
-                    const isUploader = uploaderId === (user?.id || user?._id);
-
-                    // Allowed to approve/reject if Admin or Project Manager, but cannot be the uploader unless Admin
-                    const canManageApproval = (user?.role?.name === 'Admin' || user?.role?.name === 'Project Manager') && (!isUploader || isAdmin);
+                    const isUploader = doc.uploadedBy?._id === user?._id || doc.uploadedBy?.user === user?._id;
+                    const canManageApproval = canApprove && (!isUploader || isAdmin);
 
                     return (
                       <div key={doc._id} className="grid grid-cols-[2fr_1.2fr_1.2fr_1.2fr_80px_100px] gap-4 px-6 py-4 items-center hover:bg-gray-50 transition-colors group">

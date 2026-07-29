@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/providers/AuthContext';
 import { useSocket } from '@/providers/SocketContext';
 import { useToast } from '@/providers/ToastContext';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
+import { hasProjectPermission } from '@/lib/permissions';
 import api from '@/services/api.client';
 import { uploadToCloudinary } from '@/lib/upload';
 import { Send, Image as ImageIcon, X, Reply, Edit2, Trash2, Smile, PlayCircle, Loader2, MoreVertical } from 'lucide-react';
@@ -17,6 +19,7 @@ const REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '👏', '�
 
 export function ChatTab({ projectId }: ChatTabProps) {
   const { user } = useAuth();
+  const { project } = useProjectContext();
   const { socket } = useSocket();
   const toast = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -57,14 +60,12 @@ export function ChatTab({ projectId }: ChatTabProps) {
     fetchMessages();
   }, [fetchMessages]);
 
-  // Socket listeners — handle real-time events from OTHER users.
-  // Own actions update state directly (optimistic) so they don't depend on socket latency.
   useEffect(() => {
     if (!socket) return;
 
     const handleNewMessage = (newMessage: any) => {
       setMessages(prev => {
-        if (prev.some(m => m._id === newMessage._id)) return prev; // deduplicate
+        if (prev.some(m => m._id === newMessage._id)) return prev;
         return [...prev, newMessage];
       });
       scrollToBottom();
@@ -78,19 +79,12 @@ export function ChatTab({ projectId }: ChatTabProps) {
       setMessages(prev => prev.filter(m => m._id !== messageId));
     };
 
-    // Re-fetch ONLY on reconnect — not on the initial connect.
-    // Reason: on initial connect the mount-useEffect already called fetchMessages().
-    // Calling it again here creates a race: the GET is sent while the user might
-    // already be interacting, and when it resolves it overwrites state (including
-    // any optimistically-added messages) with a DB snapshot from before the action.
-    let hasConnectedOnce = socket.connected; // true = socket was already up when effect ran
+    let hasConnectedOnce = socket.connected;
 
     const handleConnect = () => {
       if (hasConnectedOnce) {
-        // This is a RE-connect — fetch to catch messages missed during downtime
         fetchMessages();
       } else {
-        // This is the INITIAL connect — fetchMessages was already called on mount
         hasConnectedOnce = true;
       }
     };
@@ -108,8 +102,6 @@ export function ChatTab({ projectId }: ChatTabProps) {
     };
   }, [socket, fetchMessages, scrollToBottom]);
 
-  // Polling fallback: guarantees other users see new messages within ~3s even when
-  // socket events fail (socket server URL mismatch between API and frontend clients).
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -122,13 +114,12 @@ export function ChatTab({ projectId }: ChatTabProps) {
           return fetched;
         });
       } catch {
-        // Silently ignore — polling is a best-effort fallback
+        // Silently ignore
       }
     }, 3000);
     return () => clearInterval(interval);
   }, [projectId]);
 
-  // Close action menu on outside click
   useEffect(() => {
     if (!activeMenuId) return;
     const handler = (e: MouseEvent) => {
@@ -164,11 +155,10 @@ export function ChatTab({ projectId }: ChatTabProps) {
     setIsSending(true);
     try {
       if (editingMsg) {
-        // Edit: update state immediately from API response — don't wait for socket
         const res = await api.patch(`/projects/${projectId}/messages/${editingMsg._id}`, {
           content: inputText.trim(),
         });
-        setMessages(prev => prev.map(m => m._id === editingMsg._id ? res.data : m));
+        setMessages(prev => prev.map(m => m._id === editingMsg._id ? { ...m, ...res.data, content: inputText.trim(), isEdited: true } : m));
         setEditingMsg(null);
         setInputText('');
       } else {
@@ -177,20 +167,26 @@ export function ChatTab({ projectId }: ChatTabProps) {
           const url = await uploadToCloudinary(selectedFile);
           attachments.push({ url, type: fileType, name: selectedFile.name });
         }
-        // Send: add own message immediately from API response — don't wait for socket
         const res = await api.post(`/projects/${projectId}/messages`, {
           content: inputText.trim(),
           attachments,
           replyTo: replyingTo?._id,
         });
-        setMessages(prev => prev.some(m => m._id === res.data._id) ? prev : [...prev, res.data]);
+        
+        const newMessage = { ...res.data };
+        if (!newMessage.sender && !newMessage.senderId) {
+          newMessage.sender = currentUserId;
+          newMessage.senderName = user?.name || 'Me';
+        }
+        
+        setMessages(prev => prev.some(m => m._id === newMessage._id) ? prev : [...prev, newMessage]);
         scrollToBottom();
         setInputText('');
         clearFile();
         setReplyingTo(null);
       }
     } catch {
-      toast.error('Failed to send message');
+      toast.error(editingMsg ? 'Failed to edit message' : 'Failed to send message');
     } finally {
       setIsSending(false);
     }
@@ -200,7 +196,6 @@ export function ChatTab({ projectId }: ChatTabProps) {
     if (!window.confirm('Are you sure you want to delete this message?')) return;
     try {
       await api.delete(`/projects/${projectId}/messages/${messageId}`);
-      // Remove immediately — don't wait for socket
       setMessages(prev => prev.filter(m => m._id !== messageId));
       setActiveMenuId(null);
     } catch {
@@ -210,7 +205,6 @@ export function ChatTab({ projectId }: ChatTabProps) {
 
   const reactToMessage = async (messageId: string, emoji: string) => {
     try {
-      // Update immediately from API response — don't wait for socket
       const res = await api.patch(`/projects/${projectId}/messages/${messageId}/react`, { emoji });
       setMessages(prev => prev.map(m => m._id === messageId ? res.data : m));
       setActiveMenuId(null);
@@ -233,6 +227,7 @@ export function ChatTab({ projectId }: ChatTabProps) {
   };
 
   const currentUserId = user?._id || user?.id;
+  const canManageChat = hasProjectPermission(user, project, 'chat:manage');
 
   if (isLoading) {
     return (
@@ -244,7 +239,6 @@ export function ChatTab({ projectId }: ChatTabProps) {
 
   return (
     <div className="flex flex-col h-[700px] bg-gray-50/50 rounded-2xl border border-gray-200 overflow-hidden relative">
-      {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3">
@@ -255,7 +249,11 @@ export function ChatTab({ projectId }: ChatTabProps) {
           </div>
         ) : (
           messages.map((msg) => {
-            const isMe = msg.sender === currentUserId;
+            const rawSenderId = typeof msg.sender === 'object' && msg.sender !== null ? (msg.sender._id || msg.sender.id) : (msg.sender || msg.senderId || msg.userId);
+            const isMe = Boolean(
+              (rawSenderId && currentUserId && String(rawSenderId) === String(currentUserId)) ||
+              (msg.senderName && user?.name && String(msg.senderName).trim().toLowerCase() === String(user.name).trim().toLowerCase())
+            );
             const time = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
             return (
@@ -280,7 +278,6 @@ export function ChatTab({ projectId }: ChatTabProps) {
                         ? 'bg-blue-600 text-white border-blue-700 rounded-br-sm'
                         : 'bg-white text-gray-800 border-gray-200 rounded-bl-sm'
                     )}>
-                      {/* Reply quote */}
                       {msg.replyTo && (
                         <div className={cn(
                           'mb-2 p-2 rounded-lg border-l-2 text-xs',
@@ -293,7 +290,6 @@ export function ChatTab({ projectId }: ChatTabProps) {
                         </div>
                       )}
 
-                      {/* Attachments */}
                       {msg.attachments?.map((att: any, idx: number) => (
                         <div key={idx} className="mb-2 overflow-hidden rounded-xl bg-black/5 border border-black/10">
                           {att.type === 'image' ? (
@@ -304,9 +300,8 @@ export function ChatTab({ projectId }: ChatTabProps) {
                         </div>
                       ))}
 
-                      {/* Content */}
                       {msg.content && (
-                        <p className={cn('text-[14px] leading-relaxed whitespace-pre-wrap', isMe ? 'text-blue-50' : 'text-gray-700')}>
+                        <p className={cn('text-[14px] leading-relaxed whitespace-pre-wrap break-words', isMe ? 'text-blue-50' : 'text-gray-700')}>
                           {msg.content}
                         </p>
                       )}
@@ -319,7 +314,6 @@ export function ChatTab({ projectId }: ChatTabProps) {
                       </div>
                     </div>
 
-                    {/* Reactions display */}
                     {msg.reactions && msg.reactions.length > 0 && (
                       <div className={cn('flex flex-wrap gap-1 mt-1 relative z-20', isMe ? 'justify-end' : 'justify-start')}>
                         {Object.entries(
@@ -397,7 +391,7 @@ export function ChatTab({ projectId }: ChatTabProps) {
                               <Edit2 className="w-4 h-4 text-amber-500" /> Edit
                             </button>
                           )}
-                          {(isMe || (user?.role as any)?.name === 'Admin' || (user?.role as any)?.permissions?.includes('*')) && (
+                          {(isMe || canManageChat) && (
                             <button
                               onClick={() => deleteMessage(msg._id)}
                               className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"

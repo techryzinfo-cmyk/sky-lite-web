@@ -92,6 +92,7 @@ function LoginForm() {
               <div className="mt-4 flex flex-col gap-4">
                 <button
                   type="button"
+                  onClick={() => setLoginType('org')}
                   className={`w-full rounded-xl border px-4 py-2.5 text-left text-white transition ${loginType === 'org' ? 'border-blue-300/80 bg-white/10 shadow-lg shadow-blue-900/30' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
                 >
                   <span className="block text-sm font-semibold">Organization Login</span>

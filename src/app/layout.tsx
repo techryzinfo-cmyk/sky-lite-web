@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
-import { Montserrat } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/providers/AuthContext";
 import { ToastProvider } from "@/providers/ToastContext";
 import { SocketProvider } from "@/providers/SocketContext";
 import "@/bones/registry.js";
 
-const montserrat = Montserrat({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-montserrat",
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
@@ -22,8 +22,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${montserrat.variable} antialiased`} suppressHydrationWarning>
-      <body className="min-h-screen bg-[#F8FAFF] text-gray-900 selection:bg-blue-100 overflow-x-hidden" suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} antialiased`} suppressHydrationWarning>
+      <body className="font-sans min-h-screen bg-[#F8FAFF] text-gray-900 selection:bg-blue-100 overflow-x-hidden" suppressHydrationWarning>
         {/* Subtle background accent */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
           <div className="absolute top-[-5%] right-[-5%] w-[40%] h-[40%] rounded-full bg-blue-100/40 blur-[120px]" />

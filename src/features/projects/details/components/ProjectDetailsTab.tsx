@@ -7,6 +7,7 @@ import { SendForSurveyModal } from '@/features/projects/site-survey/components/S
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/AuthContext';
 import { useSocket } from '@/providers/SocketContext';
+import { hasProjectPermission } from '@/lib/permissions';
 import toast from 'react-hot-toast';
 import {
   Map,
@@ -79,7 +80,7 @@ export function ProjectDetailsTab() {
 
   if (!project) return null;
 
-  const canApproveBudget = user?.role?.permissions?.includes('budget:approve') || user?.role?.permissions?.includes('*');
+  const canApproveBudget = hasProjectPermission(user, project, 'budget:approve');
   const pendingRequests = project.budgetHistory?.filter((bh: any) => bh.approvalStatus === 'Pending') || [];
 
   const calculateDaysRemaining = () => {
@@ -210,8 +211,13 @@ export function ProjectDetailsTab() {
               </span>
             </div>
             
-            <h2 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight mt-2.5">
+            <h2 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight mt-2.5 flex items-baseline">
               {project.name}
+              {project.projectCode && (
+                <span className="text-sm md:text-base font-medium text-slate-500 ml-2">
+                  ({project.projectCode})
+                </span>
+              )}
             </h2>
             <p className="text-slate-500 mt-2 text-xs leading-relaxed">
               {project.description || 'No description provided.'}
@@ -274,6 +280,36 @@ export function ProjectDetailsTab() {
           </div>
         </GlassCard>
 
+        {/* Bento Card 4: Project Area */}
+        <GlassCard className="p-4.5 md:p-5 border-gray-200 flex flex-col justify-between" gradient>
+          <div className="flex flex-col h-full justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Project Area</span>
+                <Map className="w-3.5 h-3.5 text-slate-400" />
+              </div>
+              <h3 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight mt-4">
+                {project.area ? `${Number(project.area).toLocaleString()} ${project.areaUnit ? project.areaUnit.toUpperCase() : 'SQFT'}` : 'N/A'}
+              </h3>
+              <p className="text-[10px] text-slate-400 mt-1">Total Site Area</p>
+            </div>
+            
+            {project?.siteLocation?.latitude != null && project?.siteLocation?.longitude != null && (
+              <div className="mt-4">
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${project.siteLocation.latitude},${project.siteLocation.longitude}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  <Map className="w-3.5 h-3.5" />
+                  <span className="text-xs font-bold">Map</span>
+                </a>
+              </div>
+            )}
+          </div>
+        </GlassCard>
+
         {/* Bento Card 4: Coordination Team */}
         <GlassCard className="p-4.5 md:p-5 border-gray-200 lg:col-span-2 flex flex-col justify-between" gradient>
           <div>
@@ -298,10 +334,11 @@ export function ProjectDetailsTab() {
                 <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-xs font-black text-white shrink-0">
                   {(project.createdBy?.name || 'S').charAt(0).toUpperCase()}
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-[11px] font-bold text-slate-900 truncate">
                     {project.createdBy?.name || 'Manager'}
                   </p>
+                  <p className="text-[9px] text-blue-600 truncate font-bold mt-0.5">Admin</p>
                   <p className="text-[9px] text-slate-400 truncate">
                     {project.createdBy?.email || 'admin@creator'}
                   </p>
@@ -309,17 +346,23 @@ export function ProjectDetailsTab() {
               </div>
 
               {/* Members display */}
-              {project.members?.map((member: any, i: number) => {
+              {project.members?.filter((m: any) => {
+                const u = m.user || m;
+                return u.email !== project.createdBy?.email;
+              }).map((member: any, i: number) => {
                 const u = member.user || member;
                 const name = u.name || member.name || 'Member';
                 const email = u.email || member.email || '—';
+                const roleName = member.role?.name || 'Member';
+                
                 return (
                   <div key={i} className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center space-x-2.5">
                     <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-xs font-black text-blue-700 shrink-0">
                       {name.charAt(0).toUpperCase()}
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-[11px] font-bold text-slate-900 truncate">{name}</p>
+                      <p className="text-[9px] text-slate-500 truncate font-semibold mt-0.5">{roleName}</p>
                       <p className="text-[9px] text-slate-400 truncate">{email}</p>
                     </div>
                   </div>

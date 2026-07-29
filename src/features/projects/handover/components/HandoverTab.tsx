@@ -10,6 +10,9 @@ import {
 import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
+import { useProjectContext } from '../../contexts/ProjectContext';
+import { hasProjectPermission } from '@/lib/permissions';
+import { DocumentViewer } from '@/features/projects/documents/components/DocumentViewer';
 import { AssignSnagModal } from '@/features/projects/issues/components/AssignSnagModal';
 import { CompleteSnagModal } from '@/features/projects/issues/components/CompleteSnagModal';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -85,8 +88,8 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
       try {
         const issuesRes = await api.get(`/projects/${projectId}/issues`);
         issues = issuesRes.data || [];
-      } catch (err) {
-        console.error("Error fetching issues:", err);
+      } catch (err: any) {
+        if (err.response?.status !== 403) console.error("Error fetching issues:", err);
       }
       const openIssuesList = issues.filter(i => i.status !== 'Resolved' && i.status !== 'Closed');
 
@@ -95,8 +98,8 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
       try {
         const milestonesRes = await api.get(`/projects/${projectId}/milestones`);
         milestones = milestonesRes.data || [];
-      } catch (err) {
-        console.error("Error fetching milestones:", err);
+      } catch (err: any) {
+        if (err.response?.status !== 403) console.error("Error fetching milestones:", err);
       }
       const incompleteMilestonesList = milestones.filter(m => m.status !== 'Completed');
       const incompleteTasksList = milestones.flatMap(m => m.tasks || []).filter(t => !t.isCompleted);
@@ -106,8 +109,8 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
       try {
         const boqRes = await api.get(`/projects/${projectId}/boq`);
         boqItems = boqRes.data || [];
-      } catch (err) {
-        console.error("Error fetching BOQ:", err);
+      } catch (err: any) {
+        if (err.response?.status !== 403) console.error("Error fetching BOQ:", err);
       }
       const latestBoq = boqItems.filter(b => b.isLatest !== false);
       const pendingBoqsList = latestBoq.filter(b => b.status !== 'Approved');
@@ -117,8 +120,8 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
       try {
         const foldersRes = await api.get(`/projects/${projectId}/folders`);
         folders = foldersRes.data || [];
-      } catch (err) {
-        console.error("Error fetching folders:", err);
+      } catch (err: any) {
+        if (err.response?.status !== 403) console.error("Error fetching folders:", err);
       }
       const allPlans = folders.flatMap(f => f.documents || []);
       const pendingPlansList = allPlans.filter(doc => {
@@ -131,8 +134,8 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
       try {
         const risksRes = await api.get(`/projects/${projectId}/risks`);
         risks = risksRes.data || [];
-      } catch (err) {
-        console.error("Error fetching risks:", err);
+      } catch (err: any) {
+        if (err.response?.status !== 403) console.error("Error fetching risks:", err);
       }
       const activeRisksList = risks.filter(r => r.status === 'Critical' || r.status === 'Active');
 
@@ -342,6 +345,22 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
     }
   };
 
+  const canViewHandover = hasProjectPermission(user, project, 'handover:view');
+
+  if (!canViewHandover) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 bg-white/60 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm mt-4">
+        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+          <XOctagon className="w-8 h-8 text-slate-400" />
+        </div>
+        <h2 className="text-xl font-bold text-slate-900 mb-2">Access Denied</h2>
+        <p className="text-slate-500 text-sm max-w-sm text-center mb-6">
+          You do not have the required "Handover Management" permission to view this tab.
+        </p>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 bg-white border rounded-3xl">
@@ -353,8 +372,10 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
 
   const isAssignedToMe = (project?.snaggedBy?._id || project?.snaggedBy) === currentUserId;
   const isInspector = (project?.snaggedBy?._id || project?.snaggedBy) === currentUserId;
-  const canAssignSnagging = user?.role?.permissions?.includes('*') || user?.role?.permissions?.includes('snag:assign') || user?.role?.name === 'Admin';
-  const canCompleteSnag = user?.role?.permissions?.includes('*') || user?.role?.permissions?.includes('snag:complete') || user?.role?.name === 'Admin';
+  // ── Permissions ────────────────────────────────────────────────────────
+  const isAdmin = user?.role?.name === 'Admin' || user?.role?.permissions?.includes('*');
+  const canAssignSnagging = hasProjectPermission(user, project, 'snag:assign');
+  const canCompleteSnag = hasProjectPermission(user, project, 'snag:complete');
 
   const renderChecklistGroup = (
     title: string,
