@@ -19,10 +19,13 @@ import {
   TrendingDown,
   Wallet,
   Search,
+  Lock,
 } from 'lucide-react';
 import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
 import { useSocket } from '@/providers/SocketContext';
+import { useAuth } from '@/providers/AuthContext';
+import { hasProjectPermission } from '@/lib/permissions';
 import { Transaction, MaterialPurchase } from '@/types';
 import { formatCurrency, formatExactCurrency } from '@/lib/utils';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
@@ -67,6 +70,12 @@ function getTxMeta(item: LedgerItem) {
 
 export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) => {
   const { project } = useProjectContext();
+  const { user } = useAuth();
+  const isAdmin = user?.role?.name === 'Admin' || (user?.role?.permissions?.includes('*') ?? false);
+  const canView = isAdmin || hasProjectPermission(user, project, 'transactions:view');
+  const canCreate = isAdmin || hasProjectPermission(user, project, 'transactions:create');
+  const canUpdate = isAdmin || hasProjectPermission(user, project, 'transactions:update');
+  const canDelete = isAdmin || hasProjectPermission(user, project, 'transactions:delete');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [purchases, setPurchases] = useState<MaterialPurchase[]>([]);
   const [loading, setLoading] = useState(true);
@@ -345,6 +354,17 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
 
   // Loading state handled by Skeleton wrapper
 
+  if (!canView) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+          <Lock className="w-6 h-6 text-gray-400" />
+        </div>
+        <p className="text-sm font-bold text-slate-500">You don't have permission to view the Transaction Management module.</p>
+      </div>
+    );
+  }
+
   return (
     <SkeletonLoader loading={loading} preset="table">
       <div className="space-y-6">
@@ -410,13 +430,15 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
               className="w-full sm:w-64 pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             />
           </div>
-          <button
-            onClick={() => setShowTypeSheet(true)}
-            className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all shadow-sm shadow-blue-600/20 shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Record</span>
-          </button>
+          {canCreate && (
+            <button
+              onClick={() => setShowTypeSheet(true)}
+              className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all shadow-sm shadow-blue-600/20 shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Record</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -469,7 +491,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
                     >
                       <DownloadCloud className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </button>
-                    {!item.isPurchase && (
+                    {!item.isPurchase && canUpdate && (
                       <button
                         onClick={() => handleEdit(item)}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-all shrink-0"
@@ -477,12 +499,14 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
                         <Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       </button>
                     )}
-                    <button
-                      onClick={() => { setDeleteIsPurchase(!!item.isPurchase); setDeleteTarget(item._id); }}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all shrink-0"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    </button>
+                    {canDelete && (
+                      <button
+                        onClick={() => { setDeleteIsPurchase(!!item.isPurchase); setDeleteTarget(item._id); }}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all shrink-0"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               );

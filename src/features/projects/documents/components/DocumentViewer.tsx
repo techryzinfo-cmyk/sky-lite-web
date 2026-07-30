@@ -62,8 +62,9 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const toast = useToast();
   const { user } = useAuth();
   const { project } = useProjectContext();
-  const isAdmin = hasProjectPermission(user, project, 'land:delete') || user?.role?.name === 'Admin';
-  const canAnnotate = hasProjectPermission(user, project, 'annotations:create') || hasProjectPermission(user, project, 'annotations:update');
+  const isAdmin = user?.role?.name === 'Admin' || (user?.role?.permissions?.includes('*') ?? false);
+  const canAnnotate = isAdmin || hasProjectPermission(user, project, 'annotations:create') || hasProjectPermission(user, project, 'annotations:update');
+  const canDeleteAnnotation = isAdmin || hasProjectPermission(user, project, 'annotations:delete');
 
   const loadAnnotations = useCallback(async () => {
     if (!projectId || !document?._id) return;
@@ -469,7 +470,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                     ) : (
                       <div className="divide-y divide-gray-100">
                         {annotations.map((ann, idx) => {
-                          const canDelete = isAdmin || ann.createdBy === (user as any)?._id;
+                          const canDelete = canDeleteAnnotation || ann.createdBy === (user as any)?._id;
                           const isActive = activePin === ann._id;
                           return (
                             <div

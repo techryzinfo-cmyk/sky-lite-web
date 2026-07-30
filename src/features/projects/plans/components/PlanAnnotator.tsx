@@ -42,6 +42,7 @@ export const PlanAnnotator: React.FC<PlanAnnotatorProps> = ({
   const { project } = useProjectContext();
 
   const canAnnotate = hasProjectPermission(user, project, 'annotations:create') || hasProjectPermission(user, project, 'annotations:update');
+  const canDeleteAnnotation = hasProjectPermission(user, project, 'annotations:delete');
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -527,23 +528,27 @@ export const PlanAnnotator: React.FC<PlanAnnotatorProps> = ({
               </div>
 
               {/* Sidebar Footer */}
-              {canAnnotate && (
-                <div className="p-5 border-t border-gray-100 bg-white grid grid-cols-2 gap-3">
-                  <button
-                    onClick={handleDeleteAnnotation}
-                    className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Delete Pin
-                  </button>
-                  <button
-                    onClick={handleSaveAnnotation}
-                    disabled={isUploading}
-                    className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-500 transition-colors disabled:opacity-50"
-                  >
-                    {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    Save Note
-                  </button>
+              {(canAnnotate || canDeleteAnnotation) && (
+                <div className={cn('p-5 border-t border-gray-100 bg-white grid gap-3', canAnnotate && canDeleteAnnotation ? 'grid-cols-2' : 'grid-cols-1')}>
+                  {canDeleteAnnotation && (
+                    <button
+                      onClick={handleDeleteAnnotation}
+                      className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete Pin
+                    </button>
+                  )}
+                  {canAnnotate && (
+                    <button
+                      onClick={handleSaveAnnotation}
+                      disabled={isUploading}
+                      className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-500 transition-colors disabled:opacity-50"
+                    >
+                      {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      Save Note
+                    </button>
+                  )}
                 </div>
               )}
             </motion.div>
