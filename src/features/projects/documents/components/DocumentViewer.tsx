@@ -63,6 +63,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const { user } = useAuth();
   const { project } = useProjectContext();
   const isAdmin = hasProjectPermission(user, project, 'land:delete') || user?.role?.name === 'Admin';
+  const canAnnotate = hasProjectPermission(user, project, 'annotations:create') || hasProjectPermission(user, project, 'annotations:update');
 
   const loadAnnotations = useCallback(async () => {
     if (!projectId || !document?._id) return;
@@ -239,7 +240,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                   </button>
 
                   {/* Pin mode toggle */}
-                  {projectId && (
+                  {projectId && canAnnotate && (
                     <button
                       onClick={() => { setPinMode(p => !p); setActivePin(null); }}
                       className={cn(
@@ -461,7 +462,9 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                           <MapPin className="w-5 h-5 text-gray-300" />
                         </div>
                         <p className="text-sm font-bold text-slate-400">No annotations yet</p>
-                        <p className="text-xs text-slate-400 mt-1 leading-relaxed">Use "Add Pin" above to mark important points on this plan</p>
+                        {canAnnotate && (
+                          <p className="text-xs text-slate-400 mt-1 leading-relaxed">Use "Add Pin" above to mark important points on this plan</p>
+                        )}
                       </div>
                     ) : (
                       <div className="divide-y divide-gray-100">
@@ -517,7 +520,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                   </div>
 
                   {/* Panel footer — quick add button */}
-                  {!pendingPos && projectId && (
+                  {!pendingPos && projectId && canAnnotate && (
                     <div className="p-3 border-t border-gray-100 shrink-0">
                       <button
                         onClick={() => { setPinMode(p => !p); setActivePin(null); }}

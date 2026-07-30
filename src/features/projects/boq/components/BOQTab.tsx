@@ -7,7 +7,7 @@ import {
   Plus, Search, Edit2, Trash2, History, Download, Upload,
   CheckCircle2, Loader2, GitBranch, FileText,
   DollarSign, ChevronLeft, Clock, Send, XCircle, RefreshCw,
-  TrendingUp, BarChart3, ChevronRight,
+  TrendingUp, BarChart3, ChevronRight, Lock,
 } from 'lucide-react';
 import { BOQItem } from '@/types';
 import api from '@/services/api.client';
@@ -15,7 +15,7 @@ import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
 import { useSocket } from '@/providers/SocketContext';
 import { cn, formatCurrency } from '@/lib/utils';
-import { hasProjectPermission } from '@/lib/permissions';
+import { hasProjectPermission, hasAnyProjectPermissionPrefix } from '@/lib/permissions';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 import { BOQModal } from '@/features/projects/boq/components/BOQModal';
 import { BOQImportModal } from '@/features/projects/boq/components/BOQImportModal';
@@ -112,6 +112,7 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
 
   // ── Permissions (mirror mobile's isAdmin / canApprove) ──────────────────
   const isAdmin = user?.role?.name === 'Admin' || (user?.role?.permissions?.includes('*') ?? false);
+  const canView = isAdmin || hasAnyProjectPermissionPrefix(user, project, 'boq:');
   const canApprove = hasProjectPermission(user, project, 'boq:approve');
   const canUpdate = hasProjectPermission(user, project, 'boq:update');
   const canDelete = hasProjectPermission(user, project, 'boq:delete');
@@ -266,6 +267,17 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
     a.href = url; a.download = `BOQ_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
     URL.revokeObjectURL(url);
   };
+
+  if (!canView) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+          <Lock className="w-6 h-6 text-gray-400" />
+        </div>
+        <p className="text-sm font-bold text-slate-500">You don't have permission to view the BOQ Management module.</p>
+      </div>
+    );
+  }
 
   // ──────────────────────────────────────────────────────────────────────────
   // ──────────────────────────────────────────────────────────────────────────
@@ -539,17 +551,19 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
                                             </button>
                                           </>
                                         )}
-                                        {item.status === 'Draft' && (
+                                        {canUpdate && item.status === 'Draft' && (
                                           <button onClick={() => setApproversItem(item)}
                                             title="Send for Approval" className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors">
                                             <Send className="w-4 h-4" />
                                           </button>
                                         )}
                                         {item.status === 'Approved' ? (
-                                          <button onClick={() => { setSelectedItem(item); setIsNewVersion(true); setIsModalOpen(true); }}
-                                            title="Create New Version" className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-md transition-colors">
-                                            <GitBranch className="w-4 h-4" />
-                                          </button>
+                                          canUpdate && (
+                                            <button onClick={() => { setSelectedItem(item); setIsNewVersion(true); setIsModalOpen(true); }}
+                                              title="Create New Version" className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-md transition-colors">
+                                              <GitBranch className="w-4 h-4" />
+                                            </button>
+                                          )
                                         ) : canUpdate && (
                                           <button onClick={() => { setSelectedItem(item); setIsNewVersion(false); setIsModalOpen(true); }}
                                             title="Edit" className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors">

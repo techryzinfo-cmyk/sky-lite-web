@@ -46,6 +46,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
   const canCreatePlans = hasProjectPermission(user, project, 'plans:create');
   const canEditPlans = hasProjectPermission(user, project, 'plans:update') || hasProjectPermission(user, project, 'plans:edit');
   const isAdmin = user?.role?.name === 'Admin' || (user?.role?.permissions?.includes('*') ?? false);
+  const canViewAnnotations = hasProjectPermission(user, project, 'annotations:view');
 
   const fetchAnnotationCounts = useCallback(async () => {
     try {
@@ -162,7 +163,10 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
               key={doc._id}
               className="bg-white border border-gray-200 rounded-2xl hover:border-blue-200 hover:shadow-sm transition-all group/doc"
             >
-              <div className="flex items-center gap-4 px-5 py-4">
+              <div
+                className="flex items-center gap-4 px-5 py-4 cursor-pointer"
+                onClick={() => setViewingDoc(doc)}
+              >
                 {/* File icon */}
                 <div className="w-11 h-11 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center shrink-0 group-hover/doc:border-blue-200 transition-colors">
                   <FileIconSvg className="w-5 h-5 text-slate-400" />
@@ -206,7 +210,10 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div
+                  className="flex items-center gap-1.5 shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {/* Approval workflow */}
                   {doc.approvalStatus === 'Draft' && isAdmin && (
                     <button
@@ -250,7 +257,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
                   </button>
 
                   {/* Annotate — opens viewer in annotation mode */}
-                  {projectId && (
+                  {projectId && canViewAnnotations && (
                     <button
                       onClick={() => setAnnotatingDoc(doc)}
                       className={cn(

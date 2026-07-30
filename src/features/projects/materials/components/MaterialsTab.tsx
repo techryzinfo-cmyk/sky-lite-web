@@ -35,6 +35,8 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { cn, formatCurrency } from '@/lib/utils';
 import api from '@/services/api.client';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
+import { useAuth } from '@/providers/AuthContext';
+import { hasAnyProjectPermissionPrefix, hasProjectPermission } from '@/lib/permissions';
 import { useToast } from '@/providers/ToastContext';
 import { MaterialModal } from '@/features/projects/materials/components/MaterialModal';
 import { MaterialRequestModal } from '@/features/projects/materials/components/MaterialRequestModal';
@@ -67,6 +69,13 @@ const PO_STATUS_COLORS: Record<string, string> = {
 
 export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
   const { project } = useProjectContext();
+  const { user } = useAuth();
+  const isAdmin = user?.role?.name === 'Admin' || (user?.role?.permissions?.includes('*') ?? false);
+  const canView = isAdmin || hasAnyProjectPermissionPrefix(user, project, 'inventory:');
+  const canCreate = isAdmin || hasProjectPermission(user, project, 'inventory:create');
+  const canUpdate = isAdmin || hasProjectPermission(user, project, 'inventory:update');
+  const canDelete = isAdmin || hasProjectPermission(user, project, 'inventory:delete');
+  const canApprove = isAdmin || hasProjectPermission(user, project, 'inventory:approve');
   const [activeSubTab, setActiveSubTab] = useState('all');
   const [materials, setMaterials] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
@@ -351,6 +360,17 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
     loadData();
   }, [projectId, activeSubTab]);
 
+  if (!canView) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+          <Lock className="w-6 h-6 text-gray-400" />
+        </div>
+        <p className="text-sm font-bold text-slate-500">You don't have permission to view the Material Management module.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Sub-Tabs */}
@@ -418,19 +438,21 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                 />
               </div>
 
-              <div className="flex items-center space-x-3">
-                <button
-                  onClick={() => {
-                    setModalMode('create');
-                    setSelectedMaterial(null);
-                    setIsModalOpen(true);
-                  }}
-                  className="flex items-center space-x-2 px-4 py-2 bg-blue-600 border border-blue-500 rounded-xl text-sm font-bold text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20 transition-all"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>New Material</span>
-                </button>
-              </div>
+              {canCreate && (
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={() => {
+                      setModalMode('create');
+                      setSelectedMaterial(null);
+                      setIsModalOpen(true);
+                    }}
+                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 border border-blue-500 rounded-xl text-sm font-bold text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20 transition-all"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>New Material</span>
+                  </button>
+                </div>
+              )}
             </div>
           </GlassCard>
 
@@ -495,28 +517,32 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                           Updated: {new Date(material.updatedAt).toLocaleDateString()}
                         </span>
                         <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => {
-                              setModalMode('stock-in');
-                              setSelectedMaterial(material);
-                              setIsModalOpen(true);
-                            }}
-                            className="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-all border border-emerald-100 bg-emerald-50/50"
-                            title="Stock In"
-                          >
-                            <PlusCircle className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setModalMode('stock-out');
-                              setSelectedMaterial(material);
-                              setIsModalOpen(true);
-                            }}
-                            className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition-all border border-red-100 bg-red-50/50"
-                            title="Stock Out"
-                          >
-                            <MinusCircle className="w-4 h-4" />
-                          </button>
+                          {canUpdate && (
+                            <button
+                              onClick={() => {
+                                setModalMode('stock-in');
+                                setSelectedMaterial(material);
+                                setIsModalOpen(true);
+                              }}
+                              className="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-all border border-emerald-100 bg-emerald-50/50"
+                              title="Stock In"
+                            >
+                              <PlusCircle className="w-4 h-4" />
+                            </button>
+                          )}
+                          {canUpdate && (
+                            <button
+                              onClick={() => {
+                                setModalMode('stock-out');
+                                setSelectedMaterial(material);
+                                setIsModalOpen(true);
+                              }}
+                              className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition-all border border-red-100 bg-red-50/50"
+                              title="Stock Out"
+                            >
+                              <MinusCircle className="w-4 h-4" />
+                            </button>
+                          )}
                           <button
                             onClick={() => openHistory(material)}
                             title="Usage History"
@@ -524,25 +550,29 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                           >
                             <History className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={() => {
-                              setModalMode('edit');
-                              setSelectedMaterial(material);
-                              setIsModalOpen(true);
-                            }}
-                            title="Edit Material"
-                            className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all border border-gray-200 bg-white"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteMaterial(material._id)}
-                            disabled={deletingId === material._id}
-                            title="Delete Material"
-                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-40 border border-gray-200 bg-white"
-                          >
-                            {deletingId === material._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                          </button>
+                          {canUpdate && (
+                            <button
+                              onClick={() => {
+                                setModalMode('edit');
+                                setSelectedMaterial(material);
+                                setIsModalOpen(true);
+                              }}
+                              title="Edit Material"
+                              className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all border border-gray-200 bg-white"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              onClick={() => handleDeleteMaterial(material._id)}
+                              disabled={deletingId === material._id}
+                              title="Delete Material"
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-40 border border-gray-200 bg-white"
+                            >
+                              {deletingId === material._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                            </button>
+                          )}
                         </div>
                       </div>
                     </GlassCard>
@@ -652,25 +682,29 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                             >
                               <History className="w-4 h-4" />
                             </button> */}
-                            <button
-                              onClick={() => {
-                                setModalMode('edit');
-                                setSelectedMaterial(material);
-                                setIsModalOpen(true);
-                              }}
-                              title="Edit Material"
-                              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteMaterial(material._id)}
-                              disabled={deletingId === material._id}
-                              title="Delete Material"
-                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-40"
-                            >
-                              {deletingId === material._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                            </button>
+                            {canUpdate && (
+                              <button
+                                onClick={() => {
+                                  setModalMode('edit');
+                                  setSelectedMaterial(material);
+                                  setIsModalOpen(true);
+                                }}
+                                title="Edit Material"
+                                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                            )}
+                            {canDelete && (
+                              <button
+                                onClick={() => handleDeleteMaterial(material._id)}
+                                disabled={deletingId === material._id}
+                                title="Delete Material"
+                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-40"
+                              >
+                                {deletingId === material._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -698,15 +732,17 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                 <h3 className="text-lg font-bold text-gray-900">Material Requests</h3>
                 <p className="text-xs text-slate-500">Track and manage project material requisitions.</p>
               </div>
-              <div className="flex items-center space-x-3">
-                <button
-                  onClick={() => setIsRequestModalOpen(true)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-blue-600 border border-blue-500 rounded-xl text-sm font-bold text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20 transition-all"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>New Request</span>
-                </button>
-              </div>
+              {canCreate && (
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={() => setIsRequestModalOpen(true)}
+                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 border border-blue-500 rounded-xl text-sm font-bold text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20 transition-all"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>New Request</span>
+                  </button>
+                </div>
+              )}
             </div>
           </GlassCard>
 
@@ -714,21 +750,25 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
             <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-2xl">
               <span className="text-sm font-bold text-blue-700">{checkedRequestIds.size} request{checkedRequestIds.size > 1 ? 's' : ''} selected</span>
               <div className="flex items-center space-x-3">
-                <button
-                  onClick={() => bulkUpdateRequests('Approved')}
-                  disabled={isBulkUpdating}
-                  className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50"
-                >
-                  {isBulkUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
-                  <span>Approve</span>
-                </button>
-                <button
-                  onClick={() => bulkUpdateRequests('Rejected')}
-                  disabled={isBulkUpdating}
-                  className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50"
-                >
-                  <span>Reject</span>
-                </button>
+                {canApprove && (
+                  <button
+                    onClick={() => bulkUpdateRequests('Approved')}
+                    disabled={isBulkUpdating}
+                    className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+                  >
+                    {isBulkUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
+                    <span>Approve</span>
+                  </button>
+                )}
+                {canApprove && (
+                  <button
+                    onClick={() => bulkUpdateRequests('Rejected')}
+                    disabled={isBulkUpdating}
+                    className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+                  >
+                    <span>Reject</span>
+                  </button>
+                )}
                 <button
                   onClick={() => setCheckedRequestIds(new Set())}
                   className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-slate-500 hover:text-gray-900 transition-all"
@@ -796,7 +836,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                       <span className="text-[10px] font-bold text-slate-500">{request.requestedByName}</span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      {request.status === 'Pending' && (
+                      {request.status === 'Pending' && canApprove && (
                         <>
                           <button
                             onClick={() => handleUpdateRequestStatus(request._id, 'Rejected')}
@@ -816,7 +856,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                           </button>
                         </>
                       )}
-                      {request.status === 'Approved' && (
+                      {request.status === 'Approved' && canUpdate && (
                         <button
                           onClick={() => handleUpdateRequestStatus(request._id, 'Fulfilled')}
                           disabled={updatingRequestId === request._id}
@@ -827,14 +867,16 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                           Fulfill
                         </button>
                       )}
-                      <button
-                        onClick={() => handleDeleteRequest(request._id)}
-                        disabled={deletingId === request._id}
-                        title="Delete"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
-                      >
-                        {deletingId === request._id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                      </button>
+                      {canDelete && (
+                        <button
+                          onClick={() => handleDeleteRequest(request._id)}
+                          disabled={deletingId === request._id}
+                          title="Delete"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
+                        >
+                          {deletingId === request._id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                        </button>
+                      )}
                       <button
                         onClick={() => setSelectedRequest(request)}
                         className="text-xs font-bold text-blue-600 hover:text-blue-500 transition-colors"
@@ -862,6 +904,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                 <h3 className="text-lg font-bold text-gray-900">Material Received</h3>
                 <p className="text-xs text-slate-500">Log and verify incoming material deliveries.</p>
               </div>
+              {canCreate && (
               <div className="flex items-center space-x-3">
                 <button
                   onClick={() => setIsReceiptModalOpen(true)}
@@ -871,6 +914,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                   <span>Log Receipt</span>
                 </button>
               </div>
+              )}
             </div>
           </GlassCard>
 
@@ -1058,13 +1102,15 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                 <h3 className="text-lg font-bold text-gray-900">Purchase Orders</h3>
                 <p className="text-xs text-slate-500">Formal procurement requests to vendors.</p>
               </div>
-              <button
-                onClick={() => setIsPurchaseModalOpen(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 border border-blue-500 rounded-xl text-sm font-bold text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20 transition-all"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Create PO</span>
-              </button>
+              {canCreate && (
+                <button
+                  onClick={() => setIsPurchaseModalOpen(true)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-blue-600 border border-blue-500 rounded-xl text-sm font-bold text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Create PO</span>
+                </button>
+              )}
             </div>
           </GlassCard>
 
@@ -1101,14 +1147,16 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                     </div>
                     <div className="flex items-center space-x-2">
                       {po.status !== 'Approved' ? (
-                        <button
-                          onClick={() => handleDeletePO(po._id)}
-                          disabled={deletingId === po._id}
-                          title="Delete PO"
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
-                        >
-                          {deletingId === po._id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                        </button>
+                        canDelete && (
+                          <button
+                            onClick={() => handleDeletePO(po._id)}
+                            disabled={deletingId === po._id}
+                            title="Delete PO"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
+                          >
+                            {deletingId === po._id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                          </button>
+                        )
                       ) : (
                         <span title="Approved POs cannot be deleted" className="p-1.5 text-slate-300 cursor-not-allowed">
                           <Lock className="w-3.5 h-3.5" />
@@ -1140,13 +1188,15 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                 <h3 className="text-lg font-bold text-gray-900">Usage Log</h3>
                 <p className="text-xs text-slate-500">Track on-site material consumption.</p>
               </div>
-              <button
-                onClick={() => setIsUsageModalOpen(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-purple-600 border border-purple-500 rounded-xl text-sm font-bold text-white hover:bg-purple-500 shadow-lg shadow-purple-600/20 transition-all"
-              >
-                <Zap className="w-4 h-4" />
-                <span>Log Consumption</span>
-              </button>
+              {canCreate && (
+                <button
+                  onClick={() => setIsUsageModalOpen(true)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-purple-600 border border-purple-500 rounded-xl text-sm font-bold text-white hover:bg-purple-500 shadow-lg shadow-purple-600/20 transition-all"
+                >
+                  <Zap className="w-4 h-4" />
+                  <span>Log Consumption</span>
+                </button>
+              )}
             </div>
           </GlassCard>
 
@@ -1184,14 +1234,16 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => handleDeleteUsageLog(log._id)}
-                          disabled={deletingId === log._id}
-                          title="Delete log (restores stock)"
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
-                        >
-                          {deletingId === log._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                        </button>
+                        {canDelete && (
+                          <button
+                            onClick={() => handleDeleteUsageLog(log._id)}
+                            disabled={deletingId === log._id}
+                            title="Delete log (restores stock)"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
+                          >
+                            {deletingId === log._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -1341,7 +1393,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                     </div>
                   </div>
                 )}
-                {selectedRequest.status === 'Pending' && (
+                {selectedRequest.status === 'Pending' && canApprove && (
                   <div className="flex space-x-3 pt-2">
                     <button
                       onClick={() => handleUpdateRequestStatus(selectedRequest._id, 'Rejected')}
@@ -1360,7 +1412,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                     </button>
                   </div>
                 )}
-                {selectedRequest.status === 'Approved' && (
+                {selectedRequest.status === 'Approved' && canUpdate && (
                   <button
                     onClick={() => handleUpdateRequestStatus(selectedRequest._id, 'Fulfilled')}
                     disabled={updatingRequestId === selectedRequest._id}
@@ -1445,7 +1497,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
                     </div>
                   </div>
                 )}
-                {(selectedPO.status === 'Pending Approval' || selectedPO.status === 'Pending') && (
+                {(selectedPO.status === 'Pending Approval' || selectedPO.status === 'Pending') && canApprove && (
                   <div className="flex space-x-3 pt-2">
                     <button
                       onClick={() => handleUpdatePOStatus(selectedPO._id, 'Rejected')}

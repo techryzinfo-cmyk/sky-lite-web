@@ -131,9 +131,27 @@ export const BOQModal: React.FC<BOQModalProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
+  const hasEditChanges = (): boolean => {
+    if (!initialData) return true;
+    return (
+      editForm.groupName !== (initialData.groupName || '') ||
+      editForm.itemNumber !== (initialData.itemNumber || '') ||
+      editForm.itemDescription !== (initialData.itemDescription || '') ||
+      editForm.unit !== (initialData.unit || '') ||
+      Number(editForm.quantity) !== Number(initialData.quantity) ||
+      Number(editForm.unitCost) !== Number(initialData.unitCost) ||
+      editForm.remark !== (initialData.remark || '')
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (initialData ? !validateEdit() : !validateCreate()) return;
+
+    if (isNewVersion && !hasEditChanges()) {
+      toast.error('Make at least one change before creating a new version.');
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -196,7 +214,7 @@ export const BOQModal: React.FC<BOQModalProps> = ({
             <div className="bg-white rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col max-h-[92vh]">
 
               {/* Header — matches mobile sheet header gradient */}
-              <div className={`px-6 py-5 rounded-t-3xl md:rounded-t-2xl text-white shrink-0 ${isNewVersion ? 'bg-gradient-to-r from-amber-500 to-amber-600' : 'bg-gradient-to-r from-blue-500 to-blue-600'}`}>
+              <div className="px-6 py-5 rounded-t-3xl md:rounded-t-2xl text-white shrink-0 bg-gradient-to-r from-blue-500 to-blue-600">
                 {/* Drag indicator */}
                 <div className="w-10 h-1 rounded-full bg-white/30 mx-auto mb-4" />
                 <div className="flex items-center justify-between">
@@ -218,9 +236,9 @@ export const BOQModal: React.FC<BOQModalProps> = ({
 
               {/* New-version info banner */}
               {isNewVersion && (
-                <div className="mx-6 mt-4 flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl shrink-0">
-                  <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                  <p className="text-xs text-amber-800 leading-relaxed">
+                <div className="mx-6 mt-4 flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-2xl shrink-0">
+                  <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <p className="text-xs text-blue-800 leading-relaxed">
                     <span className="font-bold">Creating a new version:</span> The current approved v{currentVersion} will be archived. New v{nextVersion} will start as <span className="font-bold">Draft</span> and require re-approval.
                   </p>
                 </div>
@@ -522,10 +540,10 @@ export const BOQModal: React.FC<BOQModalProps> = ({
                     </button>
                     <button
                       type="submit"
-                      disabled={isLoading}
+                      disabled={isLoading || (isNewVersion && !hasEditChanges())}
                       className={`flex-1 py-3.5 rounded-2xl disabled:opacity-50 text-white text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                         isNewVersion
-                          ? 'bg-amber-600 hover:bg-amber-500 shadow-lg shadow-amber-600/20'
+                          ? 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/20'
                           : 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/20'
                       }`}
                     >

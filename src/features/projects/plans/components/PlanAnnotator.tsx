@@ -41,7 +41,7 @@ export const PlanAnnotator: React.FC<PlanAnnotatorProps> = ({
   const { user } = useAuth();
   const { project } = useProjectContext();
 
-  const canAnnotate = hasProjectPermission(user, project, 'annotations:update') || hasProjectPermission(user, project, 'plans:update');
+  const canAnnotate = hasProjectPermission(user, project, 'annotations:create') || hasProjectPermission(user, project, 'annotations:update');
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);

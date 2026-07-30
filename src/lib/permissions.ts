@@ -1,87 +1,66 @@
+/**
+ * Resolve the user's role scoped to a specific project (found via
+ * project.members). A project-specific role assignment is authoritative
+ * for that project — it must not be bypassed by a broader global role,
+ * otherwise a deliberately restrictive project role (e.g. "Viewer") could
+ * never actually restrict a member whose org-wide default role happens to
+ * have more permissions.
+ */
+const resolveProjectRole = (user: any, project: any): any => {
+  if (!project || !Array.isArray(project.members)) return null;
+  const currentUserId = user?._id || user?.id;
+  const myMember = project.members.find((m: any) => {
+    const mUserId = m.user?._id || m.user;
+    return mUserId === currentUserId;
+  });
+  return myMember?.role || null;
+};
+
+/**
+ * Check if the user is a global admin or wildcard holder (always allowed),
+ * otherwise check ONLY their project-specific role's permissions.
+ */
 export const hasProjectPermission = (user: any, project: any, permission: string): boolean => {
   if (!user) return false;
-
-  // 1. Check Global Admin or wildcard
-  const globalPerms = user?.role?.permissions || [];
-  if (user?.role?.name === 'Admin' || globalPerms.includes('*')) {
+  if (user?.role?.name === 'Admin' || user?.role?.permissions?.includes('*')) {
     return true;
   }
 
-  // 2. Check Global Permission (if assigned globally)
-  if (globalPerms.includes(permission)) {
-    return true;
-  }
-
-  // 3. Check Project-specific Permission
-  if (project && Array.isArray(project.members)) {
-    const currentUserId = user?._id || user?.id;
-    const myMember = project.members.find((m: any) => {
-      const mUserId = m.user?._id || m.user;
-      return mUserId === currentUserId;
-    });
-
-    if (myMember?.role?.permissions) {
-      if (myMember.role.permissions.includes('*') || myMember.role.permissions.includes(permission)) {
-        return true;
-      }
-    }
-  }
-
-  return false;
+  const myRole = resolveProjectRole(user, project);
+  if (!myRole) return false;
+  if (myRole.name === 'Admin' || myRole.permissions?.includes('*')) return true;
+  return myRole.permissions?.includes(permission) ?? false;
 };
 
 export const hasAnyProjectPermissionPrefix = (user: any, project: any, prefix: string): boolean => {
   if (!user) return false;
-
-  // 1. Check Global Admin or wildcard
-  const globalPerms = user?.role?.permissions || [];
-  if (user?.role?.name === 'Admin' || globalPerms.includes('*')) {
+  if (user?.role?.name === 'Admin' || user?.role?.permissions?.includes('*')) {
     return true;
   }
 
-  // 2. Check Global Permission with prefix
-  if (globalPerms.some((p: string) => p.startsWith(prefix))) {
-    return true;
-  }
-
-  // 3. Check Project-specific Permission with prefix
-  if (project && Array.isArray(project.members)) {
-    const currentUserId = user?._id || user?.id;
-    const myMember = project.members.find((m: any) => {
-      const mUserId = m.user?._id || m.user;
-      return mUserId === currentUserId;
-    });
-
-    if (myMember?.role?.permissions) {
-      if (myMember.role.permissions.includes('*') || myMember.role.permissions.some((p: string) => p.startsWith(prefix))) {
-        return true;
-      }
-    }
-  }
-
-  return false;
+  const myRole = resolveProjectRole(user, project);
+  if (!myRole) return false;
+  if (myRole.name === 'Admin' || myRole.permissions?.includes('*')) return true;
+  return myRole.permissions?.some((p: string) => p.startsWith(prefix)) ?? false;
 };
 
 export const hasProjectPermissionWithMembers = (user: any, projectMembers: any[], permission: string): boolean => {
   if (!user) return false;
-
-  const globalPerms = user?.role?.permissions || [];
-  if (user?.role?.name === 'Admin' || globalPerms.includes('*') || globalPerms.includes(permission)) {
+  if (user?.role?.name === 'Admin' || user?.role?.permissions?.includes('*')) {
     return true;
   }
 
-  if (projectMembers && Array.isArray(projectMembers)) {
+  if (Array.isArray(projectMembers)) {
     const currentUserId = user?._id || user?.id;
     const myMember = projectMembers.find((m: any) => {
       const mUserId = m.user?._id || m.user;
       return mUserId === currentUserId;
     });
 
-    if (myMember?.role?.permissions) {
-      if (myMember.role.permissions.includes('*') || myMember.role.permissions.includes(permission)) {
-        return true;
-      }
-    }
+    const myRole = myMember?.role;
+    if (!myRole) return false;
+    if (myRole.name === 'Admin' || myRole.permissions?.includes('*')) return true;
+    return myRole.permissions?.includes(permission) ?? false;
   }
 
   return false;

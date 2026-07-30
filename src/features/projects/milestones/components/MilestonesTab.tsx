@@ -9,7 +9,7 @@ import {
   Calendar, Plus, Loader2, Target, Flag, X,
   CheckCircle2, Circle, ChevronDown, ChevronUp,
   Trash2, LayoutGrid, List, AlignLeft, MoreVertical, Pencil,
-  User, Clock, MessageSquare, ChevronRight, Camera, Image as ImageIcon, FileText, ShieldAlert
+  User, Clock, MessageSquare, ChevronRight, Camera, Image as ImageIcon, FileText, Lock
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
@@ -394,14 +394,11 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
   return (
     <SkeletonLoader loading={loading} preset="list">
       {isForbidden ? (
-        <div className="flex flex-col items-center justify-center py-24 bg-white/60 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm mt-4">
-          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-            <ShieldAlert className="w-8 h-8 text-slate-400" />
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+            <Lock className="w-6 h-6 text-gray-400" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Access Denied</h2>
-          <p className="text-slate-500 text-sm max-w-sm text-center mb-6">
-            You do not have the required "Task Management" permission to view milestones.
-          </p>
+          <p className="text-sm font-bold text-slate-500">You don't have permission to view the Task Management module.</p>
         </div>
       ) : (
       <div className="space-y-6">

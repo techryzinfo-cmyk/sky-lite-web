@@ -29,6 +29,7 @@ import {
   BarChart2,
   User,
   Filter,
+  Lock,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
@@ -92,6 +93,7 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ projectId }) => {
   const toast = useToast();
   const { user } = useAuth();
   const { project } = useProjectContext();
+  const canView = hasProjectPermission(user, project, 'land:view');
   const canUpload = hasProjectPermission(user, project, 'land:create');
   const canApprove = hasProjectPermission(user, project, 'land:approve');
   const canDelete = hasProjectPermission(user, project, 'land:delete');
@@ -411,6 +413,17 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ projectId }) => {
     const vFolder = virtualFolders.find(f => f.id === activeFolderId);
     return vFolder ? vFolder.name : '';
   }, [activeFolderId, virtualFolders]);
+
+  if (!canView) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+          <Lock className="w-6 h-6 text-gray-400" />
+        </div>
+        <p className="text-sm font-bold text-slate-500">You don't have permission to view Documents.</p>
+      </div>
+    );
+  }
 
   return (
     <SkeletonLoader loading={loading} preset="list">

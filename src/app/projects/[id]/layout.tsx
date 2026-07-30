@@ -5,6 +5,8 @@ import { Shell } from '@/components/layouts/Shell';
 import { SkeletonLoader } from '@/components/skeletons/SkeletonLoader';
 import { CreateProjectModal } from '@/components/modals/CreateProjectModal';
 import { ProjectProvider, useProjectContext } from '@/features/projects/contexts/ProjectContext';
+import { useAuth } from '@/providers/AuthContext';
+import { hasProjectPermission, hasAnyProjectPermissionPrefix } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import {
   Info, FileText, DollarSign, Package, Files, Map,
@@ -56,11 +58,20 @@ const TAB_GROUPS: TabGroup[] = [
   { id: 'interior',  label: 'Interior',  icon: Sofa,            tabIds: ['rooms', 'ffe'] },
 ];
 
-// ── Builds visible tabs respecting project type & surveyor ──
-function getVisibleTabs(projectType?: string, siteSurveyor?: any) {
+// ── Builds visible tabs respecting project type, surveyor & permissions ──
+// Note: only tabs with an established view-permission check in their own
+// component are gated here. Tabs with no permission model yet (materials,
+// milestones, attendance, transactions, audit, boq, plans, rooms, ffe, issues)
+// are left visible — hiding them without a matching content-level check
+// would be arbitrary rather than a real permission gate.
+function getVisibleTabs(project: any, user: any) {
   return ALL_TABS
-    .filter(t => t.id !== 'site-survey' || !!siteSurveyor)
-    .filter(t => t.id !== 'rooms' && t.id !== 'ffe' || projectType === 'Interior');
+    .filter(t => t.id !== 'site-survey' || !!project?.siteSurveyor)
+    .filter(t => t.id !== 'rooms' && t.id !== 'ffe' || project?.projectType === 'Interior')
+    .filter(t => t.id !== 'documents' || hasProjectPermission(user, project, 'land:view'))
+    .filter(t => t.id !== 'reports' || hasProjectPermission(user, project, 'reports:view'))
+    .filter(t => t.id !== 'handover' || hasProjectPermission(user, project, 'handover:view'))
+    .filter(t => t.id !== 'risks' || hasAnyProjectPermissionPrefix(user, project, 'escalation:'));
 }
 
 // ── Status badge colors ────────────────────────────────────────
@@ -86,11 +97,12 @@ const RESTRICTED_TABS = [
 // ── Inner layout ───────────────────────────────────────────────
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const { project, loading, fetchProject, projectId } = useProjectContext();
+  const { user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  const visibleTabs = getVisibleTabs(project?.projectType, project?.siteSurveyor);
+  const visibleTabs = getVisibleTabs(project, user);
   const activeTab = (ALL_TABS as readonly { id: string }[]).find(t => pathname.includes(`/${t.id}`))?.id || 'dashboard';
 
   const isSurveyPending = project?.status === 'Site Survey' || (project?.status === 'Initialized' && project?.needSiteSurvey);
