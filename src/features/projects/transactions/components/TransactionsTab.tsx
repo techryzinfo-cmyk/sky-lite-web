@@ -49,6 +49,7 @@ interface LedgerItem {
   category?: string;
   invoiceUrl?: string;
   isPurchase?: boolean;
+  linkedPurchase?: string | null;
 }
 
 const TX_TYPES: { value: TxType; label: string; description: string; color: string; bg: string; icon: React.ElementType }[] = [
@@ -124,7 +125,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
   }, [socket, fetchData]);
 
   const ledger: LedgerItem[] = transactions
-    .filter((t) => t.type === 'Incoming' || t.type === 'Outgoing' || t.type === 'Debit Note')
+    .filter((t) => t.type === 'Incoming' || t.type === 'Outgoing' || t.type === 'Debit Note' || t.type === 'Purchase Payment')
     .map((t) => ({
       _id: t._id,
       type: t.type,
@@ -136,6 +137,9 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
       paymentMethod: t.paymentMethod,
       category: t.category,
       invoiceUrl: t.invoiceUrl,
+      linkedPurchase: (typeof t.linkedPurchase === 'object' && t.linkedPurchase !== null
+        ? (t.linkedPurchase as any)._id
+        : t.linkedPurchase) ?? null,
     }))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -491,21 +495,32 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
                     >
                       <DownloadCloud className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </button>
-                    {!item.isPurchase && canUpdate && (
-                      <button
-                        onClick={() => handleEdit(item)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-all shrink-0"
+                    {item.linkedPurchase ? (
+                      <span
+                        title="Auto-generated from a Purchase Order — edit or cancel the PO to change this entry"
+                        className="p-1.5 rounded-lg text-slate-300 shrink-0"
                       >
-                        <Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </button>
-                    )}
-                    {canDelete && (
-                      <button
-                        onClick={() => { setDeleteIsPurchase(!!item.isPurchase); setDeleteTarget(item._id); }}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all shrink-0"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </button>
+                        <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      </span>
+                    ) : (
+                      <>
+                        {!item.isPurchase && canUpdate && (
+                          <button
+                            onClick={() => handleEdit(item)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-all shrink-0"
+                          >
+                            <Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => { setDeleteIsPurchase(!!item.isPurchase); setDeleteTarget(item._id); }}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all shrink-0"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

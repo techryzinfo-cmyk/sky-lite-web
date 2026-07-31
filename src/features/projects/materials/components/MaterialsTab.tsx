@@ -289,7 +289,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
     if (!window.confirm('Delete this usage log? Consumed quantities will be restored to stock.')) return;
     setDeletingId(logId);
     try {
-      await api.delete(`/material-usage/${logId}`);
+      await api.delete(`/projects/${projectId}/material-usage/${logId}`);
       toast.success('Usage log deleted and stock restored');
       await Promise.all([fetchUsage(), fetchMaterials()]);
     } catch { toast.error('Failed to delete usage log'); }
@@ -300,7 +300,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
     if (!window.confirm('Delete this material purchase?')) return;
     setDeletingId(purchaseId);
     try {
-      await api.delete(`/material-purchase/${purchaseId}`);
+      await api.delete(`/projects/${projectId}/material-purchase/${purchaseId}`);
       toast.success('Material purchase deleted');
       setSelectedPO(null);
       fetchPurchases();
@@ -311,11 +311,13 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
   const handleUpdatePOStatus = async (purchaseId: string, status: 'Approved' | 'Rejected') => {
     setUpdatingPOId(purchaseId);
     try {
-      await api.patch(`/material-purchase/${purchaseId}`, { status });
+      await api.patch(`/projects/${projectId}/material-purchase/${purchaseId}`, { status });
       toast.success(`Material purchase ${status.toLowerCase()}`);
       setSelectedPO((po: any) => po ? { ...po, status } : po);
       fetchPurchases();
-    } catch { toast.error(`Failed to ${status.toLowerCase()} material purchase`); }
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || `Failed to ${status.toLowerCase()} material purchase`);
+    }
     finally { setUpdatingPOId(null); }
   };
 
@@ -1191,7 +1193,7 @@ export const MaterialsTab: React.FC<MaterialsTabProps> = ({ projectId }) => {
               {canCreate && (
                 <button
                   onClick={() => setIsUsageModalOpen(true)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-purple-600 border border-purple-500 rounded-xl text-sm font-bold text-white hover:bg-purple-500 shadow-lg shadow-purple-600/20 transition-all"
+                  className="flex items-center space-x-2 px-4 py-2 bg-blue-600 border border-blue-500 rounded-xl text-sm font-bold text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20 transition-all"
                 >
                   <Zap className="w-4 h-4" />
                   <span>Log Consumption</span>
