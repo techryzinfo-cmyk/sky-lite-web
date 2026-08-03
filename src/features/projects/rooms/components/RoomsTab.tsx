@@ -193,7 +193,7 @@ export const RoomsTab: React.FC<RoomsTabProps> = ({ projectId, project }) => {
                 const pct = stats.total > 0 ? Math.round((stats.installed / stats.total) * 100) : 0;
                 const sm = STATUS_META[room.status] || STATUS_META.Planned;
                 return (
-                  <div key={room._id} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:border-blue-200 transition-all group">
+                  <div key={room._id} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:border-blue-200 transition-all group flex flex-col">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center">
@@ -237,7 +237,7 @@ export const RoomsTab: React.FC<RoomsTabProps> = ({ projectId, project }) => {
 
                     {room.notes && <p className="text-[11px] text-slate-400 italic mb-3 truncate">{room.notes}</p>}
 
-                    <div className="flex gap-2 pt-2 border-t border-gray-100">
+                    <div className="flex gap-2 pt-2 border-t border-gray-100 mt-auto">
                       {isAdmin && (
                         <>
                           <button onClick={() => openEdit(room)} className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-gray-50 border border-gray-200 text-xs font-bold text-slate-600 hover:bg-gray-100 transition-colors">
