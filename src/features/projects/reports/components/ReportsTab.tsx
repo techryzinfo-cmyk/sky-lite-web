@@ -744,51 +744,86 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
               <p className="text-slate-400 font-medium text-xs">No issues reported in this range.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-gray-50/75 border-b border-gray-200 text-slate-500 font-black uppercase tracking-wider text-[10px]">
-                    <th className="p-3">Issue Title</th>
-                    <th className="p-3">Category</th>
-                    <th className="p-3">Priority</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3">Reported Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 font-medium text-slate-700">
-                  {rangeIssues.map((issue, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/50">
-                      <td className="p-3">
-                        <div className="font-bold text-slate-900">{issue.title}</div>
-                        {issue.description && <div className="text-[10px] text-slate-400 mt-0.5 font-medium">{issue.description}</div>}
-                      </td>
-                      <td className="p-3 text-slate-500">{issue.category || 'Other'}</td>
-                      <td className="p-3">
-                        <span className={cn(
-                          'px-2 py-0.5 rounded-full text-[9px] font-bold border',
-                          issue.priority === 'Critical' ? 'bg-red-50 text-red-700 border-red-100' :
-                          issue.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-100' :
-                          'bg-blue-50 text-blue-700 border-blue-100'
-                        )}>
-                          {issue.priority}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <span className={cn(
-                          'px-2 py-0.5 rounded-full text-[9px] font-bold border',
-                          issue.status === 'Resolved' || issue.status === 'Closed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'
-                        )}>
-                          {issue.status}
-                        </span>
-                      </td>
-                      <td className="p-3 text-slate-400">
-                        {safeFormatDate(issue.createdAt)}
-                      </td>
+            <>
+              {/* Mobile: stacked cards */}
+              <div className="sm:hidden divide-y divide-gray-100 rounded-2xl border border-gray-200 bg-white overflow-hidden">
+                {rangeIssues.map((issue, idx) => (
+                  <div key={idx} className="p-3.5 space-y-2">
+                    <div>
+                      <p className="font-bold text-slate-900 text-xs">{issue.title}</p>
+                      {issue.description && <p className="text-[10px] text-slate-400 mt-0.5 font-medium">{issue.description}</p>}
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border bg-slate-100 text-slate-600 border-slate-200">
+                        {issue.category || 'Other'}
+                      </span>
+                      <span className={cn(
+                        'px-2 py-0.5 rounded-full text-[9px] font-bold border',
+                        issue.priority === 'Critical' ? 'bg-red-50 text-red-700 border-red-100' :
+                        issue.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                        'bg-blue-50 text-blue-700 border-blue-100'
+                      )}>
+                        {issue.priority}
+                      </span>
+                      <span className={cn(
+                        'px-2 py-0.5 rounded-full text-[9px] font-bold border',
+                        issue.status === 'Resolved' || issue.status === 'Closed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'
+                      )}>
+                        {issue.status}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-medium">{safeFormatDate(issue.createdAt)}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop: table */}
+              <div className="hidden sm:block overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-gray-50/75 border-b border-gray-200 text-slate-500 font-black uppercase tracking-wider text-[10px]">
+                      <th className="p-3">Issue Title</th>
+                      <th className="p-3">Category</th>
+                      <th className="p-3">Priority</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3">Reported Date</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 font-medium text-slate-700">
+                    {rangeIssues.map((issue, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50/50">
+                        <td className="p-3">
+                          <div className="font-bold text-slate-900">{issue.title}</div>
+                          {issue.description && <div className="text-[10px] text-slate-400 mt-0.5 font-medium">{issue.description}</div>}
+                        </td>
+                        <td className="p-3 text-slate-500">{issue.category || 'Other'}</td>
+                        <td className="p-3">
+                          <span className={cn(
+                            'px-2 py-0.5 rounded-full text-[9px] font-bold border',
+                            issue.priority === 'Critical' ? 'bg-red-50 text-red-700 border-red-100' :
+                            issue.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                            'bg-blue-50 text-blue-700 border-blue-100'
+                          )}>
+                            {issue.priority}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <span className={cn(
+                            'px-2 py-0.5 rounded-full text-[9px] font-bold border',
+                            issue.status === 'Resolved' || issue.status === 'Closed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'
+                          )}>
+                            {issue.status}
+                          </span>
+                        </td>
+                        <td className="p-3 text-slate-400">
+                          {safeFormatDate(issue.createdAt)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
 
@@ -801,49 +836,81 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
               <p className="text-slate-400 font-medium text-xs">No snags reported in this range.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-gray-50/75 border-b border-gray-200 text-slate-500 font-black uppercase tracking-wider text-[10px]">
-                    <th className="p-3">Snag Title</th>
-                    <th className="p-3">Priority</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3">Reported Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 font-medium text-slate-700">
-                  {rangeSnags.map((snag, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/50">
-                      <td className="p-3">
-                        <div className="font-bold text-slate-900">{snag.title}</div>
-                        {snag.description && <div className="text-[10px] text-slate-400 mt-0.5 font-medium">{snag.description}</div>}
-                      </td>
-                      <td className="p-3">
-                        <span className={cn(
-                          'px-2 py-0.5 rounded-full text-[9px] font-bold border',
-                          snag.priority === 'Critical' ? 'bg-red-50 text-red-700 border-red-100' :
-                          snag.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-100' :
-                          'bg-blue-50 text-blue-700 border-blue-100'
-                        )}>
-                          {snag.priority}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <span className={cn(
-                          'px-2 py-0.5 rounded-full text-[9px] font-bold border',
-                          snag.status === 'Resolved' || snag.status === 'Closed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'
-                        )}>
-                          {snag.status}
-                        </span>
-                      </td>
-                      <td className="p-3 text-slate-400">
-                        {safeFormatDate(snag.createdAt)}
-                      </td>
+            <>
+              {/* Mobile: stacked cards */}
+              <div className="sm:hidden divide-y divide-gray-100 rounded-2xl border border-gray-200 bg-white overflow-hidden">
+                {rangeSnags.map((snag, idx) => (
+                  <div key={idx} className="p-3.5 space-y-2">
+                    <div>
+                      <p className="font-bold text-slate-900 text-xs">{snag.title}</p>
+                      {snag.description && <p className="text-[10px] text-slate-400 mt-0.5 font-medium">{snag.description}</p>}
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className={cn(
+                        'px-2 py-0.5 rounded-full text-[9px] font-bold border',
+                        snag.priority === 'Critical' ? 'bg-red-50 text-red-700 border-red-100' :
+                        snag.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                        'bg-blue-50 text-blue-700 border-blue-100'
+                      )}>
+                        {snag.priority}
+                      </span>
+                      <span className={cn(
+                        'px-2 py-0.5 rounded-full text-[9px] font-bold border',
+                        snag.status === 'Resolved' || snag.status === 'Closed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'
+                      )}>
+                        {snag.status}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-medium">{safeFormatDate(snag.createdAt)}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop: table */}
+              <div className="hidden sm:block overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-gray-50/75 border-b border-gray-200 text-slate-500 font-black uppercase tracking-wider text-[10px]">
+                      <th className="p-3">Snag Title</th>
+                      <th className="p-3">Priority</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3">Reported Date</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 font-medium text-slate-700">
+                    {rangeSnags.map((snag, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50/50">
+                        <td className="p-3">
+                          <div className="font-bold text-slate-900">{snag.title}</div>
+                          {snag.description && <div className="text-[10px] text-slate-400 mt-0.5 font-medium">{snag.description}</div>}
+                        </td>
+                        <td className="p-3">
+                          <span className={cn(
+                            'px-2 py-0.5 rounded-full text-[9px] font-bold border',
+                            snag.priority === 'Critical' ? 'bg-red-50 text-red-700 border-red-100' :
+                            snag.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                            'bg-blue-50 text-blue-700 border-blue-100'
+                          )}>
+                            {snag.priority}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <span className={cn(
+                            'px-2 py-0.5 rounded-full text-[9px] font-bold border',
+                            snag.status === 'Resolved' || snag.status === 'Closed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'
+                          )}>
+                            {snag.status}
+                          </span>
+                        </td>
+                        <td className="p-3 text-slate-400">
+                          {safeFormatDate(snag.createdAt)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
 
@@ -856,40 +923,60 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projectId }) => {
               <p className="text-slate-400 font-medium text-xs">No activity logs in this range.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-gray-50/75 border-b border-gray-200 text-slate-500 font-black uppercase tracking-wider text-[10px]">
-                    <th className="p-3">User</th>
-                    <th className="p-3">Role</th>
-                    <th className="p-3">Action</th>
-                    <th className="p-3">Details</th>
-                    <th className="p-3">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 font-medium text-slate-700">
-                  {rangeLogs.map((log: any, idx: number) => (
-                    <tr key={idx} className="hover:bg-slate-50/50">
-                      <td className="p-3">
-                        <div className="font-bold text-slate-900">{log.userName || log.user?.name || 'System'}</div>
-                      </td>
-                      <td className="p-3 text-slate-500 capitalize">{log.userRole || log.user?.role || '-'}</td>
-                      <td className="p-3">
-                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
-                          {log.action}
-                        </span>
-                      </td>
-                      <td className="p-3 text-slate-600 max-w-[250px] truncate" title={log.details}>
-                        {log.details}
-                      </td>
-                      <td className="p-3 text-slate-400">
-                        {safeFormatDate(log.timestamp)}
-                      </td>
+            <>
+              {/* Mobile: stacked cards */}
+              <div className="sm:hidden divide-y divide-gray-100 rounded-2xl border border-gray-200 bg-white overflow-hidden">
+                {rangeLogs.map((log: any, idx: number) => (
+                  <div key={idx} className="p-3.5 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-bold text-slate-900 text-xs truncate">{log.userName || log.user?.name || 'System'}</p>
+                      <span className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
+                        {log.action}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 capitalize">{log.userRole || log.user?.role || '-'}</p>
+                    {log.details && <p className="text-[10px] text-slate-600">{log.details}</p>}
+                    <p className="text-[10px] text-slate-400 font-medium">{safeFormatDate(log.timestamp)}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop: table */}
+              <div className="hidden sm:block overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-gray-50/75 border-b border-gray-200 text-slate-500 font-black uppercase tracking-wider text-[10px]">
+                      <th className="p-3">User</th>
+                      <th className="p-3">Role</th>
+                      <th className="p-3">Action</th>
+                      <th className="p-3">Details</th>
+                      <th className="p-3">Date</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 font-medium text-slate-700">
+                    {rangeLogs.map((log: any, idx: number) => (
+                      <tr key={idx} className="hover:bg-slate-50/50">
+                        <td className="p-3">
+                          <div className="font-bold text-slate-900">{log.userName || log.user?.name || 'System'}</div>
+                        </td>
+                        <td className="p-3 text-slate-500 capitalize">{log.userRole || log.user?.role || '-'}</td>
+                        <td className="p-3">
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
+                            {log.action}
+                          </span>
+                        </td>
+                        <td className="p-3 text-slate-600 max-w-[250px] truncate" title={log.details}>
+                          {log.details}
+                        </td>
+                        <td className="p-3 text-slate-400">
+                          {safeFormatDate(log.timestamp)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       </div>

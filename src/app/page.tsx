@@ -170,7 +170,7 @@ export default function LandingPage() {
 
       <footer className="bg-[#07172b] px-5 pt-16 text-slate-300 sm:px-8">
         <div className="mx-auto max-w-7xl">
-          <div className="grid gap-12 border-b border-white/10 pb-12 md:grid-cols-[1.5fr_repeat(3,1fr)]">
+          <div className="grid grid-cols-1 gap-x-8 gap-y-10 border-b border-white/10 pb-12 sm:grid-cols-2 md:gap-12 lg:grid-cols-[1.5fr_repeat(3,1fr)]">
             <div className="max-w-xs">
               <Link href="/" className="flex items-center gap-2.5 text-xl font-bold tracking-tight text-white" aria-label="SKYLITE home"><span className="grid size-8 place-items-center rounded-lg bg-cyan-300 text-sm text-[#08203b] font-extrabold">S</span> SKY<span className="text-cyan-300">LITE</span></Link>
               <p className="mt-5 text-sm leading-6 text-slate-400">A clearer operating system for construction teams that want every project, person and decision moving in the same direction.</p>

@@ -202,6 +202,10 @@ export const PlanAnnotator: React.FC<PlanAnnotatorProps> = ({
   // Audio Recording
   const startRecording = async () => {
     try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        toast.error('Microphone needs a secure connection (HTTPS or localhost) to work here');
+        return;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
@@ -223,8 +227,14 @@ export const PlanAnnotator: React.FC<PlanAnnotatorProps> = ({
       setIsRecording(true);
       setRecordingTime(0);
       timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
-    } catch (err) {
-      toast.error('Microphone access denied or unavailable');
+    } catch (err: any) {
+      if (err?.name === 'NotAllowedError' || err?.name === 'SecurityError') {
+        toast.error('Microphone is blocked — allow it for this site in your browser settings and try again');
+      } else if (err?.name === 'NotFoundError') {
+        toast.error('No microphone found on this device');
+      } else {
+        toast.error('Microphone access denied or unavailable');
+      }
     }
   };
 
@@ -298,20 +308,20 @@ export const PlanAnnotator: React.FC<PlanAnnotatorProps> = ({
   return (
     <div className="fixed inset-0 z-[100] bg-white flex flex-col">
       {/* Topbar */}
-      <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200 text-slate-800 shrink-0">
-        <div className="flex items-center gap-4">
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 transition-colors">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-4 px-4 sm:px-6 py-3 sm:py-4 bg-white border-b border-gray-200 text-slate-800 shrink-0">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 transition-colors shrink-0">
             <X className="w-5 h-5 text-slate-500 hover:text-slate-800" />
           </button>
-          <div>
-            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Plan Annotator</p>
-            <h2 className="text-base font-bold text-slate-900 truncate max-w-sm">{document?.name || 'Document'}</h2>
+          <div className="min-w-0">
+            <p className="hidden sm:block text-[10px] font-black text-blue-600 uppercase tracking-widest">Plan Annotator</p>
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 truncate max-w-[220px] sm:max-w-sm">{document?.name || 'Document'}</h2>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto sm:overflow-visible">
           {/* Zoom Controls */}
-          <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl p-1">
+          <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl p-1 shrink-0">
             <button onClick={zoomOut} disabled={zoomIdx === 0} className="p-2 rounded-lg hover:bg-slate-200 disabled:opacity-50 text-slate-600">
               <ZoomOut className="w-4 h-4" />
             </button>
@@ -321,10 +331,10 @@ export const PlanAnnotator: React.FC<PlanAnnotatorProps> = ({
             </button>
           </div>
 
-          <div className="w-px h-6 bg-slate-200" />
+          <div className="hidden sm:block w-px h-6 bg-slate-200" />
 
           {/* Undo / Redo */}
-          <div className="flex items-center gap-1">
+          <div className="hidden sm:flex items-center gap-1 shrink-0">
             <button onClick={undo} disabled={historyIndex === 0} className="p-2 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-200 disabled:opacity-50 transition-colors text-slate-600">
               <Undo className="w-4 h-4" />
             </button>
@@ -333,20 +343,21 @@ export const PlanAnnotator: React.FC<PlanAnnotatorProps> = ({
             </button>
           </div>
 
-          <div className="w-px h-6 bg-slate-200" />
+          <div className="hidden sm:block w-px h-6 bg-slate-200" />
 
           {canAnnotate && (
             <button
               onClick={() => setIsAddingPin(!isAddingPin)}
+              title={isAddingPin ? 'Cancel Pin' : 'Add Pin'}
               className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border',
-                isAddingPin 
-                  ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' 
+                'flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-bold transition-all border shrink-0',
+                isAddingPin
+                  ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'
                   : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
               )}
             >
               <MapPin className="w-4 h-4" />
-              {isAddingPin ? 'Cancel Pin' : 'Add Pin'}
+              <span className="hidden sm:inline">{isAddingPin ? 'Cancel Pin' : 'Add Pin'}</span>
             </button>
           )}
 
@@ -354,10 +365,11 @@ export const PlanAnnotator: React.FC<PlanAnnotatorProps> = ({
             <button
               onClick={handleSaveAll}
               disabled={!hasUnsaved || isSaving}
-              className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+              title="Save Changes"
+              className="flex items-center gap-2 px-3 sm:px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50 shrink-0"
             >
               {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Save Changes
+              <span className="hidden sm:inline">Save Changes</span>
             </button>
           )}
         </div>
@@ -427,7 +439,7 @@ export const PlanAnnotator: React.FC<PlanAnnotatorProps> = ({
               initial={{ x: 400, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 400, opacity: 0 }}
-              className="absolute right-0 top-0 bottom-0 w-96 bg-white border-l border-gray-200 z-50 flex flex-col"
+              className="absolute right-0 top-0 bottom-0 w-full sm:w-96 bg-white border-l border-gray-200 z-50 flex flex-col"
             >
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50">
                 <div className="flex items-center gap-2 text-blue-600 font-bold">

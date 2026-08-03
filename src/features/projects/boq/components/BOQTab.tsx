@@ -268,6 +268,79 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
     URL.revokeObjectURL(url);
   };
 
+  // Resolves the "Pending: <name>" label for a pending item — shared by desktop table and mobile cards.
+  const getPendingApproverLabel = (item: BOQItem) => {
+    const storedName = (item as any).requestedApproverName;
+    const approverObj = (item as any).requestedApprover;
+    const approverId = typeof approverObj === 'object' ? approverObj?._id : approverObj;
+
+    if (approverId && project?.members) {
+      const member = project.members.find((m: any) => String(m._id) === String(approverId) || String(m.user?._id) === String(approverId)) as any;
+      if (member?.name) return `${member.name}${member.email ? ` - ${member.email}` : ''}`;
+    }
+
+    if (typeof approverObj === 'object' && approverObj?.name) {
+      return `${approverObj.name}${approverObj.email ? ` - ${approverObj.email}` : ''}`;
+    }
+
+    if (storedName && !(storedName.length > 25 && !storedName.includes(' '))) {
+      return storedName;
+    }
+
+    return 'Approver';
+  };
+
+  // Row action buttons — shared by desktop table and mobile cards.
+  const renderItemActions = (item: BOQItem, isUpdating: boolean, canApproveThis: boolean) => (
+    isUpdating ? (
+      <Loader2 className="w-4 h-4 animate-spin text-blue-500 mx-2" />
+    ) : (
+      <>
+        {canApproveThis && item.status === 'Pending' && (
+          <>
+            <button onClick={() => handleUpdateItemStatus(item, 'Approved')}
+              title="Approve" className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors">
+              <CheckCircle2 className="w-4 h-4" />
+            </button>
+            <button onClick={() => handleUpdateItemStatus(item, 'Rejected')}
+              title="Reject" className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors">
+              <XCircle className="w-4 h-4" />
+            </button>
+          </>
+        )}
+        {canUpdate && item.status === 'Draft' && (
+          <button onClick={() => setApproversItem(item)}
+            title="Send for Approval" className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors">
+            <Send className="w-4 h-4" />
+          </button>
+        )}
+        {item.status === 'Approved' ? (
+          canUpdate && (
+            <button onClick={() => { setSelectedItem(item); setIsNewVersion(true); setIsModalOpen(true); }}
+              title="Create New Version" className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-md transition-colors">
+              <GitBranch className="w-4 h-4" />
+            </button>
+          )
+        ) : canUpdate && (
+          <button onClick={() => { setSelectedItem(item); setIsNewVersion(false); setIsModalOpen(true); }}
+            title="Edit" className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors">
+            <Edit2 className="w-4 h-4" />
+          </button>
+        )}
+        <button onClick={() => setViewingItem(item)}
+          title="View Details" className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors">
+          <History className="w-4 h-4" />
+        </button>
+        {canDelete && (
+          <button onClick={() => handleDeleteItem(item)}
+            title="Delete" className="p-1.5 text-slate-400 hover:!text-red-600 hover:bg-red-50 rounded-md transition-colors">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
+      </>
+    )
+  );
+
   if (!canView) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -288,7 +361,7 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
       <div className="space-y-5 sm:space-y-6 pb-20 sm:pb-6">
 
         {/* ── Stat cards ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             label="Approved Grand Total"
             value={formatCurrency(totalBOQAmount, project?.currency || '$')}
@@ -405,9 +478,112 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
         ) : (
           <div className="space-y-6">
             {/* ─────────────────────────────────────────────────────────────────
-              PROFESSIONAL DATA TABLE
+              MOBILE: stacked cards
             ───────────────────────────────────────────────────────────────── */}
-            <div className="overflow-hidden rounded-xl border border-gray-200 shadow-sm bg-white">
+            <div className="sm:hidden space-y-4">
+              {filteredGroups.map(groupName => {
+                const groupItems = groupedItems[groupName];
+                const status = getGroupStatus(groupItems);
+                const totalCost = groupItems.reduce((s, i) => {
+                  if (i.status === 'Rejected') return s;
+                  return s + ((i as any).effectiveTotalCost !== undefined ? (i as any).effectiveTotalCost : (i.totalCost || 0));
+                }, 0);
+
+                return (
+                  <div key={groupName} className="rounded-xl border border-gray-200 shadow-sm bg-white overflow-hidden">
+                    {/* Group header */}
+                    <div className="flex items-center justify-between gap-3 px-4 py-3 bg-gray-50/50 border-b border-gray-200">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-1 h-5 bg-blue-500 rounded-sm shrink-0" />
+                        <span className="font-semibold text-gray-900 text-sm uppercase tracking-wide truncate">{groupName}</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <StatusBadge status={status} size="xs" />
+                        {canDelete && (
+                          <button
+                            onClick={e => handleDeleteGroup(groupItems, e)}
+                            title="Delete Group"
+                            className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="px-4 py-2 text-right text-xs font-semibold text-gray-900 bg-gray-50/30 border-b border-gray-100">
+                      {formatCurrency(totalCost, project?.currency || '$')}
+                    </div>
+
+                    {/* Items */}
+                    <div className="divide-y divide-gray-100">
+                      {groupItems.map((item, idx) => {
+                        const isUpdating = updatingItemId === item._id;
+                        const isTargetApprover = String(user?.id || user?._id) === String((item as any).requestedApprover);
+                        const canApproveThis = canApprove || isTargetApprover;
+                        const rowStyle = STATUS_STYLES[item.status as StatusKey]?.row ?? '';
+
+                        return (
+                          <div key={item._id} className={cn('p-4 space-y-2.5', rowStyle)}>
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                                <span className="text-slate-400 text-[11px] font-mono shrink-0">{idx + 1}</span>
+                                {item.itemNumber && (
+                                  <span className="font-mono text-[11px] font-medium text-blue-700 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-md shrink-0 whitespace-nowrap">
+                                    {item.itemNumber}
+                                  </span>
+                                )}
+                              </div>
+                              <StatusBadge status={item.status} />
+                            </div>
+
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-medium text-gray-900 text-sm">{item.itemDescription}</p>
+                                {(item as any).version > 1 && (
+                                  <span className="text-[10px] font-medium bg-gray-100 border border-gray-200 text-gray-700 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                    v{(item as any).version}
+                                  </span>
+                                )}
+                              </div>
+                              {item.remark && <p className="text-xs text-slate-500 mt-0.5">{item.remark}</p>}
+                              {item.status === 'Pending' && (
+                                <p className="text-[11px] text-amber-700 font-medium mt-1">
+                                  Pending: {getPendingApproverLabel(item)}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2 text-xs bg-gray-50 rounded-lg p-2.5">
+                              <div>
+                                <p className="text-[9px] text-slate-400 uppercase font-semibold">Qty</p>
+                                <p className="font-medium text-gray-900">{Number(item.quantity).toLocaleString('en-IN')}{item.unit ? ` ${item.unit}` : ''}</p>
+                              </div>
+                              <div>
+                                <p className="text-[9px] text-slate-400 uppercase font-semibold">Rate</p>
+                                <p className="text-slate-600">{formatCurrency(Number(item.unitCost), project?.currency || '$')}</p>
+                              </div>
+                              <div>
+                                <p className="text-[9px] text-slate-400 uppercase font-semibold">Total</p>
+                                <p className="font-semibold text-gray-900">{formatCurrency(Number(item.totalCost || 0), project?.currency || '$')}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {renderItemActions(item, isUpdating, canApproveThis)}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* ─────────────────────────────────────────────────────────────────
+              DESKTOP: PROFESSIONAL DATA TABLE
+            ───────────────────────────────────────────────────────────────── */}
+            <div className="hidden sm:block overflow-hidden rounded-xl border border-gray-200 shadow-sm bg-white">
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm text-left">
                   <thead>
@@ -492,31 +668,7 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
                                   )}
                                   {item.status === 'Pending' && (
                                     <p className="text-[11px] text-amber-700 font-medium mt-1">
-                                      Pending: {(() => {
-                                        const storedName = (item as any).requestedApproverName;
-                                        const approverObj = (item as any).requestedApprover;
-                                        const approverId = typeof approverObj === 'object' ? approverObj?._id : approverObj;
-                                        
-                                        // 1. Try to find member in project context
-                                        if (approverId && project?.members) {
-                                          const member = project.members.find((m: any) => String(m._id) === String(approverId) || String(m.user?._id) === String(approverId)) as any;
-                                          if (member?.name) {
-                                            return `${member.name}${member.email ? ` - ${member.email}` : ''}`;
-                                          }
-                                        }
-
-                                        // 2. Use populated name if available
-                                        if (typeof approverObj === 'object' && approverObj?.name) {
-                                           return `${approverObj.name}${approverObj.email ? ` - ${approverObj.email}` : ''}`;
-                                        }
-                                        
-                                        // 3. Fallback to storedName if it's not a hash
-                                        if (storedName && !(storedName.length > 25 && !storedName.includes(' '))) {
-                                          return storedName;
-                                        }
-                                        
-                                        return 'Approver';
-                                      })()}
+                                      Pending: {getPendingApproverLabel(item)}
                                     </p>
                                   )}
                                 </td>
@@ -535,53 +687,7 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
                                 </td>
                                 <td className="px-4 py-3">
                                   <div className="flex items-center justify-end gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                                    {isUpdating ? (
-                                      <Loader2 className="w-4 h-4 animate-spin text-blue-500 mx-2" />
-                                    ) : (
-                                      <>
-                                        {canApproveThis && item.status === 'Pending' && (
-                                          <>
-                                            <button onClick={() => handleUpdateItemStatus(item, 'Approved')}
-                                              title="Approve" className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors">
-                                              <CheckCircle2 className="w-4 h-4" />
-                                            </button>
-                                            <button onClick={() => handleUpdateItemStatus(item, 'Rejected')}
-                                              title="Reject" className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors">
-                                              <XCircle className="w-4 h-4" />
-                                            </button>
-                                          </>
-                                        )}
-                                        {canUpdate && item.status === 'Draft' && (
-                                          <button onClick={() => setApproversItem(item)}
-                                            title="Send for Approval" className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors">
-                                            <Send className="w-4 h-4" />
-                                          </button>
-                                        )}
-                                        {item.status === 'Approved' ? (
-                                          canUpdate && (
-                                            <button onClick={() => { setSelectedItem(item); setIsNewVersion(true); setIsModalOpen(true); }}
-                                              title="Create New Version" className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-md transition-colors">
-                                              <GitBranch className="w-4 h-4" />
-                                            </button>
-                                          )
-                                        ) : canUpdate && (
-                                          <button onClick={() => { setSelectedItem(item); setIsNewVersion(false); setIsModalOpen(true); }}
-                                            title="Edit" className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors">
-                                            <Edit2 className="w-4 h-4" />
-                                          </button>
-                                        )}
-                                        <button onClick={() => setViewingItem(item)}
-                                          title="View Details" className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors">
-                                          <History className="w-4 h-4" />
-                                        </button>
-                                        {canDelete && (
-                                          <button onClick={() => handleDeleteItem(item)}
-                                            title="Delete" className="p-1.5 text-transparent group-hover/item:text-slate-400 hover:!text-red-600 hover:bg-red-50 rounded-md transition-colors">
-                                            <Trash2 className="w-4 h-4" />
-                                          </button>
-                                        )}
-                                      </>
-                                    )}
+                                    {renderItemActions(item, isUpdating, canApproveThis)}
                                   </div>
                                 </td>
                               </tr>
@@ -591,11 +697,10 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
                       );
                     })}
                   </tbody>
-             
+
                 </table>
               </div>
             </div>
-
           </div>
         )}
 

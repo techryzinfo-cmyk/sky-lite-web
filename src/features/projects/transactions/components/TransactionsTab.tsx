@@ -467,25 +467,27 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ projectId }) =
             {filtered.map((item) => {
               const { color, bg, icon: Icon, prefix } = getTxMeta(item);
               return (
-                <div key={item._id} className="flex items-center px-4 sm:px-6 py-4 hover:bg-gray-50 transition-colors group">
-                  <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl ${bg} flex items-center justify-center shrink-0 mr-3 sm:mr-4`}>
-                    <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${color}`} />
+                <div key={item._id} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0 px-4 sm:px-6 py-4 hover:bg-gray-50 transition-colors group">
+                  <div className="flex items-center min-w-0 flex-1">
+                    <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl ${bg} flex items-center justify-center shrink-0 mr-3 sm:mr-4`}>
+                      <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${color}`} />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs sm:text-sm font-bold text-gray-900 truncate">{item.partyName}</p>
+                      <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">
+                        {item.type}
+                        {item.paymentMethod && !item.isPurchase && ` · ${item.paymentMethod}`}
+                        {' · '}
+                        {new Date(item.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </p>
+                      {item.description && (
+                        <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 truncate">{item.description}</p>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs sm:text-sm font-bold text-gray-900 truncate">{item.partyName}</p>
-                    <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">
-                      {item.type}
-                      {item.paymentMethod && !item.isPurchase && ` · ${item.paymentMethod}`}
-                      {' · '}
-                      {new Date(item.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </p>
-                    {item.description && (
-                      <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 truncate">{item.description}</p>
-                    )}
-                  </div>
-
-                  <div className="flex items-center space-x-2 sm:space-x-4 ml-3 sm:ml-4">
+                  <div className="flex items-center justify-between sm:justify-end space-x-2 sm:space-x-4 sm:ml-4">
                     <p className={`text-sm sm:text-base font-black ${color} tabular-nums whitespace-nowrap`}>
                       {prefix}{formatExactCurrency(item.amount, (project as any)?.currency || '$')}
                     </p>

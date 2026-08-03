@@ -68,7 +68,7 @@ function LoginForm() {
   return (
     <div className="min-h-screen xl:h-screen xl:overflow-hidden bg-[#E6F0FF] flex items-center justify-center px-6 py-6 xl:py-0">
       <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_1fr] gap-6 xl:gap-8 w-full max-w-5xl">
-        <div className="rounded-3xl bg-[#0E3B7B] p-6 xl:p-8 text-white shadow-xl overflow-hidden relative flex flex-col justify-between">
+        <div className="order-2 xl:order-1 rounded-3xl bg-[#0E3B7B] p-6 xl:p-8 text-white shadow-xl overflow-hidden relative flex flex-col justify-between">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.18),_transparent_35%)] pointer-events-none" />
           <div className="relative z-10 flex h-full flex-col justify-between space-y-6">
             <div>
@@ -111,12 +111,12 @@ function LoginForm() {
           </div>
         </div>
 
-        <div className="rounded-3xl bg-white p-5 xl:p-6 shadow-xl shadow-slate-200/60 border border-slate-200/80 flex flex-col justify-between">
+        <div className="order-1 xl:order-2 rounded-3xl bg-white p-6 shadow-xl shadow-slate-200/60 border border-slate-200/80 flex flex-col justify-between">
           <div>
-            <div className="mb-4 xl:mb-5 flex items-center justify-between gap-4">
+            <div className="mb-5 flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl xl:text-2xl font-extrabold tracking-tight text-slate-900">Sign in</h2>
-                <p className="mt-0.5 text-xs text-slate-500">Enter your credentials to continue.</p>
+                <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">Sign in</h2>
+                <p className="mt-1 text-sm text-slate-500">Enter your credentials to continue.</p>
               </div>
               <div className="rounded-xl bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">{loginType === 'org' ? 'Workspace' : 'Super Admin'}</div>
             </div>
@@ -127,7 +127,7 @@ function LoginForm() {
               </div>
             )}
 
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 xl:p-6 shadow-sm">
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
             {showForgotPw ? (
               <div>
                 <button
@@ -160,19 +160,19 @@ function LoginForm() {
                   </div>
                 ) : (
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900 mb-1">Reset Password</h3>
-                    <p className="text-xs text-slate-500 mb-4">Enter your email and we’ll send a reset link.</p>
-                    <form onSubmit={handleForgotPassword} className="space-y-4">
+                    <h3 className="text-xl font-semibold text-slate-900 mb-1">Reset Password</h3>
+                    <p className="text-sm text-slate-500 mb-4">Enter your email and we’ll send a reset link.</p>
+                    <form onSubmit={handleForgotPassword} className="space-y-5">
                       <div>
-                        <label className="text-xs font-semibold text-slate-700">Email Address</label>
-                        <div className="relative mt-1">
-                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                        <label className="text-sm font-semibold text-slate-700">Email Address</label>
+                        <div className="relative mt-1.5">
+                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4.5 h-4.5" />
                           <input
                             type="email"
                             required
                             value={fpEmail}
                             onChange={(e) => setFpEmail(e.target.value)}
-                            className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-xs text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3.5 pl-11 pr-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                             placeholder="name@company.com"
                           />
                         </div>
@@ -180,7 +180,7 @@ function LoginForm() {
                       <button
                         type="submit"
                         disabled={fpLoading}
-                        className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="w-full rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {fpLoading ? 'Sending...' : 'Send Reset Link'}
                       </button>
@@ -190,16 +190,16 @@ function LoginForm() {
               </div>
             ) : (
               <>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-5">
                   <div>
-                    <label className="text-xs font-semibold text-slate-700">Email Address</label>
-                    <div className="relative mt-1">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                    <label className="text-sm font-semibold text-slate-700">Email Address</label>
+                    <div className="relative mt-1.5">
+                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4.5 h-4.5" />
                       <input
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-xs text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3.5 pl-11 pr-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                         placeholder="name@company.com"
                         required
                       />
@@ -207,33 +207,33 @@ function LoginForm() {
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-slate-700">Password</label>
-                    <div className="relative mt-1">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                    <label className="text-sm font-semibold text-slate-700">Password</label>
+                    <div className="relative mt-1.5">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4.5 h-4.5" />
                       <input
                         type={showPassword ? 'text' : 'password'}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-10 text-xs text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3.5 pl-11 pr-11 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                         placeholder="••••••••"
                         required
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900"
                       >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
                       </button>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs text-slate-500">
+                  <div className="flex items-center justify-between text-sm text-slate-500">
                     <label className="inline-flex items-center gap-2">
-                      <input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                      <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
                       Remember me
                     </label>
-                    <button type="button" onClick={() => setShowForgotPw(true)} className="font-semibold text-blue-600 hover:text-blue-700">
+                    <button type="button" onClick={() => setShowForgotPw(true)} className="font-medium text-blue-400 hover:text-blue-600">
                       Forgot password?
                     </button>
                   </div>
@@ -241,13 +241,13 @@ function LoginForm() {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="w-full rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isLoading ? 'Signing in...' : 'Sign In'}
                   </button>
                 </form>
 
-                <div className="mt-4 text-center text-xs text-slate-500">
+                <div className="mt-5 text-center text-sm text-slate-500">
                   Don’t have an account?{' '}
                   <Link href="/register" className="font-semibold text-blue-600 hover:text-blue-700">
                     Register Workspace

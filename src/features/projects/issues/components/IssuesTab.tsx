@@ -304,7 +304,7 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
           <p className="text-sm text-slate-500 mt-1">{activeType === 'Snag' ? 'Track defects and snagging items on site.' : 'Report and track site issues and field problems.'}</p>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center flex-wrap justify-between md:justify-start w-full md:w-auto gap-2 md:gap-3">
           {/* <div className="flex p-1 bg-gray-100 border border-gray-200 rounded-xl">
             <button
               onClick={() => setActiveType('Issue')}
@@ -322,7 +322,7 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
           {activeType === 'Issue' && (
             <button
               onClick={() => { fetchEscalationMatrix(); setIsEscalationOpen(true); }}
-              className="flex items-center space-x-2 px-4 py-2 bg-orange-50 border border-orange-200 rounded-xl text-sm font-bold text-orange-700 hover:bg-orange-100 transition-all"
+              className="flex items-center space-x-2 px-4 py-2 bg-orange-50 border border-orange-200 rounded-xl text-sm font-bold text-orange-700 hover:bg-orange-100 transition-all whitespace-nowrap"
             >
               <GitBranch className="w-4 h-4" />
               <span>Escalation Matrix</span>
@@ -334,7 +334,7 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
                 <button
                   onClick={handleBulkSendDrafts}
                   disabled={bulkSubmitting}
-                  className="flex items-center space-x-2 bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 hover:border-amber-300 px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer shadow-sm"
+                  className="flex items-center space-x-2 bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 hover:border-amber-300 px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer shadow-sm whitespace-nowrap"
                 >
                   {bulkSubmitting ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -348,7 +348,7 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
                 <button
                   onClick={handleFinalizeSnagging}
                   disabled={finalizing}
-                  className="flex items-center space-x-2 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer shadow-sm"
+                  className="flex items-center space-x-2 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer shadow-sm whitespace-nowrap"
                 >
                   {finalizing ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -363,7 +363,7 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
           {(canCreate || isInspector) && (
             <button
               onClick={() => setIsModalOpen(true)}
-              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20"
+              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20 whitespace-nowrap"
             >
               <Plus className="w-4 h-4" />
               <span>Report {activeType}</span>

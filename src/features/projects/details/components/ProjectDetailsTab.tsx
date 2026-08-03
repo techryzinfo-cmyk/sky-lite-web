@@ -211,10 +211,10 @@ export function ProjectDetailsTab() {
               </span>
             </div>
             
-            <h2 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight mt-2.5 flex items-baseline">
+            <h2 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight mt-2.5">
               {project.name}
               {project.projectCode && (
-                <span className="text-sm md:text-base font-medium text-slate-500 ml-2">
+                <span className="text-sm md:text-base font-medium text-slate-500 ml-2 whitespace-nowrap">
                   ({project.projectCode})
                 </span>
               )}

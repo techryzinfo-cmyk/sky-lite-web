@@ -575,13 +575,13 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({ projectId }) => {
                 <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider">Monthly Records History</h4>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 {/* Month filter */}
                 <input
                   type="month"
                   value={reportMonth}
                   onChange={e => setReportMonth(e.target.value)}
-                  className="bg-gray-50 border border-gray-200 rounded-xl py-1.5 px-3 text-xs font-bold focus:outline-none transition-all"
+                  className="flex-1 sm:flex-none min-w-[130px] bg-gray-50 border border-gray-200 rounded-xl py-1.5 px-3 text-xs font-bold focus:outline-none transition-all"
                 />
 
                 {/* User filter (Admin/Manager only) */}
@@ -589,7 +589,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({ projectId }) => {
                   <select
                     value={reportUser}
                     onChange={e => setReportUser(e.target.value)}
-                    className="bg-gray-50 border border-gray-200 rounded-xl py-1.5 px-3 text-xs font-bold focus:outline-none transition-all"
+                    className="flex-1 sm:flex-none min-w-[130px] bg-gray-50 border border-gray-200 rounded-xl py-1.5 px-3 text-xs font-bold focus:outline-none transition-all"
                   >
                     <option value="all">All Employees</option>
                     {projectUsers.map((u: any) => (
@@ -602,7 +602,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({ projectId }) => {
                 <button
                   type="button"
                   onClick={() => setIsExportOpen(true)}
-                  className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 rounded-xl py-1.5 px-3 text-xs font-bold transition-all shadow-sm"
+                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 rounded-xl py-1.5 px-3 text-xs font-bold transition-all shadow-sm"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Export</span>

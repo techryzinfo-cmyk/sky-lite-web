@@ -604,98 +604,179 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ projectId }) => {
                   <p className="text-slate-400 text-sm mt-1">No files match the selected filter/search criteria.</p>
                 </div>
               ) : (
-                <div className="divide-y divide-gray-100">
-                  {/* Table header */}
-                  <div className="grid grid-cols-[2fr_1.2fr_1.2fr_1.2fr_80px_100px] gap-4 px-6 py-3 bg-gray-50 border-b border-gray-100">
-                    {['Name', 'Status', 'Uploaded', 'Size', '', ''].map((h, i) => (
-                      <span key={i} className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{h}</span>
-                    ))}
-                  </div>
+                <>
+                  {/* ── Mobile: stacked cards ── */}
+                  <div className="sm:hidden divide-y divide-gray-100">
+                    {filteredDocuments.map(doc => {
+                      const Icon = fileIcon(doc.mimeType);
+                      const isUploader = doc.uploadedBy?._id === user?._id || doc.uploadedBy?.user === user?._id;
+                      const canManageApproval = canApprove && (!isUploader || isAdmin);
 
-                  {filteredDocuments.map(doc => {
-                    const Icon = fileIcon(doc.mimeType);
-                    const isUploader = doc.uploadedBy?._id === user?._id || doc.uploadedBy?.user === user?._id;
-                    const canManageApproval = canApprove && (!isUploader || isAdmin);
-
-                    return (
-                      <div key={doc._id} className="grid grid-cols-[2fr_1.2fr_1.2fr_1.2fr_80px_100px] gap-4 px-6 py-4 items-center hover:bg-gray-50 transition-colors group">
-                        {/* Name */}
-                        <div className="flex items-center space-x-3 min-w-0">
-                          <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
-                            <Icon className="w-4 h-4 text-blue-500" />
+                      return (
+                        <div key={doc._id} className="p-4 space-y-2.5">
+                          <div className="flex items-start gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+                              <Icon className="w-4 h-4 text-blue-500" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-gray-900 truncate">{doc.name}</p>
+                              {doc.uploadedBy?.name && (
+                                <p className="text-[10px] text-slate-400">{doc.uploadedBy.name}</p>
+                              )}
+                            </div>
+                            <span className={cn(
+                              'shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border',
+                              doc.status === 'Approved' && 'bg-emerald-100 border-emerald-200 text-emerald-700',
+                              doc.status === 'Rejected' && 'bg-rose-100 border-rose-200 text-rose-700',
+                              (doc.status === 'Pending' || !doc.status) && 'bg-amber-100 border-amber-200 text-amber-700'
+                            )}>
+                              {doc.status || 'Pending'}
+                            </span>
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-gray-900 truncate">{doc.name}</p>
-                            {doc.uploadedBy?.name && (
-                              <p className="text-[10px] text-slate-400">{doc.uploadedBy.name}</p>
+
+                          <div className="flex items-center gap-2 pl-12 text-[11px] text-slate-500">
+                            <span>{new Date(doc.uploadedAt).toLocaleDateString()}</span>
+                            <span className="w-1 h-1 rounded-full bg-gray-300" />
+                            <span className="font-semibold">{fmtSize(doc.size)}</span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 pl-12">
+                            {activeFolderId === 'project_docs' && (doc.status === 'Pending' || !doc.status) && canManageApproval && (
+                              <>
+                                <button
+                                  onClick={() => handleAction(doc._id, 'Approved')}
+                                  className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 hover:bg-emerald-100 transition-all"
+                                  title="Approve"
+                                >
+                                  <Check className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleAction(doc._id, 'Rejected')}
+                                  className="p-1.5 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 transition-all"
+                                  title="Reject"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
+                            <a
+                              href={doc.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 rounded-lg text-slate-400 bg-gray-50 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                              title="Download / View"
+                            >
+                              <Download className="w-4 h-4" />
+                            </a>
+                            {activeFolderId === 'project_docs' && isAdmin && (
+                              <button
+                                onClick={() => handleDelete(doc._id, doc.name)}
+                                className="p-1.5 rounded-lg text-slate-400 bg-gray-50 hover:text-red-600 hover:bg-red-50 transition-all"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             )}
                           </div>
                         </div>
+                      );
+                    })}
+                  </div>
 
-                        {/* Status */}
-                        <span className={cn(
-                          'px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border w-fit',
-                          doc.status === 'Approved' && 'bg-emerald-100 border-emerald-200 text-emerald-700',
-                          doc.status === 'Rejected' && 'bg-rose-100 border-rose-200 text-rose-700',
-                          (doc.status === 'Pending' || !doc.status) && 'bg-amber-100 border-amber-200 text-amber-700'
-                        )}>
-                          {doc.status || 'Pending'}
-                        </span>
+                  {/* ── Desktop: table ── */}
+                  <div className="hidden sm:block divide-y divide-gray-100">
+                    {/* Table header */}
+                    <div className="grid grid-cols-[2fr_1.2fr_1.2fr_1.2fr_80px_100px] gap-4 px-6 py-3 bg-gray-50 border-b border-gray-100">
+                      {['Name', 'Status', 'Uploaded', 'Size', '', ''].map((h, i) => (
+                        <span key={i} className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{h}</span>
+                      ))}
+                    </div>
 
-                        {/* Date */}
-                        <span className="text-xs text-slate-500">
-                          {new Date(doc.uploadedAt).toLocaleDateString()}
-                        </span>
+                    {filteredDocuments.map(doc => {
+                      const Icon = fileIcon(doc.mimeType);
+                      const isUploader = doc.uploadedBy?._id === user?._id || doc.uploadedBy?.user === user?._id;
+                      const canManageApproval = canApprove && (!isUploader || isAdmin);
 
-                        {/* Size */}
-                        <span className="text-xs font-semibold text-slate-500">{fmtSize(doc.size)}</span>
+                      return (
+                        <div key={doc._id} className="grid grid-cols-[2fr_1.2fr_1.2fr_1.2fr_80px_100px] gap-4 px-6 py-4 items-center hover:bg-gray-50 transition-colors group">
+                          {/* Name */}
+                          <div className="flex items-center space-x-3 min-w-0">
+                            <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+                              <Icon className="w-4 h-4 text-blue-500" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-gray-900 truncate">{doc.name}</p>
+                              {doc.uploadedBy?.name && (
+                                <p className="text-[10px] text-slate-400">{doc.uploadedBy.name}</p>
+                              )}
+                            </div>
+                          </div>
 
-                        {/* Empty cell */}
-                        <span />
+                          {/* Status */}
+                          <span className={cn(
+                            'px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border w-fit',
+                            doc.status === 'Approved' && 'bg-emerald-100 border-emerald-200 text-emerald-700',
+                            doc.status === 'Rejected' && 'bg-rose-100 border-rose-200 text-rose-700',
+                            (doc.status === 'Pending' || !doc.status) && 'bg-amber-100 border-amber-200 text-amber-700'
+                          )}>
+                            {doc.status || 'Pending'}
+                          </span>
 
-                        {/* Actions */}
-                        <div className="flex items-center justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {activeFolderId === 'project_docs' && (doc.status === 'Pending' || !doc.status) && canManageApproval && (
-                            <>
-                              <button
-                                onClick={() => handleAction(doc._id, 'Approved')}
-                                className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-all"
-                                title="Approve"
-                              >
-                                <Check className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleAction(doc._id, 'Rejected')}
-                                className="p-1.5 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50 transition-all"
-                                title="Reject"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </>
-                          )}
-                          <a
-                            href={doc.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
-                            title="Download / View"
-                          >
-                            <Download className="w-4 h-4" />
-                          </a>
-                          {activeFolderId === 'project_docs' && isAdmin && (
-                            <button
-                              onClick={() => handleDelete(doc._id, doc.name)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"
-                              title="Delete"
+                          {/* Date */}
+                          <span className="text-xs text-slate-500">
+                            {new Date(doc.uploadedAt).toLocaleDateString()}
+                          </span>
+
+                          {/* Size */}
+                          <span className="text-xs font-semibold text-slate-500">{fmtSize(doc.size)}</span>
+
+                          {/* Empty cell */}
+                          <span />
+
+                          {/* Actions */}
+                          <div className="flex items-center justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {activeFolderId === 'project_docs' && (doc.status === 'Pending' || !doc.status) && canManageApproval && (
+                              <>
+                                <button
+                                  onClick={() => handleAction(doc._id, 'Approved')}
+                                  className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-all"
+                                  title="Approve"
+                                >
+                                  <Check className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleAction(doc._id, 'Rejected')}
+                                  className="p-1.5 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50 transition-all"
+                                  title="Reject"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
+                            <a
+                              href={doc.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                              title="Download / View"
                             >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
+                              <Download className="w-4 h-4" />
+                            </a>
+                            {activeFolderId === 'project_docs' && isAdmin && (
+                              <button
+                                onClick={() => handleDelete(doc._id, doc.name)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </GlassCard>
           </div>

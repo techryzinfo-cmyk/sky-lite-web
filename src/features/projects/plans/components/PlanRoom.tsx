@@ -164,54 +164,56 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
               className="bg-white border border-gray-200 rounded-2xl hover:border-blue-200 hover:shadow-sm transition-all group/doc"
             >
               <div
-                className="flex items-center gap-4 px-5 py-4 cursor-pointer"
+                className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 cursor-pointer"
                 onClick={() => setViewingDoc(doc)}
               >
-                {/* File icon */}
-                <div className="w-11 h-11 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center shrink-0 group-hover/doc:border-blue-200 transition-colors">
-                  <FileIconSvg className="w-5 h-5 text-slate-400" />
-                </div>
-
-                {/* File info */}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className="text-sm font-bold text-gray-900 truncate group-hover/doc:text-blue-700 transition-colors">
-                      {doc.name}
-                    </h4>
-                    <span className={cn('px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border shrink-0', statusStyle)}>
-                      {doc.approvalStatus}
-                    </span>
-                    {annCount > 0 && (
-                      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 border border-blue-100 text-[9px] font-black text-blue-700 shrink-0">
-                        <MessageSquare className="w-2.5 h-2.5" />
-                        {annCount}
-                      </span>
-                    )}
+                <div className="flex items-center gap-4 min-w-0">
+                  {/* File icon */}
+                  <div className="w-11 h-11 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center shrink-0 group-hover/doc:border-blue-200 transition-colors">
+                    <FileIconSvg className="w-5 h-5 text-slate-400" />
                   </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] text-slate-400 font-medium">
-                      {new Date(doc.uploadedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </span>
-                    {doc.size > 0 && (
-                      <>
-                        <span className="w-1 h-1 bg-gray-300 rounded-full" />
-                        <span className="text-[10px] text-slate-400 font-medium">
-                          {(doc.size / 1024 / 1024).toFixed(2)} MB
+
+                  {/* File info */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-sm font-bold text-gray-900 truncate group-hover/doc:text-blue-700 transition-colors">
+                        {doc.name}
+                      </h4>
+                      <span className={cn('px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border shrink-0', statusStyle)}>
+                        {doc.approvalStatus}
+                      </span>
+                      {annCount > 0 && (
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 border border-blue-100 text-[9px] font-black text-blue-700 shrink-0">
+                          <MessageSquare className="w-2.5 h-2.5" />
+                          {annCount}
                         </span>
-                      </>
-                    )}
-                    {doc.versionNumber && (
-                      <>
-                        <span className="w-1 h-1 bg-gray-300 rounded-full" />
-                        <span className="text-[10px] text-slate-400 font-medium">v{doc.versionNumber}</span>
-                      </>
-                    )}
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span className="text-[10px] text-slate-400 font-medium">
+                        {new Date(doc.uploadedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                      {doc.size > 0 && (
+                        <>
+                          <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            {(doc.size / 1024 / 1024).toFixed(2)} MB
+                          </span>
+                        </>
+                      )}
+                      {doc.versionNumber && (
+                        <>
+                          <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                          <span className="text-[10px] text-slate-400 font-medium">v{doc.versionNumber}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 {/* Actions */}
                 <div
-                  className="flex items-center gap-1.5 shrink-0"
+                  className="flex items-center gap-1.5 flex-wrap shrink-0 sm:ml-auto"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {/* Approval workflow */}

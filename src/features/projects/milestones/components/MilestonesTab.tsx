@@ -440,8 +440,8 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
           <h3 className="text-xl font-bold text-gray-900"> </h3>
           <p className="text-sm text-slate-500 mt-1">Key targets and critical path objectives.</p>
         </div>
-        <div className="flex items-center space-x-3">
-          <div className="flex p-1 bg-gray-100 border border-gray-200 rounded-xl">
+        <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto gap-2 sm:gap-3">
+          <div className="hidden sm:flex p-1 bg-gray-100 border border-gray-200 rounded-xl">
             <button onClick={() => setView('cards')} className={cn('p-1.5 rounded-lg transition-all', view === 'cards' ? 'bg-white shadow text-blue-600' : 'text-slate-400 hover:text-gray-700')}>
               <LayoutGrid className="w-4 h-4" />
             </button>
@@ -454,15 +454,15 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
           </div>
           <button
             onClick={() => setIsXERModalOpen(true)}
-            className="flex items-center space-x-2 bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100 px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
+            className="flex items-center gap-1.5 sm:space-x-2 bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all active:scale-[0.98]"
           >
-            <FileText className="w-4 h-4" /><span>Import XER</span>
+            <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>Import XER</span>
           </button>
           <button
             onClick={openCreateModal}
-            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20"
+            className="flex items-center gap-1.5 sm:space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20"
           >
-            <Plus className="w-4 h-4" /><span>New Milestone</span>
+            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>New Milestone</span>
           </button>
         </div>
       </div>

@@ -141,22 +141,22 @@ export const RoomsTab: React.FC<RoomsTabProps> = ({ projectId, project }) => {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="text-left">
           <h3 className="text-lg font-bold text-gray-900">Rooms & Zones</h3>
           <p className="text-sm text-slate-500">Track interior rooms, FFE progress and completion by floor.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex justify-between sm:justify-start sm:gap-2">
           <button
             onClick={() => router.push(`/projects/${projectId}/ffe`)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-purple-50 border border-purple-200 text-purple-700 rounded-xl text-xs font-bold hover:bg-purple-100 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 bg-purple-50 border border-purple-200 text-purple-700 rounded-xl text-xs font-bold hover:bg-purple-100 transition-colors whitespace-nowrap"
           >
             View FFE <ArrowRight className="w-3.5 h-3.5" />
           </button>
           {isAdmin && (
             <button
               onClick={openCreate}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-blue-600/20"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-blue-600/20 whitespace-nowrap"
             >
               <Plus className="w-4 h-4" /> Add Room
             </button>

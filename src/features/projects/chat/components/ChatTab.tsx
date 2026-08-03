@@ -238,8 +238,8 @@ export function ChatTab({ projectId }: ChatTabProps) {
   }
 
   return (
-    <div className="flex flex-col h-[700px] bg-gray-50/50 rounded-2xl border border-gray-200 overflow-hidden relative">
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+    <div className="flex flex-col h-[calc(100vh-260px)] min-h-[420px] sm:h-[700px] bg-gray-50/50 rounded-2xl border border-gray-200 overflow-hidden relative">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3">
             <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm">
@@ -266,7 +266,7 @@ export function ChatTab({ projectId }: ChatTabProps) {
                   </div>
                 )}
 
-                <div className={cn('flex flex-col max-w-[75%]', isMe ? 'items-end' : 'items-start')}>
+                <div className={cn('flex flex-col max-w-[85%] sm:max-w-[75%]', isMe ? 'items-end' : 'items-start')}>
                   {!isMe && (
                     <span className="text-xs font-semibold text-slate-500 mb-1 ml-1">{msg.senderName}</span>
                   )}
@@ -348,8 +348,8 @@ export function ChatTab({ projectId }: ChatTabProps) {
                     <button
                       onClick={() => setActiveMenuId(activeMenuId === msg._id ? null : msg._id)}
                       className={cn(
-                        'absolute top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white shadow-md border border-gray-100 text-slate-400 hover:text-blue-600 transition-all z-30 opacity-0 group-hover/bubble:opacity-100 focus:opacity-100',
-                        isMe ? '-left-10' : '-right-10'
+                        'absolute top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white shadow-md border border-gray-100 text-slate-400 hover:text-blue-600 transition-all z-30 opacity-100 sm:opacity-0 sm:group-hover/bubble:opacity-100 sm:focus:opacity-100',
+                        isMe ? '-left-9 sm:-left-10' : '-right-9 sm:-right-10'
                       )}
                     >
                       <MoreVertical className="w-4 h-4" />
@@ -360,8 +360,8 @@ export function ChatTab({ projectId }: ChatTabProps) {
                       <div
                         data-chat-menu
                         className={cn(
-                          'absolute top-0 mt-8 bg-white rounded-xl shadow-xl border border-gray-100 w-64 z-50 overflow-hidden',
-                          isMe ? 'right-full mr-2' : 'left-full ml-2'
+                          'absolute z-50 bg-white rounded-xl shadow-xl border border-gray-100 w-56 sm:w-64 overflow-hidden top-full mt-2 sm:top-0 sm:mt-8',
+                          isMe ? 'right-0 sm:right-full sm:mr-2' : 'left-0 sm:left-full sm:ml-2'
                         )}
                       >
                         {/* Quick reactions */}

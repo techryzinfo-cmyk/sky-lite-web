@@ -431,14 +431,14 @@ export default function ProjectsPage() {
     <Shell>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-semibold text-gray-900">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 truncate">
               My <span className="text-blue-600">Projects</span>
             </h1>
-            <p className="text-slate-500 mt-1">Manage and track your construction projects.</p>
+            <p className="text-sm sm:text-base text-slate-500 mt-1">Manage and track your construction projects.</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={() => { setEditingProject(null); setIsModalOpen(true); }}
               className="flex items-center justify-center w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-all active:scale-[0.95] shadow-sm shadow-blue-600/20"

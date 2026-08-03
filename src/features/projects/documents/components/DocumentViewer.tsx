@@ -140,6 +140,10 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
   const handleStartRecording = async () => {
     try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        toast.error('Microphone needs a secure connection (HTTPS or localhost) to work here');
+        return;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
       audioChunksRef.current = [];
@@ -156,7 +160,15 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
       mediaRecorderRef.current = recorder;
       recorder.start();
       setIsRecording(true);
-    } catch { toast.error('Microphone access denied'); }
+    } catch (err: any) {
+      if (err?.name === 'NotAllowedError' || err?.name === 'SecurityError') {
+        toast.error('Microphone is blocked — allow it for this site in your browser settings and try again');
+      } else if (err?.name === 'NotFoundError') {
+        toast.error('No microphone found on this device');
+      } else {
+        toast.error('Microphone access denied or unavailable');
+      }
+    }
   };
 
   const handleStopRecording = () => {
@@ -196,12 +208,12 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 10 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
-            className="relative z-10 flex rounded-2xl overflow-hidden shadow-2xl bg-white"
+            className="relative z-10 flex flex-col sm:flex-row rounded-2xl overflow-hidden shadow-2xl bg-white"
             style={{ width: '95vw', maxWidth: 1120, maxHeight: '92vh', minHeight: 500 }}
             onClick={e => e.stopPropagation()}
           >
             {/* ════ LEFT: Document viewer ════ */}
-            <div className="flex flex-col flex-1 min-w-0">
+            <div className="flex flex-col flex-1 min-w-0 min-h-[260px] sm:min-h-0">
 
               {/* Header bar */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-white shrink-0 gap-3">
@@ -210,7 +222,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                     <X className="w-4 h-4" />
                   </button>
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-gray-900 truncate">{document?.name}</p>
+                    <p className="hidden sm:block text-sm font-bold text-gray-900 truncate">{document?.name}</p>
                     {document?.approvalStatus && (
                       <span className={cn(
                         'text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border',
@@ -228,33 +240,17 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                 <div className="flex items-center gap-1.5 shrink-0">
                   {/* Zoom cluster */}
                   <div className="flex items-center gap-0.5 px-1.5 py-1 bg-gray-50 border border-gray-200 rounded-xl">
-                    <button onClick={() => setZoom(z => Math.max(25, z - 25))} className="p-1 text-slate-400 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100">
+                    <button onClick={() => setZoom(z => Math.max(25, z - 25))} className="p-1 text-slate-400 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100 outline-none focus-visible:ring-2 focus-visible:ring-blue-200">
                       <ZoomOut className="w-3.5 h-3.5" />
                     </button>
                     <span className="text-[11px] font-bold text-gray-700 w-9 text-center">{zoom}%</span>
-                    <button onClick={() => setZoom(z => Math.min(300, z + 25))} className="p-1 text-slate-400 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100">
+                    <button onClick={() => setZoom(z => Math.min(300, z + 25))} className="p-1 text-slate-400 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100 outline-none focus-visible:ring-2 focus-visible:ring-blue-200">
                       <ZoomIn className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <button onClick={() => setZoom(100)} title="Reset zoom" className="p-1.5 rounded-xl border border-gray-200 text-slate-400 hover:text-gray-900 hover:bg-gray-50 transition-colors">
+                  <button onClick={() => setZoom(100)} title="Reset zoom" className="hidden sm:inline-flex p-1.5 rounded-xl border border-gray-200 text-slate-400 hover:text-gray-900 hover:bg-gray-50 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-200">
                     <RotateCcw className="w-3.5 h-3.5" />
                   </button>
-
-                  {/* Pin mode toggle */}
-                  {projectId && canAnnotate && (
-                    <button
-                      onClick={() => { setPinMode(p => !p); setActivePin(null); }}
-                      className={cn(
-                        'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all',
-                        pinMode
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
-                          : 'border-gray-200 text-slate-500 hover:text-gray-800 hover:border-gray-300 bg-white'
-                      )}
-                    >
-                      <MapPin className="w-3.5 h-3.5" />
-                      {pinMode ? 'Click to pin' : 'Add Pin'}
-                    </button>
-                  )}
 
                   {/* Annotation panel toggle */}
                   <button
@@ -359,12 +355,11 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
               {panelOpen && (
                 <motion.div
                   key="ann-panel"
-                  initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: 290, opacity: 1 }}
-                  exit={{ width: 0, opacity: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                   transition={{ duration: 0.18, ease: 'easeInOut' }}
-                  className="flex flex-col border-l border-gray-100 bg-white overflow-hidden shrink-0"
-                  style={{ minWidth: 0 }}
+                  className="flex flex-col border-t sm:border-t-0 sm:border-l border-gray-100 bg-white overflow-hidden shrink-0 w-full sm:w-[290px] max-h-[45vh] sm:max-h-none"
                 >
                   {/* Panel header */}
                   <div className="px-4 py-3 border-b border-gray-100 shrink-0 flex items-center gap-2">
