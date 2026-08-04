@@ -347,6 +347,12 @@ export function ProjectDetailsTab() {
 
               {/* Members display */}
               {project.members?.filter((m: any) => {
+                // Skip orphaned membership records: if a user is deleted directly from
+                // the DB (there's no "remove member" flow yet to clean up the reference),
+                // `m.user` comes back null/undefined and the card would render a fake
+                // "Member" entry with no real name/email. TODO: remove this guard once
+                // remove-member is implemented and cleans up membership records itself.
+                if (!m.user) return false;
                 const u = m.user || m;
                 return u.email !== project.createdBy?.email;
               }).map((member: any, i: number) => {
