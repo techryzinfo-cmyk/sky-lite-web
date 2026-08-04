@@ -280,6 +280,10 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
 
   const handleSaveEditTask = async () => {
     if (!editingTask) return;
+    if (!editingTask.form.assignedTo) {
+      toast.error('Please assign this task to a team member');
+      return;
+    }
     const { startDate, endDate } = editingTask.form;
     if (startDate && endDate && endDate < startDate) {
       toast.error('End date cannot be before the start date');
@@ -1104,9 +1108,9 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assign To</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assign To *</label>
                   <select value={editingTask.form.assignedTo} onChange={e => setEditingTask(prev => prev ? { ...prev, form: { ...prev.form, assignedTo: e.target.value } } : null)} className={inputCls}>
-                    <option value="">— Unassigned —</option>
+                    <option value="">— Select a team member —</option>
                     {members.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
                   </select>
                 </div>
@@ -1115,7 +1119,7 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
                   <button onClick={() => setEditingTask(null)} className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-slate-600 transition-all">Cancel</button>
                   <button
                     onClick={handleSaveEditTask}
-                    disabled={isSavingEditTask || !editingTask.form.title.trim()}
+                    disabled={isSavingEditTask || !editingTask.form.title.trim() || !editingTask.form.assignedTo}
                     className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-sm font-bold text-white transition-all shadow-sm flex items-center justify-center gap-2"
                   >
                     {isSavingEditTask ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle2 className="w-4 h-4" /> Save Task</>}

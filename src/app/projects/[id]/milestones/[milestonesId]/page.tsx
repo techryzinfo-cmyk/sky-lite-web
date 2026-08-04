@@ -226,6 +226,10 @@ export default function MilestoneDetailPage() {
 
   const handleSaveEdit = async () => {
     if (!editingTask) return;
+    if (!editingTask.form.assignedTo) {
+      toast.error('Please assign this task to a team member');
+      return;
+    }
     const { startDate, endDate } = editingTask.form;
     if (startDate && endDate && endDate < startDate) {
       toast.error('End date cannot be before start date');
@@ -256,6 +260,10 @@ export default function MilestoneDetailPage() {
   // ── Add task ─────────────────────────────────────────────────────────────────
   const handleAddTask = async () => {
     if (!addTaskForm.title.trim()) return;
+    if (!addTaskForm.assignedTo) {
+      toast.error('Please assign this task to a team member');
+      return;
+    }
     if (addTaskForm.startDate && addTaskForm.endDate && addTaskForm.endDate < addTaskForm.startDate) {
       toast.error('End date cannot be before start date');
       return;
@@ -423,11 +431,11 @@ export default function MilestoneDetailPage() {
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Assign To</label>
+                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Assign To *</label>
                       <select value={addTaskForm.assignedTo}
                         onChange={e => setAddTaskForm(p => ({ ...p, assignedTo: e.target.value }))}
                         className={inputCls}>
-                        <option value="">— Unassigned —</option>
+                        <option value="">— Select a team member —</option>
                         {members.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
                       </select>
                     </div>
@@ -441,7 +449,7 @@ export default function MilestoneDetailPage() {
                       </button>
                       <button
                         type="button" onClick={handleAddTask}
-                        disabled={isSavingAdd || !addTaskForm.title.trim()}
+                        disabled={isSavingAdd || !addTaskForm.title.trim() || !addTaskForm.assignedTo}
                         className="flex-1 py-2.5 rounded-md bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-sm font-medium text-white transition-all flex items-center justify-center gap-2"
                       >
                         {isSavingAdd ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4" />Add Task</>}
@@ -802,17 +810,17 @@ export default function MilestoneDetailPage() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assign To</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assign To *</label>
                   <select value={editingTask.form.assignedTo}
                     onChange={e => setEditingTask(p => p ? { ...p, form: { ...p.form, assignedTo: e.target.value } } : null)}
                     className={inputCls}>
-                    <option value="">— Unassigned —</option>
+                    <option value="">— Select a team member —</option>
                     {members.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
                   </select>
                 </div>
                 <div className="flex gap-3 pt-1">
                   <button onClick={() => setEditingTask(null)} className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-slate-600 transition-all">Cancel</button>
-                  <button onClick={handleSaveEdit} disabled={isSavingEdit || !editingTask.form.title.trim()}
+                  <button onClick={handleSaveEdit} disabled={isSavingEdit || !editingTask.form.title.trim() || !editingTask.form.assignedTo}
                     className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-sm font-bold text-white transition-all flex items-center justify-center gap-2">
                     {isSavingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle2 className="w-4 h-4" />Save</>}
                   </button>
