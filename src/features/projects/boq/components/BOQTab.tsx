@@ -15,7 +15,7 @@ import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
 import { useSocket } from '@/providers/SocketContext';
 import { cn, formatCurrency } from '@/lib/utils';
-import { hasProjectPermission, hasAnyProjectPermissionPrefix } from '@/lib/permissions';
+import { hasProjectPermission, hasAnyProjectPermissionPrefix, isProjectLocked } from '@/lib/permissions';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 import { BOQModal } from '@/features/projects/boq/components/BOQModal';
 import { BOQImportModal } from '@/features/projects/boq/components/BOQImportModal';
@@ -113,10 +113,11 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
   // ── Permissions (mirror mobile's isAdmin / canApprove) ──────────────────
   const isAdmin = user?.role?.name === 'Admin' || (user?.role?.permissions?.includes('*') ?? false);
   const canView = isAdmin || hasAnyProjectPermissionPrefix(user, project, 'boq:');
-  const canApprove = hasProjectPermission(user, project, 'boq:approve');
-  const canUpdate = hasProjectPermission(user, project, 'boq:update');
-  const canDelete = hasProjectPermission(user, project, 'boq:delete');
-  const canCreate = hasProjectPermission(user, project, 'boq:create');
+  const isLocked = isProjectLocked(project);
+  const canApprove = !isLocked && hasProjectPermission(user, project, 'boq:approve');
+  const canUpdate = !isLocked && hasProjectPermission(user, project, 'boq:update');
+  const canDelete = !isLocked && hasProjectPermission(user, project, 'boq:delete');
+  const canCreate = !isLocked && hasProjectPermission(user, project, 'boq:create');
 
   // ── Fetch BOQ ────────────────────────────────────────────────────────────
   const fetchBOQ = useCallback(async () => {
@@ -519,7 +520,7 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
                       {groupItems.map((item, idx) => {
                         const isUpdating = updatingItemId === item._id;
                         const isTargetApprover = String(user?.id || user?._id) === String((item as any).requestedApprover);
-                        const canApproveThis = canApprove || isTargetApprover;
+                        const canApproveThis = canApprove || (!isLocked && isTargetApprover);
                         const rowStyle = STATUS_STYLES[item.status as StatusKey]?.row ?? '';
 
                         return (
@@ -643,7 +644,7 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
                           {groupItems.map((item, idx) => {
                             const isUpdating = updatingItemId === item._id;
                             const isTargetApprover = String(user?.id || user?._id) === String((item as any).requestedApprover);
-                            const canApproveThis = canApprove || isTargetApprover;
+                            const canApproveThis = canApprove || (!isLocked && isTargetApprover);
                             const rowStyle = STATUS_STYLES[item.status as StatusKey]?.row ?? '';
   
                             return (

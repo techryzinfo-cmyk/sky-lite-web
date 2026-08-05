@@ -18,6 +18,8 @@ import { uploadToCloudinary } from '@/lib/upload';
 import { useToast } from '@/providers/ToastContext';
 import { XERImportModal } from '@/features/projects/components/XERImportModal';
 import { TimelineTab } from '@/features/projects/timeline/components/TimelineTab';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
+import { isProjectLocked } from '@/lib/permissions';
 
 interface MilestonesTabProps {
   projectId: string;
@@ -57,6 +59,8 @@ const emptyMilestoneForm = () => ({
 
 export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
   const router = useRouter();
+  const { project } = useProjectContext();
+  const isLocked = isProjectLocked(project);
   const [milestones, setMilestones]         = useState<any[]>([]);
   const [members, setMembers]               = useState<{ _id: string; name: string }[]>([]);
   const [loading, setLoading]             = useState(true);
@@ -127,6 +131,7 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
 
   // ── Modal helpers ──────────────────────────────────────────────────────────
   const openCreateModal = () => {
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     setEditingMilestone(null);
     setFormData(emptyMilestoneForm());
     setTaskForm(emptyTaskForm());
@@ -135,6 +140,7 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
   };
 
   const openEditModal = (milestone: any) => {
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     setMilestoneMenuId(null);
     setEditingMilestone(milestone);
     setFormData({
@@ -202,6 +208,7 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
   // ── Save milestone ─────────────────────────────────────────────────────────
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     setIsSaving(true);
     try {
       const payload = {
@@ -243,6 +250,7 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
 
   // ── Toggle task (step 1: if completing, prompt for note) ──────────────────
   const initiateToggle = (milestone: any, taskIndex: number) => {
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     const task = milestone.tasks[taskIndex];
     if (!task.isCompleted) {
       setCompletionPrompt({ milestoneId: milestone._id, taskIndex, note: '', proofImageUrl: '', uploading: false });
@@ -264,6 +272,7 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
   };
 
   const openEditTask = (milestone: any, taskIndex: number) => {
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     const t = milestone.tasks[taskIndex];
     setEditingTask({
       milestoneId: milestone._id,
@@ -374,6 +383,7 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
   // ── Delete milestone ───────────────────────────────────────────────────────
   const handleDelete = async (id: string, name: string) => {
     setMilestoneMenuId(null);
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     if (!window.confirm(`Delete milestone "${name}"? This cannot be undone.`)) return;
     try {
       await api.delete(`/projects/${projectId}/milestones/${id}`);
@@ -456,18 +466,22 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
               <AlignLeft className="w-4 h-4" />
             </button>
           </div>
+          {!isLocked && (
           <button
             onClick={() => setIsXERModalOpen(true)}
             className="flex items-center gap-1.5 sm:space-x-2 bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all active:scale-[0.98]"
           >
             <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>Import XER</span>
           </button>
+          )}
+          {!isLocked && (
           <button
             onClick={openCreateModal}
             className="flex items-center gap-1.5 sm:space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20"
           >
             <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span>New Milestone</span>
           </button>
+          )}
         </div>
       </div>
 

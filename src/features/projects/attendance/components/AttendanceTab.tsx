@@ -10,6 +10,7 @@ import { useAuth } from '@/providers/AuthContext';
 import { useToast } from '@/providers/ToastContext';
 import api from '@/services/api.client';
 import { cn } from '@/lib/utils';
+import { isProjectLocked } from '@/lib/permissions';
 import { LabourManagementTab } from './LabourManagementTab';
 
 interface AttendanceTabProps {
@@ -141,6 +142,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({ projectId }) => {
 
   const handleManualOverride = async () => {
     if (!manualUserId) return;
+    if (isProjectLocked(project)) { toast.error('This project is locked and can no longer be modified.'); return; }
     setSubmittingManual(true);
     try {
       const todayStr = new Date().toISOString().substring(0, 10);
@@ -269,7 +271,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({ projectId }) => {
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                 <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider">On-Site Log (Today)</h4>
               </div>
-              {isManagerOrAdmin && (
+              {isManagerOrAdmin && !isProjectLocked(project) && (
                 <button
                   onClick={() => setManualModalVisible(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 rounded-xl text-xs font-bold transition-all"

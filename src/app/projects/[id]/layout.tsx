@@ -6,7 +6,7 @@ import { SkeletonLoader } from '@/components/skeletons/SkeletonLoader';
 import { CreateProjectModal } from '@/components/modals/CreateProjectModal';
 import { ProjectProvider, useProjectContext } from '@/features/projects/contexts/ProjectContext';
 import { useAuth } from '@/providers/AuthContext';
-import { hasProjectPermission, hasAnyProjectPermissionPrefix } from '@/lib/permissions';
+import { hasProjectPermission, hasAnyProjectPermissionPrefix, isProjectLocked } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import {
   Info, FileText, DollarSign, Package, Files, Map,
@@ -104,6 +104,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 
   const visibleTabs = getVisibleTabs(project, user);
   const activeTab = (ALL_TABS as readonly { id: string }[]).find(t => pathname.includes(`/${t.id}`))?.id || 'dashboard';
+  const canEditProject = !isProjectLocked(project) && hasProjectPermission(user, project, 'projects:update');
 
   const isSurveyPending = project?.status === 'Site Survey' || (project?.status === 'Initialized' && project?.needSiteSurvey);
   const isRestrictedTab = isSurveyPending && RESTRICTED_TABS.includes(activeTab);
@@ -132,13 +133,15 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
           </span>
         )}
       </div>
-      <button
-        onClick={() => setIsEditModalOpen(true)}
-        title="Edit project"
-        className="hidden sm:inline-flex shrink-0 p-1.5 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-500 hover:text-slate-900 hover:bg-slate-100 hover:border-slate-300 shadow-[0_1px_2px_rgba(0,0,0,0.04)] active:scale-95 transition-all duration-200 cursor-pointer"
-      >
-        <Pencil className="w-4 h-4" />
-      </button>
+      {canEditProject && (
+        <button
+          onClick={() => setIsEditModalOpen(true)}
+          title="Edit project"
+          className="hidden sm:inline-flex shrink-0 p-1.5 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-500 hover:text-slate-900 hover:bg-slate-100 hover:border-slate-300 shadow-[0_1px_2px_rgba(0,0,0,0.04)] active:scale-95 transition-all duration-200 cursor-pointer"
+        >
+          <Pencil className="w-4 h-4" />
+        </button>
+      )}
     </div>
   ) : null;
 

@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
-import { hasProjectPermission } from '@/lib/permissions';
+import { hasProjectPermission, isProjectLocked } from '@/lib/permissions';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 import { PlanRoom } from '@/features/projects/plans/components/PlanRoom';
 
@@ -25,10 +25,11 @@ export const PlansTab: React.FC<PlansTabProps> = ({ projectId }) => {
   const { user } = useAuth();
   const { project } = useProjectContext();
   const isAdmin = user?.role?.name === 'Admin' || (user?.role?.permissions?.includes('*') ?? false);
+  const isLocked = isProjectLocked(project);
   const canView = isAdmin || hasProjectPermission(user, project, 'plans:view');
-  const canCreate = isAdmin || hasProjectPermission(user, project, 'plans:create');
-  const canUpdate = isAdmin || hasProjectPermission(user, project, 'plans:update') || hasProjectPermission(user, project, 'plans:edit');
-  const canDelete = isAdmin || hasProjectPermission(user, project, 'plans:delete');
+  const canCreate = !isLocked && (isAdmin || hasProjectPermission(user, project, 'plans:create'));
+  const canUpdate = !isLocked && (isAdmin || hasProjectPermission(user, project, 'plans:update') || hasProjectPermission(user, project, 'plans:edit'));
+  const canDelete = !isLocked && (isAdmin || hasProjectPermission(user, project, 'plans:delete'));
   const [folders, setFolders]                     = useState<any[]>([]);
   const [loading, setLoading]                     = useState(true);
   const [selectedFolderId, setSelectedFolderId]   = useState<string | null>(null);

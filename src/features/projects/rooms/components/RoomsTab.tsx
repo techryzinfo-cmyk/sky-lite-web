@@ -11,7 +11,7 @@ import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useSocket } from '@/providers/SocketContext';
-import { hasProjectPermission } from '@/lib/permissions';
+import { hasProjectPermission, isProjectLocked } from '@/lib/permissions';
 import { useProjectContext } from '../../contexts/ProjectContext';
 
 const ROOM_TYPES = [
@@ -52,7 +52,7 @@ export const RoomsTab: React.FC<RoomsTabProps> = ({ projectId, project }) => {
   const toast = useToast();
   const { user } = useAuth();
   const router = useRouter();
-  const isAdmin = hasProjectPermission(user, project, 'rooms:manage');
+  const isAdmin = !isProjectLocked(project) && hasProjectPermission(user, project, 'rooms:manage');
 
   const fetchData = async () => {
     setLoading(true);

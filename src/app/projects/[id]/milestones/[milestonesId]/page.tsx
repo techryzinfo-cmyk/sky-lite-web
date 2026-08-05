@@ -15,6 +15,8 @@ import { cn } from '@/lib/utils';
 import api from '@/services/api.client';
 import { uploadToCloudinary } from '@/lib/upload';
 import { useToast } from '@/providers/ToastContext';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
+import { isProjectLocked } from '@/lib/permissions';
 
 type MilestoneStatus = 'Pending' | 'In Progress' | 'Completed' | 'On Hold';
 const STATUS_OPTIONS: MilestoneStatus[] = ['Pending', 'In Progress', 'Completed', 'On Hold'];
@@ -47,6 +49,8 @@ export default function MilestoneDetailPage() {
   const { id: projectId, milestonesId: milestoneId } = useParams<{ id: string; milestonesId: string }>();
   const router = useRouter();
   const toast = useToast();
+  const { project } = useProjectContext();
+  const isLocked = isProjectLocked(project);
 
   const [milestone, setMilestone]   = useState<any>(null);
   const [members, setMembers]       = useState<Member[]>([]);
@@ -124,6 +128,7 @@ export default function MilestoneDetailPage() {
 
   // ── Status change ────────────────────────────────────────────────────────────
   const handleStatusChange = async (status: MilestoneStatus) => {
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     setSavingStatus(true);
     try {
       const res = await api.patch(`/projects/${projectId}/milestones/${milestoneId}`, { status });
@@ -135,6 +140,7 @@ export default function MilestoneDetailPage() {
 
   // ── Submit task ──────────────────────────────────────────────────────────────
   const handleSubmitTask = async (taskIndex: number) => {
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     const form = submitForms[taskIndex] ?? emptySubmitForm();
     setSubmitting(taskIndex);
     const tasks: any[] = milestone.tasks || [];
@@ -196,6 +202,7 @@ export default function MilestoneDetailPage() {
 
   // ── Uncheck task ─────────────────────────────────────────────────────────────
   const handleUncheck = async (taskIndex: number) => {
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     setSubmitting(taskIndex);
     const tasks: any[] = milestone.tasks || [];
     const updatedTasks = tasks.map((t: any, i: number) =>
@@ -212,6 +219,7 @@ export default function MilestoneDetailPage() {
 
   // ── Edit task ────────────────────────────────────────────────────────────────
   const openEdit = (taskIndex: number) => {
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     const t = milestone.tasks[taskIndex];
     setEditingTask({
       taskIndex,
@@ -260,6 +268,7 @@ export default function MilestoneDetailPage() {
   // ── Add task ─────────────────────────────────────────────────────────────────
   const handleAddTask = async () => {
     if (!addTaskForm.title.trim()) return;
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     if (!addTaskForm.assignedTo) {
       toast.error('Please assign this task to a team member');
       return;
@@ -331,7 +340,8 @@ export default function MilestoneDetailPage() {
                     <select
                       value={milestone.status || 'Pending'}
                       onChange={e => handleStatusChange(e.target.value as MilestoneStatus)}
-                      className={cn('px-2.5 py-1 rounded-md text-[10px] font-medium border cursor-pointer focus:outline-none appearance-none', getStatusStyle(milestone.status))}
+                      disabled={isLocked}
+                      className={cn('px-2.5 py-1 rounded-md text-[10px] font-medium border focus:outline-none appearance-none', isLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer', getStatusStyle(milestone.status))}
                     >
                       {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
@@ -377,6 +387,7 @@ export default function MilestoneDetailPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-gray-900">Tasks</h2>
+            {!isLocked && (
             <button
               onClick={() => setShowAddTask(v => !v)}
               className="flex items-center gap-1.5 px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-all shadow-sm"
@@ -384,6 +395,7 @@ export default function MilestoneDetailPage() {
               <Plus className="w-4 h-4" />
               Add Task
             </button>
+            )}
           </div>
 
           {/* ── Add task inline form ── */}
@@ -465,12 +477,14 @@ export default function MilestoneDetailPage() {
             <div className="flex flex-col items-center justify-center py-24 border-2 border-dashed border-gray-200 rounded-xl">
               <AlertCircle className="w-12 h-12 text-gray-300 mb-4" />
               <p className="text-slate-500 font-medium">No tasks yet.</p>
-              <button
-                onClick={() => setShowAddTask(true)}
-                className="mt-3 text-sm font-medium text-blue-600 hover:text-blue-500 transition-colors"
-              >
-                + Add the first task
-              </button>
+              {!isLocked && (
+                <button
+                  onClick={() => setShowAddTask(true)}
+                  className="mt-3 text-sm font-medium text-blue-600 hover:text-blue-500 transition-colors"
+                >
+                  + Add the first task
+                </button>
+              )}
             </div>
           )}
 
@@ -527,7 +541,7 @@ export default function MilestoneDetailPage() {
                       </p>
                       <div className="flex items-center gap-1 shrink-0">
                         {/* Edit — only if not completed */}
-                        {!task.isCompleted && (
+                        {!task.isCompleted && !isLocked && (
                           <button
                             onClick={e => { e.stopPropagation(); openEdit(i); }}
                             className="p-1.5 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"

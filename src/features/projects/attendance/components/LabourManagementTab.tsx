@@ -8,6 +8,8 @@ import {
 import { useToast } from '@/providers/ToastContext';
 import api from '@/services/api.client';
 import { cn } from '@/lib/utils';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
+import { isProjectLocked } from '@/lib/permissions';
 
 interface LabourManagementTabProps {
   projectId: string;
@@ -33,6 +35,8 @@ const emptyLabourForm = () => ({
 
 export const LabourManagementTab: React.FC<LabourManagementTabProps> = ({ projectId }) => {
   const toast = useToast();
+  const { project } = useProjectContext();
+  const isLocked = isProjectLocked(project);
 
   const [loading, setLoading] = useState(true);
   const [labourers, setLabourers] = useState<Labour[]>([]);
@@ -120,6 +124,7 @@ export const LabourManagementTab: React.FC<LabourManagementTabProps> = ({ projec
   };
 
   const handleSaveLabour = async () => {
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     if (!form.name.trim() || !form.wageAmount) {
       toast.error('Please fill name and wage amount');
       return;
@@ -144,6 +149,7 @@ export const LabourManagementTab: React.FC<LabourManagementTabProps> = ({ projec
 
   const handleDeleteLabour = async () => {
     if (!editingId) return;
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     setDeleting(true);
     try {
       await api.delete(`/labour/${editingId}`);
@@ -166,6 +172,7 @@ export const LabourManagementTab: React.FC<LabourManagementTabProps> = ({ projec
   };
 
   const handleSubmitBulk = async () => {
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     setSubmitting(true);
     try {
       const attendances = labourers.map(labour => {
@@ -248,12 +255,14 @@ export const LabourManagementTab: React.FC<LabourManagementTabProps> = ({ projec
           >
             <Download className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => { setEditingId(null); setModalOpen(true); }}
-            className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition-all shadow-sm shrink-0"
-          >
-            <Plus className="w-4 h-4" /> Add
-          </button>
+          {!isLocked && (
+            <button
+              onClick={() => { setEditingId(null); setModalOpen(true); }}
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition-all shadow-sm shrink-0"
+            >
+              <Plus className="w-4 h-4" /> Add
+            </button>
+          )}
         </div>
       </div>
 

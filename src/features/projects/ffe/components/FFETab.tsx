@@ -10,7 +10,7 @@ import { cn, formatCurrency } from '@/lib/utils';
 import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
-import { hasProjectPermission } from '@/lib/permissions';
+import { hasProjectPermission, isProjectLocked } from '@/lib/permissions';
 
 const FFE_CATEGORIES = ['Furniture', 'Fixture', 'Equipment', 'Appliance', 'Lighting', 'Decor', 'Sanitary', 'Other'] as const;
 const FFE_STATUSES = ['Planned', 'Ordered', 'Delivered', 'Installed', 'Rejected'] as const;
@@ -73,7 +73,7 @@ export const FFETab: React.FC<FFETabProps> = ({ projectId, project }) => {
 
   const toast = useToast();
   const { user } = useAuth();
-  const isAdmin = hasProjectPermission(user, project, 'ffe:manage');
+  const isAdmin = !isProjectLocked(project) && hasProjectPermission(user, project, 'ffe:manage');
 
   const fetchData = async () => {
     setLoading(true);

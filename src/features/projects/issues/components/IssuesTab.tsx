@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils';
 import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
-import { hasProjectPermission } from '@/lib/permissions';
+import { hasProjectPermission, isProjectLocked } from '@/lib/permissions';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 import { IssueModal } from '@/features/projects/issues/components/IssueModal';
 import { IssueDetailModal } from '@/features/projects/issues/components/IssueDetailModal';
@@ -106,6 +106,7 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
 
   const handleDeleteIssue = async (e: React.MouseEvent, issueId: string) => {
     e.stopPropagation();
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     if (!window.confirm(`Delete this ${activeType.toLowerCase()}? This cannot be undone.`)) return;
     setDeletingId(issueId);
     try {
@@ -127,6 +128,7 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
 
   const handleAssignSnagForFixing = async (assignedUser: any) => {
     if (!assigningSnag) return;
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     try {
       // 1. Update snag to "In Progress" and set assignedTo
       await api.patch(`/snags/${assigningSnag._id}`, {
@@ -152,6 +154,7 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
 
   const handleCompleteSnagAction = async (proofUrl: string, details: string) => {
     if (!completingSnag) return;
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     try {
       await api.patch(`/snags/${completingSnag._id}`, {
         status: 'Resolved',
@@ -172,6 +175,7 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
   const handleBulkSendDrafts = async () => {
     const draftSnags = issues.filter(i => i.status === 'Draft');
     if (draftSnags.length === 0) return;
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
 
     if (!window.confirm(`Send all ${draftSnags.length} draft snags for fixing?`)) return;
 
@@ -202,6 +206,7 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
   };
 
   const handleFinalizeSnagging = async () => {
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     if (!window.confirm('Are you sure you want to finalize the snagging phase? This will set the project status to Snagging Completed.')) return;
 
     setFinalizing(true);
@@ -274,14 +279,15 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
   });
 
   // ── Permissions ────────────────────────────────────────────────────────
-  const isInspector = ((project?.snaggedBy as any)?._id || project?.snaggedBy) === currentUserId;
+  const isLocked = isProjectLocked(project);
+  const isInspector = !isLocked && ((project?.snaggedBy as any)?._id || project?.snaggedBy) === currentUserId;
   const isAdmin = user?.role?.name === 'Admin' || (user?.role?.permissions?.includes('*') ?? false);
   const canView = isAdmin || hasProjectPermission(user, project, 'snags:view');
-  const canCreate = isAdmin || hasProjectPermission(user, project, 'snags:create');
-  const canUpdate = isAdmin || hasProjectPermission(user, project, 'snags:update');
-  const canDelete = isAdmin || hasProjectPermission(user, project, 'snags:delete');
-  const canAssignSnagging = isAdmin || hasProjectPermission(user, project, 'snags:assign');
-  const canCompleteSnag = isAdmin || hasProjectPermission(user, project, 'snags:complete');
+  const canCreate = !isLocked && (isAdmin || hasProjectPermission(user, project, 'snags:create'));
+  const canUpdate = !isLocked && (isAdmin || hasProjectPermission(user, project, 'snags:update'));
+  const canDelete = !isLocked && (isAdmin || hasProjectPermission(user, project, 'snags:delete'));
+  const canAssignSnagging = !isLocked && (isAdmin || hasProjectPermission(user, project, 'snags:assign'));
+  const canCompleteSnag = !isLocked && (isAdmin || hasProjectPermission(user, project, 'snags:complete'));
   const isSnaggingActive = project?.status === 'Under Snagging' || project?.status === 'Snagging Completed';
 
   if (!canView) {
@@ -596,7 +602,7 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
                             </div>
                           )}
 
-                          {item.status === 'In Progress' && (isAssignee || canCompleteSnag) && (
+                          {item.status === 'In Progress' && !isLocked && (isAssignee || canCompleteSnag) && (
                             <button
                               onClick={() => setCompletingSnag(item)}
                               className="flex items-center space-x-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 rounded-xl px-3 py-1.5 text-[10px] font-bold text-emerald-600 transition-all shrink-0 shadow-sm"
@@ -726,6 +732,7 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
         issue={selectedIssue}
         projectId={projectId}
         type={activeType}
+        isLocked={isLocked}
       />
 
       {/* ESCALATION MATRIX SETUP MODAL */}
@@ -733,6 +740,7 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
         isOpen={isEscalationOpen}
         onClose={() => { setIsEscalationOpen(false); fetchEscalationMatrix(); }}
         projectId={projectId}
+        isLocked={isLocked}
       />
 
       {/* ASSIGN MEMBER FOR SNAG MODAL */}

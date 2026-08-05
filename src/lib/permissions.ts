@@ -44,6 +44,15 @@ export const hasAnyProjectPermissionPrefix = (user: any, project: any, prefix: s
   return myRole.permissions?.some((p: string) => p.startsWith(prefix)) ?? false;
 };
 
+/**
+ * Check if the project is in a locked status, which should prevent any modifying actions.
+ * Mirrors sky-lite (mobile) app/utils/permissions.js#isProjectLocked exactly.
+ */
+export const isProjectLocked = (project: any): boolean => {
+  if (!project || !project.status) return false;
+  return ['Completed', 'Handover Completed', 'Cancelled'].includes(project.status);
+};
+
 export const hasProjectPermissionWithMembers = (user: any, projectMembers: any[], permission: string): boolean => {
   if (!user) return false;
   if (user?.role?.name === 'Admin' || user?.role?.permissions?.includes('*')) {

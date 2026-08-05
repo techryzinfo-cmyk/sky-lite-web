@@ -37,7 +37,7 @@ import api from '@/services/api.client';
 import { uploadToCloudinary } from '@/lib/upload';
 import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
-import { hasProjectPermission } from '@/lib/permissions';
+import { hasProjectPermission, isProjectLocked } from '@/lib/permissions';
 import { useProjectContext } from '../../contexts/ProjectContext';
 
 interface Doc {
@@ -93,11 +93,12 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ projectId }) => {
   const toast = useToast();
   const { user } = useAuth();
   const { project } = useProjectContext();
+  const isLocked = isProjectLocked(project);
   const canView = hasProjectPermission(user, project, 'land:view');
-  const canUpload = hasProjectPermission(user, project, 'land:create');
-  const canApprove = hasProjectPermission(user, project, 'land:approve');
-  const canDelete = hasProjectPermission(user, project, 'land:delete');
-  const isAdmin = hasProjectPermission(user, project, 'land:delete');
+  const canUpload = !isLocked && hasProjectPermission(user, project, 'land:create');
+  const canApprove = !isLocked && hasProjectPermission(user, project, 'land:approve');
+  const canDelete = !isLocked && hasProjectPermission(user, project, 'land:delete');
+  const isAdmin = !isLocked && hasProjectPermission(user, project, 'land:delete');
 
   const fetchDocs = async () => {
     try {

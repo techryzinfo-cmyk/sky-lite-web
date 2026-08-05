@@ -10,7 +10,7 @@ import api from '@/services/api.client';
 import { uploadToCloudinary } from '@/lib/upload';
 import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
-import { hasProjectPermission } from '@/lib/permissions';
+import { hasProjectPermission, isProjectLocked } from '@/lib/permissions';
 import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 import { DocumentViewer } from '@/features/projects/documents/components/DocumentViewer';
 import { UserPickerModal } from '@/components/modals/UserPickerModal';
@@ -42,9 +42,10 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
   const { user } = useAuth();
   const { project } = useProjectContext();
   
-  const canDeleteDocument = hasProjectPermission(user, project, 'plans:delete');
-  const canCreatePlans = hasProjectPermission(user, project, 'plans:create');
-  const canEditPlans = hasProjectPermission(user, project, 'plans:update') || hasProjectPermission(user, project, 'plans:edit');
+  const isLocked = isProjectLocked(project);
+  const canDeleteDocument = !isLocked && hasProjectPermission(user, project, 'plans:delete');
+  const canCreatePlans = !isLocked && hasProjectPermission(user, project, 'plans:create');
+  const canEditPlans = !isLocked && (hasProjectPermission(user, project, 'plans:update') || hasProjectPermission(user, project, 'plans:edit'));
   const isAdmin = user?.role?.name === 'Admin' || (user?.role?.permissions?.includes('*') ?? false);
   const canViewAnnotations = hasProjectPermission(user, project, 'annotations:view');
 
@@ -123,16 +124,18 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
           <span className="font-bold text-sm">All Folders</span>
         </button>
 
-        <label className={cn(
-          'flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border transition-all shadow-sm cursor-pointer',
-          isUploading
-            ? 'bg-gray-50 border-gray-200 text-slate-400 pointer-events-none'
-            : 'bg-blue-600 border-blue-600 text-white hover:bg-blue-500 shadow-blue-600/25'
-        )}>
-          {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-          <span>{isUploading ? 'Uploading…' : 'Upload Plan'}</span>
-          <input type="file" className="hidden" onChange={handleUpload} disabled={isUploading} />
-        </label>
+        {!isLocked && (
+          <label className={cn(
+            'flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border transition-all shadow-sm cursor-pointer',
+            isUploading
+              ? 'bg-gray-50 border-gray-200 text-slate-400 pointer-events-none'
+              : 'bg-blue-600 border-blue-600 text-white hover:bg-blue-500 shadow-blue-600/25'
+          )}>
+            {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            <span>{isUploading ? 'Uploading…' : 'Upload Plan'}</span>
+            <input type="file" className="hidden" onChange={handleUpload} disabled={isUploading} />
+          </label>
+        )}
       </div>
 
       {/* ── Folder info bar ── */}
@@ -217,7 +220,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
                   onClick={(e) => e.stopPropagation()}
                 >
                   {/* Approval workflow */}
-                  {doc.approvalStatus === 'Draft' && isAdmin && (
+                  {doc.approvalStatus === 'Draft' && isAdmin && !isLocked && (
                     <button
                       onClick={() => setApproverDocId(doc._id)}
                       className="p-2 rounded-xl bg-gray-50 border border-gray-200 text-slate-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-all"
@@ -226,7 +229,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
                       <Send className="w-3.5 h-3.5" />
                     </button>
                   )}
-                  {doc.approvalStatus === 'Pending' && (
+                  {doc.approvalStatus === 'Pending' && !isLocked && (
                     <>
                       <button
                         onClick={() => handleAction(doc._id, 'respond', { response: 'Approved', versionId: doc.versionId })}
@@ -275,7 +278,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
                     </button>
                   )}
 
-                  {isAdmin && (
+                  {isAdmin && !isLocked && (
                     <>
                       <div className="w-px h-6 bg-gray-200 mx-1" />
                       <button
