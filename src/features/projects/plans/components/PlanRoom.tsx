@@ -46,6 +46,8 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
   const canDeleteDocument = !isLocked && hasProjectPermission(user, project, 'plans:delete');
   const canCreatePlans = !isLocked && hasProjectPermission(user, project, 'plans:create');
   const canEditPlans = !isLocked && (hasProjectPermission(user, project, 'plans:update') || hasProjectPermission(user, project, 'plans:edit'));
+  const canApprovePlans = !isLocked && hasProjectPermission(user, project, 'plans:approve');
+  const canAssignPlans = !isLocked && hasProjectPermission(user, project, 'plans:assign');
   const isAdmin = user?.role?.name === 'Admin' || (user?.role?.permissions?.includes('*') ?? false);
   const canViewAnnotations = hasProjectPermission(user, project, 'annotations:view');
 
@@ -68,6 +70,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!canCreatePlans) { toast.error('You do not have permission to upload plans.'); return; }
     setIsUploading(true);
     try {
       const url = await uploadToCloudinary(file);
@@ -124,7 +127,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
           <span className="font-bold text-sm">All Folders</span>
         </button>
 
-        {!isLocked && (
+        {canCreatePlans && (
           <label className={cn(
             'flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border transition-all shadow-sm cursor-pointer',
             isUploading
@@ -220,7 +223,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
                   onClick={(e) => e.stopPropagation()}
                 >
                   {/* Approval workflow */}
-                  {doc.approvalStatus === 'Draft' && isAdmin && !isLocked && (
+                  {doc.approvalStatus === 'Draft' && canAssignPlans && (
                     <button
                       onClick={() => setApproverDocId(doc._id)}
                       className="p-2 rounded-xl bg-gray-50 border border-gray-200 text-slate-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-all"
@@ -229,7 +232,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
                       <Send className="w-3.5 h-3.5" />
                     </button>
                   )}
-                  {doc.approvalStatus === 'Pending' && !isLocked && (
+                  {doc.approvalStatus === 'Pending' && canApprovePlans && (
                     <>
                       <button
                         onClick={() => handleAction(doc._id, 'respond', { response: 'Approved', versionId: doc.versionId })}
@@ -278,7 +281,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
                     </button>
                   )}
 
-                  {isAdmin && !isLocked && (
+                  {canDeleteDocument && (
                     <>
                       <div className="w-px h-6 bg-gray-200 mx-1" />
                       <button

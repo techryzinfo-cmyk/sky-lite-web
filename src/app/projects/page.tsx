@@ -327,6 +327,8 @@ import api from '@/services/api.client';
 import { Project } from '@/types';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/providers/ToastContext';
+import { useAuth } from '@/providers/AuthContext';
+import { hasProjectPermission } from '@/lib/permissions';
  
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<(Project & { hasPendingPlans?: boolean })[]>([]);
@@ -344,7 +346,9 @@ export default function ProjectsPage() {
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const toast = useToast();
   const pathname = usePathname();
- 
+  const { user } = useAuth();
+  const canCreateProject = hasProjectPermission(user, null, 'projects:create');
+
   const fetchProjects = async () => {
     try {
       const response = await api.get('/projects');
@@ -439,13 +443,15 @@ export default function ProjectsPage() {
             <p className="text-sm sm:text-base text-slate-500 mt-1">Manage and track your construction projects.</p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <button
-              onClick={() => { setEditingProject(null); setIsModalOpen(true); }}
-              className="flex items-center justify-center w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-all active:scale-[0.95] shadow-sm shadow-blue-600/20"
-              title="New Project"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
+            {canCreateProject && (
+              <button
+                onClick={() => { setEditingProject(null); setIsModalOpen(true); }}
+                className="flex items-center justify-center w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-all active:scale-[0.95] shadow-sm shadow-blue-600/20"
+                title="New Project"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            )}
             {/* Notification bell would go here if implemented on web */}
           </div>
         </div>
@@ -506,9 +512,9 @@ export default function ProjectsPage() {
                 <ProjectCard
                   key={project._id}
                   project={project}
-                  onEdit={(p) => { setEditingProject(p); setIsModalOpen(true); }}
-                  onDelete={(p) => setDeletingProject(p)}
-                  onSendForSurvey={(p) => { setSurveyProject(p); setIsSurveyAssignOpen(true); }}
+                  onEdit={hasProjectPermission(user, project, 'projects:update') ? (p) => { setEditingProject(p); setIsModalOpen(true); } : undefined}
+                  onDelete={hasProjectPermission(user, project, 'projects:delete') ? (p) => setDeletingProject(p) : undefined}
+                  onSendForSurvey={hasProjectPermission(user, project, 'sitesurvey:manage') ? (p) => { setSurveyProject(p); setIsSurveyAssignOpen(true); } : undefined}
                   onCompleteSurvey={(p) => { setSurveyProject(p); setIsSurveyModalOpen(true); }}
                 />
               ))}
@@ -522,7 +528,7 @@ export default function ProjectsPage() {
                   ? "We couldn't find any projects matching your search."
                   : "Start a new project to track your construction progress."}
               </p>
-              {!searchQuery && statusFilter === 'All' && (
+              {!searchQuery && statusFilter === 'All' && canCreateProject && (
                 <button
                   onClick={() => setIsModalOpen(true)}
                   className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-all active:scale-95 shadow-sm shadow-blue-600/20"

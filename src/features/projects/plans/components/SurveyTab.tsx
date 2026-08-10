@@ -65,6 +65,7 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
   );
 
   const isAdminOrManager = !isProjectLocked(project) && hasProjectPermission(user, project, 'sitesurvey:manage');
+  const canView = hasProjectPermission(user, project, 'sitesurvey:view') || isAdminOrManager || isAssignedSurveyor;
 
   const fetchSurvey = useCallback(async () => {
     if (!projectId) return;
@@ -161,9 +162,25 @@ export const SurveyTab: React.FC<SurveyTabProps> = ({ projectId }) => {
     );
   }
 
-  // Define Surveyor Info mapping
+  if (!canView) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+          <ShieldAlert className="w-6 h-6 text-gray-400" />
+        </div>
+        <p className="text-sm font-bold text-slate-500">You don't have permission to view the site survey.</p>
+      </div>
+    );
+  }
+
+  // Define Surveyor Info mapping — `project.members` is a list of
+  // { user, role } subdocuments, so it must be matched on `m.user._id`, not
+  // `m._id` (that's the membership record's own id, never the user's), and
+  // the matched member's `.user` (not the subdocument itself) is what holds
+  // the actual name/email.
   const surveyorId = (survey?.surveyor as any)?._id || survey?.surveyor;
-  const surveyorUser = project?.members?.find((m: any) => m._id === surveyorId) ||
+  const matchedMember: any = (project?.members as any[])?.find((m: any) => String(m.user?._id || m.user) === String(surveyorId));
+  const surveyorUser = (matchedMember?.user && typeof matchedMember.user === 'object' ? matchedMember.user : null) ||
                        ((project?.createdBy as any)?._id === surveyorId ? project?.createdBy : survey?.surveyor);
 
   let surveyorName = 'Surveyor';
