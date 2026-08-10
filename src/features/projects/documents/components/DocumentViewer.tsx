@@ -31,6 +31,15 @@ interface DocumentViewerProps {
   folderId?: string;
 }
 
+// <img> can't render PDFs — the browser just shows a broken-image icon next
+// to the alt text (the filename), which is exactly what looked like a
+// missing preview. PDFs need an <iframe>/<object> instead.
+function isPdfDoc(doc: any): boolean {
+  const mime = doc?.mimeType || '';
+  const name = doc?.name || doc?.url || '';
+  return mime.toLowerCase().includes('pdf') || /\.pdf(\?|#|$)/i.test(name);
+}
+
 // Generate a stable client-side id for new annotations placed in the
 // folder-nested store, matching PlanAnnotator's id scheme.
 function uuidv4() {
@@ -359,14 +368,24 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                   }}
                 >
                   {document?.url ? (
-                    <img
-                      ref={imageRef}
-                      src={document.url}
-                      alt={document.name}
-                      className="max-w-full object-contain rounded-xl block shadow-md"
-                      style={{ maxHeight: '72vh' }}
-                      draggable={false}
-                    />
+                    isPdfDoc(document) ? (
+                      <iframe
+                        ref={imageRef as any}
+                        src={document.url}
+                        title={document.name}
+                        className="rounded-xl block shadow-md bg-white border-0"
+                        style={{ width: 'min(80vw, 900px)', height: '72vh' }}
+                      />
+                    ) : (
+                      <img
+                        ref={imageRef}
+                        src={document.url}
+                        alt={document.name}
+                        className="max-w-full object-contain rounded-xl block shadow-md"
+                        style={{ maxHeight: '72vh' }}
+                        draggable={false}
+                      />
+                    )
                   ) : (
                     <div ref={imageRef as any} className="w-80 h-64 flex items-center justify-center text-slate-300 bg-white rounded-xl border border-gray-200">
                       <DocFileSvg className="w-20 h-20" />
