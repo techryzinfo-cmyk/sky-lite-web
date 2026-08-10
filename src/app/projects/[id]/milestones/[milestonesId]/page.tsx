@@ -46,6 +46,13 @@ const emptySubmitForm = (): SubmitForm => ({
 
 const inputCls = "w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all";
 
+// Native date inputs only open the calendar popup when the tiny icon glyph
+// is clicked — clicking anywhere else in the box just places a text cursor.
+// Force the picker open on any click within the field.
+const openDatePicker = (e: React.MouseEvent<HTMLInputElement>) => {
+  try { (e.currentTarget as any).showPicker?.(); } catch {}
+};
+
 export default function MilestoneDetailPage() {
   const { id: projectId, milestonesId: milestoneId } = useParams<{ id: string; milestonesId: string }>();
   const router = useRouter();
@@ -436,6 +443,7 @@ export default function MilestoneDetailPage() {
                       <div className="space-y-1.5">
                         <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Start Date</label>
                         <input type="date" value={addTaskForm.startDate}
+                          onClick={openDatePicker}
                           onChange={e => {
                             const s = e.target.value;
                             setAddTaskForm(p => ({
@@ -450,6 +458,7 @@ export default function MilestoneDetailPage() {
                         <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">End Date</label>
                         <input type="date" value={addTaskForm.endDate}
                           min={addTaskForm.startDate || undefined}
+                          onClick={openDatePicker}
                           onChange={e => setAddTaskForm(p => ({ ...p, endDate: e.target.value }))}
                           className={inputCls} />
                       </div>
@@ -815,6 +824,7 @@ export default function MilestoneDetailPage() {
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Start</label>
                     <input type="date" value={editingTask.form.startDate}
+                      onClick={openDatePicker}
                       onChange={e => {
                         const s = e.target.value;
                         setEditingTask(p => p ? {
@@ -832,6 +842,7 @@ export default function MilestoneDetailPage() {
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">End</label>
                     <input type="date" value={editingTask.form.endDate}
                       min={editingTask.form.startDate || undefined}
+                      onClick={openDatePicker}
                       onChange={e => setEditingTask(p => p ? { ...p, form: { ...p.form, endDate: e.target.value } } : null)}
                       className={inputCls} />
                   </div>

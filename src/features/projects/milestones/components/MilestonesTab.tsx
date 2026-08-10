@@ -418,6 +418,13 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
 
   const inputCls = "w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all";
 
+  // Native date inputs only open the calendar popup when the tiny icon
+  // glyph is clicked — clicking anywhere else in the box just places a
+  // text cursor. Force the picker open on any click within the field.
+  const openDatePicker = (e: React.MouseEvent<HTMLInputElement>) => {
+    try { (e.currentTarget as any).showPicker?.(); } catch {}
+  };
+
   return (
     <SkeletonLoader loading={loading} preset="list">
       {isForbidden ? (
@@ -1116,6 +1123,7 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
                     <input
                       type="date"
                       value={editingTask.form.startDate}
+                      onClick={openDatePicker}
                       onChange={e => {
                         const s = e.target.value;
                         setEditingTask(prev => prev ? {
@@ -1136,6 +1144,7 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
                       type="date"
                       value={editingTask.form.endDate}
                       min={editingTask.form.startDate || undefined}
+                      onClick={openDatePicker}
                       onChange={e => setEditingTask(prev => prev ? { ...prev, form: { ...prev.form, endDate: e.target.value } } : null)}
                       className={inputCls}
                     />
