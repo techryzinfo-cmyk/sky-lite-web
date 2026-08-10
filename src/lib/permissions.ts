@@ -5,9 +5,17 @@
  * otherwise a deliberately restrictive project role (e.g. "Viewer") could
  * never actually restrict a member whose org-wide default role happens to
  * have more permissions.
+ *
+ * When there's no project at all (project is null — e.g. checking
+ * "projects:create" on the projects list, before any project exists to be
+ * a member of), there's nothing for a project-specific role to be
+ * authoritative over, so fall back to the user's global role. This is
+ * distinct from the "project exists but user isn't a member" case, which
+ * intentionally stays restrictive (returns null, no fallback).
  */
 const resolveProjectRole = (user: any, project: any): any => {
-  if (!project || !Array.isArray(project.members)) return null;
+  if (!project) return user?.role || null;
+  if (!Array.isArray(project.members)) return null;
   const currentUserId = user?._id || user?.id;
   const myMember = project.members.find((m: any) => {
     const mUserId = m.user?._id || m.user;
