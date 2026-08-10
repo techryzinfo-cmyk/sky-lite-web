@@ -3,7 +3,23 @@
     "allow": [
       "Bash(dir \"c:\\\\2026\\\\v2\\\\sky-lite-api\\\\src\\\\app\\\\api\\\\projects\" /s /b)",
       "Bash(ls \"c:\\\\2026\\\\v2\\\\\" 2>/dev/null || ls /c/2026/v2/)",
-      "Read(//c/2026/v2\" 2>/dev/null || ls /c/2026/**)"
+      "Read(//c/2026/v2\" 2>/dev/null || ls /c/2026/**)",
+      "Bash(grep -n \"hasProjectPermission\\\\|isLoading\\\\s*\\)\\\\s*{$\\\\|if \\(isLoading\\)\" \"C:/2026/sky-interior/new-update-sk-mobile/app/project/[id]/handover.jsx\")",
+      "Bash(diff -B -w \"c:/2026/v2/sky-lite/app/project/[id]/issues.jsx\" \"C:/2026/sky-interior/new-update-sk-mobile/app/project/[id]/issues.jsx\")",
+      "Read(//tmp/**)",
+      "Bash(grep -n \"const \\\\[refreshing\\\\|const \\\\[filter\\\\|useState\\(false\\)$\\\\|useState\\('All'\\)\" \"C:/2026/sky-interior/new-update-sk-mobile/app/project/[id]/issues.jsx\")",
+      "Bash(node -e ' *)",
+      "Bash(diff -B -w \"c:/2026/v2/sky-lite/app/project/[id]/reports.jsx\" \"C:/2026/sky-interior/new-update-sk-mobile/app/project/[id]/reports.jsx\")",
+      "Bash(diff -B -w \"c:/2026/v2/sky-lite/app/create-project.jsx\" \"C:/2026/sky-interior/new-update-sk-mobile/app/create-project.jsx\")",
+      "Bash(sed -n '80,198p' /tmp/cp_diff.txt)",
+      "Bash(diff -B -w \"c:/2026/v2/sky-lite/app/annotate-plan.jsx\" \"C:/2026/sky-interior/new-update-sk-mobile/app/annotate-plan.jsx\")",
+      "Bash(grep -n \"const canAnnotate = perms\\\\|const { url, name, documentId, folderId, projectId }\" \"C:/2026/sky-interior/new-update-sk-mobile/app/annotate-plan.jsx\")",
+      "Bash(diff -B -w \"c:/2026/v2/sky-lite/app/project/[id]/material.jsx\" \"C:/2026/sky-interior/new-update-sk-mobile/app/project/[id]/material.jsx\")",
+      "Bash(cat /tmp/material_diff.txt)",
+      "Bash(npx tsc *)"
+    ],
+    "additionalDirectories": [
+      "C:\\2026\\sky-interior\\new-update-sk-mobile\\app"
     ]
   }
 }
