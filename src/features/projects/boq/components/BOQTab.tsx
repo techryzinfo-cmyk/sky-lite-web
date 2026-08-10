@@ -70,7 +70,7 @@ const StatCard = ({
     </div>
     <div className="min-w-0 flex-1">
       <p className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider truncate">{label}</p>
-      <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-0.5 leading-none truncate">{value}</p>
+      <p className="text-lg sm:text-2xl font-bold text-gray-900 mt-0.5 leading-tight break-words">{value}</p>
       {sub && <p className="text-[10px] text-slate-400 mt-0.5">{sub}</p>}
     </div>
   </div>
@@ -748,6 +748,7 @@ export const BOQTab: React.FC<BOQTabProps> = ({ projectId }) => {
             const item = items.find(i => i._id === budgetImpactData?.itemId);
             if (item) await handleUpdateItemStatus(item, 'Approved', true);
           }}
+          currency={project?.currency || '$'}
           isLoading={!!updatingItemId}
         />
         <BOQApproversModal isOpen={!!approversItem} onClose={() => setApproversItem(null)} onSuccess={fetchBOQ} item={approversItem} projectId={projectId} />

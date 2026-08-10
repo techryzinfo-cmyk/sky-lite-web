@@ -16,6 +16,7 @@ interface BOQBudgetImpactModalProps {
   onConfirm: () => Promise<void>;
   isLoading: boolean;
   impactData: BudgetImpactData | null;
+  currency?: string;
 }
 
 export const BOQBudgetImpactModal: React.FC<BOQBudgetImpactModalProps> = ({
@@ -23,7 +24,8 @@ export const BOQBudgetImpactModal: React.FC<BOQBudgetImpactModalProps> = ({
   onClose,
   onConfirm,
   isLoading,
-  impactData
+  impactData,
+  currency = '$'
 }) => {
   if (!isOpen || !impactData) return null;
 
@@ -57,12 +59,12 @@ export const BOQBudgetImpactModal: React.FC<BOQBudgetImpactModalProps> = ({
           <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Previous Cost</p>
-              <p className="text-lg font-bold text-slate-500">${impactData.oldAmount.toLocaleString('en-IN')}</p>
+              <p className="text-lg font-bold text-slate-500">{currency}{impactData.oldAmount.toLocaleString('en-IN')}</p>
             </div>
             <div className="w-8 border-t-2 border-dashed border-gray-200" />
             <div className="space-y-1 text-right">
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">New Cost</p>
-              <p className="text-lg font-bold text-gray-900">${impactData.newAmount.toLocaleString('en-IN')}</p>
+              <p className="text-lg font-bold text-gray-900">{currency}{impactData.newAmount.toLocaleString('en-IN')}</p>
             </div>
           </div>
 
@@ -78,7 +80,7 @@ export const BOQBudgetImpactModal: React.FC<BOQBudgetImpactModalProps> = ({
             </div>
             <div>
               <p className="font-bold">
-                Budget {isIncrease ? 'Increase' : 'Decrease'} of ${Math.abs(impactData.difference).toLocaleString('en-IN')}
+                Budget {isIncrease ? 'Increase' : 'Decrease'} of {currency}{Math.abs(impactData.difference).toLocaleString('en-IN')}
               </p>
               <p className="text-xs opacity-80 mt-1 italic leading-snug">
                 "{impactData.reason}"

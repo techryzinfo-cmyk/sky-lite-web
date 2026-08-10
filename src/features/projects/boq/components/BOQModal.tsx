@@ -337,7 +337,7 @@ export const BOQModal: React.FC<BOQModalProps> = ({
 
                           <div>
                             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
-                              Unit Cost ($) <span className="text-red-400">*</span>
+                              Unit Cost ({project?.currency || '$'}) <span className="text-red-400">*</span>
                             </label>
                             <input
                               type="number"
@@ -495,7 +495,7 @@ export const BOQModal: React.FC<BOQModalProps> = ({
                                     value={row.unitCost}
                                     onChange={e => updateRow(row.id, 'unitCost', e.target.value)}
                                     className={inputCls(!!errors[`${row.id}_unitCost`])}
-                                    placeholder="Unit Cost ($) *"
+                                    placeholder={`Unit Cost (${project?.currency || '$'}) *`}
                                   />
                                   {errors[`${row.id}_unitCost`] && (
                                     <p className="text-xs text-red-500 mt-1">{errors[`${row.id}_unitCost`]}</p>
