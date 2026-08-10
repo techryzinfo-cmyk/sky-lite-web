@@ -38,6 +38,7 @@ function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Submitting login form with:", { email, password });
 
     if (!email || !password) {
       toast.error('Please fill in all fields');
