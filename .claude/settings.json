@@ -20,10 +20,13 @@
       "Bash(wc -l /c/Users/Dell/AppData/Local/Temp/claude/c--2026-v2-sky-lite-web/b7b36c57-9659-44eb-9371-5b06b55d8e6c/scratchpad/tsc_out.txt)",
       "Read(//c/Users/Dell/AppData/Local/Temp/claude/c--2026-v2-sky-lite-web/b7b36c57-9659-44eb-9371-5b06b55d8e6c/scratchpad/**)",
       "Bash(curl -s -X POST https://sky-lite-api.vercel.app/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"maheshindalkar.delxn@gmail.com\",\"password\":\"12345678\"}' -w '\\\\nHTTP_STATUS:%{http_code}\\\\n')",
-      "Bash(curl -s https://sky-lite-api.vercel.app/api/users -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhNjg1N2ZhNTM3ZWJkNjRlM2QxZjkyOCIsIm5hbWUiOiJNb2hhbW1lZCBBbC1NYXJyaSIsIm9yZ2FuaXphdGlvbklkIjoiNmE1ZjBlMmRmNmQ5MjU5NjZhNmQzYWUxIiwiaWF0IjoxNzg2MzYzMTQ4LCJleHAiOjE3ODYzNjY3NDh9.ksn7uwH0Y91J0A0lPAChB6H9apeGIi6qfw4k2fU8Fgw')"
+      "Bash(curl -s https://sky-lite-api.vercel.app/api/users -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhNjg1N2ZhNTM3ZWJkNjRlM2QxZjkyOCIsIm5hbWUiOiJNb2hhbW1lZCBBbC1NYXJyaSIsIm9yZ2FuaXphdGlvbklkIjoiNmE1ZjBlMmRmNmQ5MjU5NjZhNmQzYWUxIiwiaWF0IjoxNzg2MzYzMTQ4LCJleHAiOjE3ODYzNjY3NDh9.ksn7uwH0Y91J0A0lPAChB6H9apeGIi6qfw4k2fU8Fgw')",
+      "Bash(echo \"new-update-web-sklite EXIT:$?\")"
     ],
     "additionalDirectories": [
-      "C:\\2026\\sky-interior\\new-update-sk-mobile\\app"
+      "C:\\2026\\sky-interior\\new-update-sk-mobile\\app",
+      "C:\\2026\\sky-interior\\new-update-web-sklite\\src\\features\\users\\components",
+      "C:\\2026\\sky-interior\\new-update-sk-mobile\\app\\user-management"
     ]
   }
 }
