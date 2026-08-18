@@ -310,7 +310,7 @@ export default function SettingsPage() {
             title="Vendor Management"
             subtitle="Suppliers and vendor settings"
             right={<ChevronRight className="w-5 h-5 text-slate-400" />}
-            onClick={() => toast.success("Coming Soon")}
+            onClick={() => router.push("/settings/vendor-management")}
           />
 
         </Group>

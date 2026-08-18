@@ -10,3 +10,87 @@
 
  GET /templates 200 in 1768ms (next.js: 888ms, application-code: 879ms)
  GET /settings 200 in 744ms (next.js: 621ms, application-code: 124ms)
+ GET /dashboard 200 in 69ms (next.js: 41ms, application-code: 27ms)
+ GET /projects 200 in 100ms (next.js: 74ms, application-code: 27ms)
+ GET /projects/6a68de1d9938d1a93ed932d7 200 in 516ms (next.js: 477ms, application-code: 40ms)
+ GET /projects/6a68de1d9938d1a93ed932d7/details 200 in 647ms (next.js: 534ms, application-code: 114ms)
+ GET /projects/6a68de1d9938d1a93ed932d7/details 200 in 68ms (next.js: 20ms, application-code: 48ms)
+ GET /projects/6a68de1d9938d1a93ed932d7/attendance 200 in 538ms (next.js: 503ms, application-code: 36ms)
+ GET /projects/6a68de1d9938d1a93ed932d7/chat 200 in 515ms (next.js: 477ms, application-code: 38ms)
+ GET /projects/6a68de1d9938d1a93ed932d7/audit 200 in 593ms (next.js: 545ms, application-code: 47ms)
+✓ Compiled in 295ms
+ GET /settings 200 in 244ms (next.js: 76ms, application-code: 168ms)
+ GET /projects/6a68de1d9938d1a93ed932d7/audit 200 in 115ms (next.js: 70ms, application-code: 45ms)
+✓ Compiled in 141ms
+ GET /settings 200 in 262ms (next.js: 67ms, application-code: 196ms)
+ GET /projects/6a68de1d9938d1a93ed932d7/audit 200 in 148ms (next.js: 96ms, application-code: 52ms)
+✓ Compiled in 124ms
+ GET /settings 200 in 229ms (next.js: 66ms, application-code: 164ms)
+ GET /projects/6a68de1d9938d1a93ed932d7/audit 200 in 130ms (next.js: 74ms, application-code: 55ms)
+✓ Compiled in 420ms
+ GET /settings 200 in 221ms (next.js: 64ms, application-code: 157ms)
+ GET /projects/6a68de1d9938d1a93ed932d7/audit 200 in 126ms (next.js: 80ms, application-code: 46ms)
+ GET /projects/6a68de1d9938d1a93ed932d7/materials 200 in 665ms (next.js: 628ms, application-code: 37ms)
+ GET /projects/6a68de1d9938d1a93ed932d7/materials 200 in 489ms (next.js: 13ms, application-code: 476ms)
+ GET /projects/6a68de1d9938d1a93ed932d7/materials 200 in 94ms (next.js: 17ms, application-code: 76ms)
+ GET /projects/6a68de1d9938d1a93ed932d7/attendance 200 in 65ms (next.js: 27ms, application-code: 38ms)
+ GET /projects/6a68de1d9938d1a93ed932d7/issues 200 in 638ms (next.js: 604ms, application-code: 35ms)
+ GET /projects/6a68de1d9938d1a93ed932d7/details 200 in 83ms (next.js: 28ms, application-code: 55ms)
+ GET /users 200 in 72ms (next.js: 48ms, application-code: 24ms)
+ GET /settings 200 in 35ms (next.js: 5ms, application-code: 30ms)
+ GET /dashboard 200 in 34ms (next.js: 15ms, application-code: 19ms)
+ GET /projects 200 in 40ms (next.js: 15ms, application-code: 25ms)
+ GET /templates 200 in 78ms (next.js: 57ms, application-code: 20ms)
+ GET /users 200 in 31ms (next.js: 5ms, application-code: 26ms)
+ GET /settings 200 in 25ms (next.js: 4ms, application-code: 21ms)
+ GET /dashboard 200 in 37ms (next.js: 4ms, application-code: 33ms)
+ GET /dashboard 200 in 27ms (next.js: 6ms, application-code: 21ms)
+ GET /dashboard 200 in 27ms (next.js: 5ms, application-code: 22ms)
+✓ Compiled in 977ms
+ GET /dashboard 200 in 303ms (next.js: 65ms, application-code: 238ms)
+ GET /settings 200 in 305ms (next.js: 176ms, application-code: 128ms)
+ GET /settings 200 in 123ms (next.js: 36ms, application-code: 87ms)
+ GET /dashboard 200 in 126ms (next.js: 7ms, application-code: 119ms)
+ GET /dashboard 200 in 56ms (next.js: 4ms, application-code: 53ms)
+ GET /settings 200 in 33ms (next.js: 4ms, application-code: 29ms)
+ GET /users 200 in 36ms (next.js: 10ms, application-code: 26ms)
+ GET /projects 200 in 43ms (next.js: 18ms, application-code: 25ms)
+[browser] Google Maps JavaScript API warning: NoApiKeys https://developers.google.com/maps/documentation/javascript/error-messages#no-api-keys (file://C:/2026/v2/sky-lite-web/.next/dev/static/chunks/node_modules_next_dist_115brz8._.js:2431:13)
+ GET /templates 200 in 47ms (next.js: 18ms, application-code: 29ms)
+✓ Compiled in 295ms
+ GET /templates 200 in 328ms (next.js: 233ms, application-code: 95ms)
+✓ Compiled in 787ms
+ GET /templates 200 in 232ms (next.js: 103ms, application-code: 129ms)
+ GET /templates 200 in 64ms (next.js: 9ms, application-code: 54ms)
+✓ Compiled in 145ms
+ GET /templates 200 in 223ms (next.js: 114ms, application-code: 109ms)
+✓ Compiled in 123ms
+ GET /templates 200 in 127ms (next.js: 80ms, application-code: 47ms)
+✓ Compiled in 142ms
+ GET /templates 200 in 116ms (next.js: 74ms, application-code: 42ms)
+✓ Compiled in 132ms
+ GET /templates 200 in 122ms (next.js: 76ms, application-code: 46ms)
+✓ Compiled in 189ms
+ GET /templates 200 in 122ms (next.js: 78ms, application-code: 44ms)
+✓ Compiled in 126ms
+ GET /templates 200 in 235ms (next.js: 160ms, application-code: 75ms)
+✓ Compiled in 134ms
+ GET /templates 200 in 124ms (next.js: 87ms, application-code: 37ms)
+✓ Compiled in 514ms
+ GET /templates 200 in 180ms (next.js: 71ms, application-code: 109ms)
+ GET /templates 200 in 75ms (next.js: 6ms, application-code: 69ms)
+ GET /templates 200 in 26ms (next.js: 3ms, application-code: 22ms)
+✓ Compiled in 191ms
+ GET /templates 200 in 224ms (next.js: 136ms, application-code: 88ms)
+✓ Compiled in 108ms
+ GET /templates 200 in 138ms (next.js: 103ms, application-code: 35ms)
+✓ Compiled in 693ms
+ GET /templates 200 in 250ms (next.js: 104ms, application-code: 147ms)
+ GET /templates 200 in 90ms (next.js: 11ms, application-code: 79ms)
+ GET /templates 200 in 38ms (next.js: 6ms, application-code: 32ms)
+✓ Compiled in 276ms
+ GET /templates 200 in 239ms (next.js: 77ms, application-code: 162ms)
+ GET /templates 200 in 117ms (next.js: 12ms, application-code: 106ms)
+ GET /templates 200 in 42ms (next.js: 5ms, application-code: 37ms)
+ GET /projects 200 in 192ms (next.js: 145ms, application-code: 47ms)
+ GET /dashboard 200 in 91ms (next.js: 63ms, application-code: 28ms)
