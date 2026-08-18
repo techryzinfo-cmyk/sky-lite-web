@@ -135,8 +135,8 @@ export default function PlanBillingPage() {
               <UsageCard
                 projects={data?.usage?.projects || 0}
                 members={data?.usage?.users || 0}
-                maxProjects={data?.subscription?.limits?.maxProjects ?? 10}
-                maxUsers={data?.subscription?.limits?.maxUsers ?? 10}
+                maxProjects={data?.subscription ? data.subscription.limits?.maxProjects ?? null : 10}
+                maxUsers={data?.subscription ? data.subscription.limits?.maxUsers ?? null : 10}
               />
 
               <FeatureList features={data?.subscription?.limits?.features || []} />
