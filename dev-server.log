@@ -1,0 +1,12 @@
+
+> skystrcut@0.1.0 dev
+> next dev -p 3001
+
+▲ Next.js 16.2.4 (Turbopack)
+- Local:         http://localhost:3001
+- Network:       http://192.168.1.18:3001
+- Environments: .env.local
+✓ Ready in 791ms
+
+ GET /templates 200 in 1768ms (next.js: 888ms, application-code: 879ms)
+ GET /settings 200 in 744ms (next.js: 621ms, application-code: 124ms)

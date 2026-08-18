@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, FileText, Upload, Image as ImageIcon, Trash2, Plus } from 'lucide-react';
+import { X, Loader2, FileText, Upload, Image as ImageIcon, Trash2, Plus, ChevronDown } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useToast } from '@/providers/ToastContext';
 import api from '@/services/api.client';
 import { uploadToCloudinary } from '@/lib/upload';
+import countriesData from '@/data/countries.json';
 
 interface TemplateModalProps {
   isOpen: boolean;
@@ -30,6 +31,7 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({ isOpen, onClose, o
     name: '',
     category: '',
     description: '',
+    currency: 'QAR',
     minBudget: '',
     maxBudget: '',
     area: '',
@@ -37,6 +39,9 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({ isOpen, onClose, o
   });
   const [images, setImages] = useState<string[]>([]);
   const [files, setFiles] = useState<{ name: string; url: string; size: number }[]>([]);
+  const [currencies] = useState<any[]>(countriesData);
+  const [isCurrencyDropdownOpen, setIsCurrencyDropdownOpen] = useState(false);
+  const [currencySearch, setCurrencySearch] = useState('');
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -52,6 +57,7 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({ isOpen, onClose, o
             name: initialData.name || '',
             category: initialData.category?._id || initialData.category || r.data[0]?._id || '',
             description: initialData.description || '',
+            currency: initialData.currency || 'QAR',
             minBudget: initialData.minBudget?.toString() || '',
             maxBudget: initialData.maxBudget?.toString() || '',
             area: initialData.area?.toString() || '',
@@ -67,7 +73,7 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({ isOpen, onClose, o
   }, [isOpen, initialData]);
 
   const reset = () => {
-    setFormData({ name: '', category: categories[0]?._id || '', description: '', minBudget: '', maxBudget: '', area: '', estimatedDays: '' });
+    setFormData({ name: '', category: categories[0]?._id || '', description: '', currency: 'QAR', minBudget: '', maxBudget: '', area: '', estimatedDays: '' });
     setImages([]);
     setFiles([]);
   };
@@ -119,6 +125,7 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({ isOpen, onClose, o
         name: formData.name,
         category: formData.category,
         description: formData.description,
+        currency: formData.currency,
         minBudget: Number(formData.minBudget) || 0,
         maxBudget: Number(formData.maxBudget) || 0,
         area: Number(formData.area) || 0,
@@ -215,7 +222,72 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({ isOpen, onClose, o
 
                   {/* Budget */}
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Estimated Budget ($)</label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-bold text-slate-700">Estimated Budget</label>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setIsCurrencyDropdownOpen(v => !v)}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-slate-600 hover:border-blue-300 hover:text-blue-700 transition-all"
+                        >
+                          <span className="flex items-center justify-center w-4 h-4 shrink-0">
+                            {(() => {
+                              const match = currencies.find(c => c.currencyCode === formData.currency);
+                              return match ? (
+                                <img src={`https://flagcdn.com/w20/${match.cca2.toLowerCase()}.png`} alt={match.cca2} className="w-4 h-auto shadow-sm rounded-[2px]" />
+                              ) : '🌍';
+                            })()}
+                          </span>
+                          {formData.currency}
+                          <ChevronDown className="w-3 h-3 opacity-50" />
+                        </button>
+                        {isCurrencyDropdownOpen && (
+                          <>
+                            <div className="fixed inset-0 z-40" onClick={() => setIsCurrencyDropdownOpen(false)} />
+                            <div className="absolute top-full right-0 mt-2 w-72 max-h-80 overflow-hidden bg-white border border-gray-200 rounded-xl shadow-xl z-50 flex flex-col">
+                              <div className="p-2 border-b border-gray-100">
+                                <input
+                                  type="text"
+                                  placeholder="Search country or currency..."
+                                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                  value={currencySearch}
+                                  onChange={(e) => setCurrencySearch(e.target.value)}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              </div>
+                              <div className="overflow-y-auto custom-scrollbar flex-1 p-1">
+                                {currencies
+                                  .filter(c =>
+                                    c.name.toLowerCase().includes(currencySearch.toLowerCase()) ||
+                                    c.currencyCode.toLowerCase().includes(currencySearch.toLowerCase()) ||
+                                    c.currencyName.toLowerCase().includes(currencySearch.toLowerCase())
+                                  )
+                                  .map((c, i) => (
+                                    <div
+                                      key={i}
+                                      className="px-3 py-2.5 flex items-center gap-3 hover:bg-blue-50 cursor-pointer rounded-lg transition-colors"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setFormData(f => ({ ...f, currency: c.currencyCode }));
+                                        setIsCurrencyDropdownOpen(false);
+                                        setCurrencySearch('');
+                                      }}
+                                    >
+                                      <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                                        <img src={`https://flagcdn.com/w40/${c.cca2.toLowerCase()}.png`} alt={c.name} className="w-6 h-auto shadow-sm rounded-sm" />
+                                      </div>
+                                      <div className="flex flex-col min-w-0">
+                                        <span className="text-sm font-bold text-gray-900 truncate">{c.name}</span>
+                                        <span className="text-[10px] text-slate-500 truncate">{c.currencyCode} · {c.currencyName}</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">MIN</span>

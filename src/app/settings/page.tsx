@@ -131,7 +131,7 @@ export default function SettingsPage() {
     api
       .get('/organization/subscription')
       .then((res) => {
-        setSubscription(res.data);
+        setSubscription(res.data?.subscription || null);
       })
       .catch(() => {})
       .finally(() => {
@@ -231,8 +231,10 @@ export default function SettingsPage() {
 
         </GlassCard>
 
-        {/* Preferences */}
-
+        {/* Preferences — Push Notifications and Language are both pending
+            on web (not wired up to a real backend yet), so the whole
+            section is commented out for now rather than shown half-working. */}
+        {/*
         <Group title="Preferences">
 
           <Row
@@ -264,6 +266,7 @@ export default function SettingsPage() {
           />
 
         </Group>
+        */}
                 {/* Workspace */}
 
         <Group title="Workspace">
@@ -274,9 +277,9 @@ export default function SettingsPage() {
             subtitle={
               loadingPlan
                 ? "Loading subscription..."
-                : subscription?.planName ||
-                  subscription?.plan ||
-                  "Free Plan"
+                : subscription?.plan
+                ? `${subscription.plan} Plan`
+                : undefined
             }
             right={<ChevronRight className="w-5 h-5 text-slate-400" />}
             onClick={() => router.push("/settings/plan-billing")}

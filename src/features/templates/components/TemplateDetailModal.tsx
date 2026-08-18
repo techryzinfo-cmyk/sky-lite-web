@@ -96,7 +96,7 @@ export const TemplateDetailModal: React.FC<TemplateDetailModalProps> = ({
                           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Budget Range</p>
                           <p className="text-sm font-black text-gray-900">
                             {template.minBudget || template.maxBudget
-                              ? `${formatCurrency(template.minBudget || 0, '$')} – ${formatCurrency(template.maxBudget || 0, '$')}`
+                              ? `${formatCurrency(template.minBudget || 0, template.currency || 'QAR')} – ${formatCurrency(template.maxBudget || 0, template.currency || 'QAR')}`
                               : '—'
                             }
                           </p>
