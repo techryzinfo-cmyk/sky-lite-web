@@ -99,6 +99,7 @@ export const IssuesTab: React.FC<IssuesTabProps> = ({ projectId, initialType = '
       setStatusFilter('All');
     }
     fetchIssues();
+    fetchEscalationMatrix();
   }, [projectId, activeType]);
 
   const handleDeleteIssue = async (e: React.MouseEvent, issueId: string) => {
