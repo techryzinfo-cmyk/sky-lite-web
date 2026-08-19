@@ -67,9 +67,9 @@ function LoginForm() {
 
 
   return (
-    <div className="min-h-screen xl:h-screen xl:overflow-hidden bg-[#E6F0FF] flex items-center justify-center px-6 py-6 xl:py-0">
-      <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_1fr] gap-6 xl:gap-8 w-full max-w-5xl">
-        <div className="order-2 xl:order-1 rounded-3xl bg-[#0E3B7B] p-6 xl:p-8 text-white shadow-xl overflow-hidden relative flex flex-col justify-between">
+    <div className="min-h-screen lg:h-screen lg:overflow-hidden bg-[#E6F0FF] flex items-center justify-center p-4 sm:p-6 lg:p-0 py-8 lg:py-0">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6 lg:gap-8 w-full max-w-5xl my-auto">
+        <div className="order-2 lg:order-1 rounded-3xl bg-[#0E3B7B] p-6 lg:p-8 text-white shadow-xl overflow-hidden relative flex flex-col justify-between">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.18),_transparent_35%)] pointer-events-none" />
           <div className="relative z-10 flex h-full flex-col justify-between space-y-6">
             <div>
@@ -78,17 +78,17 @@ function LoginForm() {
                 SkyStruct Lite Construction
               </div>
 
-              <h1 className="mt-4 xl:mt-6 text-2xl xl:text-3xl font-extrabold leading-tight tracking-tight">
+              <h1 className="mt-4 lg:mt-6 text-2xl lg:text-3xl font-extrabold leading-tight tracking-tight">
                 Build better projects
                 <span className="text-[#8AC7FF]"> with one login</span>
               </h1>
 
-              <p className="mt-3 xl:mt-4 max-w-xl text-blue-100/90 text-xs xl:text-sm leading-normal">
+              <p className="mt-3 lg:mt-4 max-w-xl text-blue-100/90 text-xs lg:text-sm leading-normal">
                 Access your workspace, manage teams/budgets, or switch to Super Admin mode.
               </p>
             </div>
 
-            <div className="mt-4 xl:mt-6 rounded-2xl border border-white/10 bg-white/10 p-5 xl:p-6 backdrop-blur-xl">
+            <div className="mt-4 lg:mt-6 rounded-2xl border border-white/10 bg-white/10 p-5 lg:p-6 backdrop-blur-xl">
               <p className="text-sm uppercase tracking-[0.24em] text-blue-100/80">Login options</p>
               <div className="mt-4 flex flex-col gap-4">
                 <button
@@ -112,7 +112,7 @@ function LoginForm() {
           </div>
         </div>
 
-        <div className="order-1 xl:order-2 rounded-3xl bg-white p-6 shadow-xl shadow-slate-200/60 border border-slate-200/80 flex flex-col justify-between">
+        <div className="order-1 lg:order-2 rounded-3xl bg-white p-6 lg:p-8 shadow-xl shadow-slate-200/60 border border-slate-200/80 flex flex-col justify-between">
           <div>
             <div className="mb-5 flex items-center justify-between gap-4">
               <div>
@@ -123,7 +123,7 @@ function LoginForm() {
             </div>
 
             {registered && (
-              <div className="mb-3 xl:mb-4 rounded-2xl border border-emerald-100/90 bg-emerald-50 p-2.5 text-xs text-emerald-800">
+              <div className="mb-3 lg:mb-4 rounded-2xl border border-emerald-100/90 bg-emerald-50 p-2.5 text-xs text-emerald-800">
                 Registration successful! Please login with your credentials.
               </div>
             )}
@@ -259,7 +259,7 @@ function LoginForm() {
           </div>
           </div>
 
-          <div className="mt-4 xl:mt-6 text-center text-xs text-slate-400">
+          <div className="mt-4 lg:mt-6 text-center text-xs text-slate-400">
             © 2026 SkyStruct Lite Construction. All rights reserved.
           </div>
         </div>

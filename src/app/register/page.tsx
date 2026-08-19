@@ -68,19 +68,19 @@ export default function RegisterPage() {
   const inputClass = 'w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20';
 
   return (
-    <div className="min-h-screen xl:h-screen xl:overflow-hidden bg-[#E6F0FF] flex items-center justify-center px-6 py-6 xl:py-0">
-      <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-6 xl:gap-8 xl:grid-cols-[1.2fr_1fr]">
-        <aside className="order-2 xl:order-1 relative overflow-hidden rounded-3xl bg-[#0E3B7B] p-6 xl:p-8 text-white shadow-xl flex flex-col justify-between">
+    <div className="min-h-screen lg:h-screen lg:overflow-hidden bg-[#E6F0FF] flex items-center justify-center p-4 sm:p-6 lg:p-0 py-8 lg:py-0">
+      <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-6 lg:gap-8 lg:grid-cols-[1.2fr_1fr] my-auto">
+        <aside className="order-2 lg:order-1 relative overflow-hidden rounded-3xl bg-[#0E3B7B] p-6 lg:p-8 text-white shadow-xl flex flex-col justify-between">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.18),_transparent_35%)]" />
           <div className="relative z-10 flex h-full flex-col justify-between space-y-6">
             <div>
               <Link href="/" className="inline-flex items-center gap-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold shadow-sm"><img src="/icon.png" alt="SkyStruct Lite" className="h-5 w-5 object-contain rounded-sm" /> SkyStruct Lite Construction</Link>
-              <h1 className="mt-4 xl:mt-6 text-2xl xl:text-3xl font-extrabold leading-tight tracking-tight">Set up your team&apos;s<br /><span className="text-[#8AC7FF]">project command centre.</span></h1>
-              <p className="mt-3 xl:mt-4 max-w-xl text-xs xl:text-sm leading-normal text-blue-100/90">Create a workspace where every project, approval, and decision stays connected from day one.</p>
+              <h1 className="mt-4 lg:mt-6 text-2xl lg:text-3xl font-extrabold leading-tight tracking-tight">Set up your team&apos;s<br /><span className="text-[#8AC7FF]">project command centre.</span></h1>
+              <p className="mt-3 lg:mt-4 max-w-xl text-xs lg:text-sm leading-normal text-blue-100/90">Create a workspace where every project, approval, and decision stays connected from day one.</p>
             </div>
-            <div className="mt-4 xl:mt-6 rounded-2xl border border-white/10 bg-white/10 p-5 xl:p-6 backdrop-blur-xl">
+            <div className="mt-4 lg:mt-6 rounded-2xl border border-white/10 bg-white/10 p-5 lg:p-6 backdrop-blur-xl">
               <p className="text-xs uppercase tracking-[0.24em] text-blue-100/80">What happens next</p>
-              <div className="mt-4 xl:mt-5 space-y-3 xl:space-y-4">{[
+              <div className="mt-4 lg:mt-5 space-y-3 lg:space-y-4">{[
                 ['1', 'Create your workspace', 'Add your organisation details and primary account.'],
                 ['2', 'Verify your email', 'Confirm your account securely with a one-time code.'],
                 ['3', 'Invite your team', 'Bring the right people into your first project.'],
@@ -89,7 +89,7 @@ export default function RegisterPage() {
           </div>
         </aside>
 
-        <section className="order-1 xl:order-2 self-center rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xl shadow-slate-200/60 flex flex-col justify-between">
+        <section className="order-1 lg:order-2 self-center rounded-3xl border border-slate-200/80 bg-white p-6 lg:p-8 shadow-xl shadow-slate-200/60 flex flex-col justify-between">
           {showOtp ? <div>
             <button onClick={() => setShowOtp(false)} className="mb-4 inline-flex items-center gap-2 text-xs font-semibold text-slate-600 transition hover:text-slate-900"><ArrowLeft className="size-4" /> Back to registration</button>
             <div className="text-center"><div className="mx-auto grid size-12 place-items-center rounded-2xl bg-blue-50 text-blue-600"><KeyRound className="size-5" /></div><h2 className="mt-4 text-2xl font-extrabold tracking-tight text-slate-900">Verify your workspace</h2><p className="mx-auto mt-2 max-w-sm text-sm leading-normal text-slate-500">We sent a 6-digit code to <span className="font-semibold text-slate-900">{email}</span>. Enter it below to complete setup.</p></div>
