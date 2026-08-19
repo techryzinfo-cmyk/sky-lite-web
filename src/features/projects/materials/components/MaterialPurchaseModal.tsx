@@ -25,6 +25,7 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
 }) => {
   const { project } = useProjectContext();
   const [isLoading, setIsLoading] = useState(false);
+  const [vendors, setVendors] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     vendorName: '',
     vendorEmail: '',
@@ -40,6 +41,12 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
   });
 
   const toast = useToast();
+
+  useEffect(() => {
+    if (isOpen) {
+      api.get('/vendors').then(res => setVendors(res.data)).catch(console.error);
+    }
+  }, [isOpen]);
 
   const addItem = () => {
     setFormData({
@@ -76,7 +83,8 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
         advancePayment: formData.advancePaid,
         items: formData.items.map(({ materialId, quantity, unitPrice }) => ({ materialId, quantity, unitPrice })),
         billNumber: formData.billNumber,
-        commonNote: formData.commonNote
+        commonNote: formData.commonNote,
+        deliveryDate: formData.deliveryDate || null,
       });
       toast.success('Material purchase logged successfully!');
       onSuccess();
@@ -134,14 +142,17 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-slate-600 ml-1">Vendor Name</label>
-                      <input
-                        type="text"
+                      <select
                         required
                         value={formData.vendorName}
                         onChange={(e) => setFormData({ ...formData, vendorName: e.target.value })}
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"
-                        placeholder="e.g. UltraTech Cement"
-                      />
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"
+                      >
+                        <option value="" disabled>Select Vendor</option>
+                        {vendors.map(v => (
+                          <option key={v._id} value={v.name}>{v.name}</option>
+                        ))}
+                      </select>
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-slate-600 ml-1">Bill / Invoice Number</label>
@@ -203,8 +214,9 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
                                   <input
                                     type="number"
                                     required
-                                    value={item.quantity}
-                                    onChange={(e) => updateItem(index, 'quantity', Number(e.target.value))}
+                                    placeholder="0"
+                                    value={item.quantity === 0 ? '' : item.quantity}
+                                    onChange={(e) => updateItem(index, 'quantity', e.target.value === '' ? 0 : Number(e.target.value))}
                                     className="w-full bg-transparent py-1.5 px-3 text-xs text-gray-900 focus:outline-none"
                                   />
                                   <span className="text-[9px] font-bold text-slate-400 uppercase">{item.unit || '-'}</span>
@@ -216,8 +228,9 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
                                   type="number"
                                   required
                                   min={0}
-                                  value={item.unitPrice}
-                                  onChange={(e) => updateItem(index, 'unitPrice', Number(e.target.value))}
+                                  placeholder="0"
+                                  value={item.unitPrice === 0 ? '' : item.unitPrice}
+                                  onChange={(e) => updateItem(index, 'unitPrice', e.target.value === '' ? 0 : Number(e.target.value))}
                                   className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-3 text-xs text-gray-900 focus:outline-none focus:border-blue-500"
                                 />
                               </div>
@@ -269,8 +282,8 @@ export const MaterialPurchaseModal: React.FC<MaterialPurchaseModalProps> = ({
                       <label className="text-sm font-medium text-slate-600 ml-1">Advance Amount ($)</label>
                       <input
                         type="number"
-                        value={formData.advancePaid}
-                        onChange={(e) => setFormData({ ...formData, advancePaid: Number(e.target.value) })}
+                        value={formData.advancePaid === 0 ? '' : formData.advancePaid}
+                        onChange={(e) => setFormData({ ...formData, advancePaid: e.target.value === '' ? 0 : Number(e.target.value) })}
                         className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-4 text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"
                         placeholder="0"
                       />

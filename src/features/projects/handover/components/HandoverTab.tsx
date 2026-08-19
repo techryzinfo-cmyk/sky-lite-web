@@ -8,8 +8,12 @@ import {
   XOctagon, CheckCircle, Wrench, Pencil, Trash2, X, Briefcase
 } from 'lucide-react';
 import api from '@/services/api.client';
+import { uploadToCloudinary } from '@/lib/upload';
 import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
+import { useProjectContext } from '../../contexts/ProjectContext';
+import { hasProjectPermission, isProjectLocked } from '@/lib/permissions';
+import { DocumentViewer } from '@/features/projects/documents/components/DocumentViewer';
 import { AssignSnagModal } from '@/features/projects/issues/components/AssignSnagModal';
 import { CompleteSnagModal } from '@/features/projects/issues/components/CompleteSnagModal';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -34,6 +38,14 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
   const [isApproverModalOpen, setIsApproverModalOpen] = useState(false);
   const [isRejectionModalOpen, setIsRejectionModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+
+  // Handover completion sign-off form
+  const [isCompletionFormOpen, setIsCompletionFormOpen] = useState(false);
+  const [clientRepName, setClientRepName] = useState('');
+  const [handoverDate, setHandoverDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [handoverNotes, setHandoverNotes] = useState('');
+  const [certificateFiles, setCertificateFiles] = useState<{ file: File; previewUrl: string | null }[]>([]);
+  const [uploadingCertificate, setUploadingCertificate] = useState(false);
   
   const [submitting, setSubmitting] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
@@ -68,7 +80,7 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
   const fetchApprovers = useCallback(async () => {
     setLoadingApprovers(true);
     try {
-      const response = await api.get(`/users?projectId=${projectId}&permission=handover:approve`);
+      const response = await api.get(`/users?projectId=${projectId}`);
       setApprovers(Array.isArray(response.data) ? response.data : []);
     } catch (e) {
       console.error('Error fetching handover approvers:', e);
@@ -85,8 +97,8 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
       try {
         const issuesRes = await api.get(`/projects/${projectId}/issues`);
         issues = issuesRes.data || [];
-      } catch (err) {
-        console.error("Error fetching issues:", err);
+      } catch (err: any) {
+        if (err.response?.status !== 403) console.error("Error fetching issues:", err);
       }
       const openIssuesList = issues.filter(i => i.status !== 'Resolved' && i.status !== 'Closed');
 
@@ -95,8 +107,8 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
       try {
         const milestonesRes = await api.get(`/projects/${projectId}/milestones`);
         milestones = milestonesRes.data || [];
-      } catch (err) {
-        console.error("Error fetching milestones:", err);
+      } catch (err: any) {
+        if (err.response?.status !== 403) console.error("Error fetching milestones:", err);
       }
       const incompleteMilestonesList = milestones.filter(m => m.status !== 'Completed');
       const incompleteTasksList = milestones.flatMap(m => m.tasks || []).filter(t => !t.isCompleted);
@@ -106,8 +118,8 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
       try {
         const boqRes = await api.get(`/projects/${projectId}/boq`);
         boqItems = boqRes.data || [];
-      } catch (err) {
-        console.error("Error fetching BOQ:", err);
+      } catch (err: any) {
+        if (err.response?.status !== 403) console.error("Error fetching BOQ:", err);
       }
       const latestBoq = boqItems.filter(b => b.isLatest !== false);
       const pendingBoqsList = latestBoq.filter(b => b.status !== 'Approved');
@@ -117,8 +129,8 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
       try {
         const foldersRes = await api.get(`/projects/${projectId}/folders`);
         folders = foldersRes.data || [];
-      } catch (err) {
-        console.error("Error fetching folders:", err);
+      } catch (err: any) {
+        if (err.response?.status !== 403) console.error("Error fetching folders:", err);
       }
       const allPlans = folders.flatMap(f => f.documents || []);
       const pendingPlansList = allPlans.filter(doc => {
@@ -131,8 +143,8 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
       try {
         const risksRes = await api.get(`/projects/${projectId}/risks`);
         risks = risksRes.data || [];
-      } catch (err) {
-        console.error("Error fetching risks:", err);
+      } catch (err: any) {
+        if (err.response?.status !== 403) console.error("Error fetching risks:", err);
       }
       const activeRisksList = risks.filter(r => r.status === 'Critical' || r.status === 'Active');
 
@@ -163,7 +175,7 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
   }, [projectId]);
 
   useEffect(() => {
-    if (currentStatus === 'Under Snagging' || currentStatus === 'Snagging Completed') {
+    if (currentStatus === 'Under Snagging') {
       fetchSnags();
       setLoading(false);
     } else {
@@ -200,6 +212,7 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
 
   const handleBulkSendForFixing = async () => {
     if (selectedSnagIds.length === 0 || submitting) return;
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     setSubmitting(true);
     try {
       const snagPromises = selectedSnagIds.map(id =>
@@ -228,6 +241,7 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
 
   const handleAssignSnagForFixing = async (assignedUser: any) => {
     if (!assigningSnag || submitting) return;
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     setSubmitting(true);
     try {
       await api.patch(`/snags/${assigningSnag._id}`, {
@@ -252,6 +266,7 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
 
   const handleCompleteSnagAction = async (proofUrl: string, details: string) => {
     if (!completingSnag || submitting) return;
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     setSubmitting(true);
     try {
       await api.patch(`/snags/${completingSnag._id}`, {
@@ -309,38 +324,120 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
     }
   };
 
-  const handleApproveHandover = async (isApproved: boolean) => {
-    if (!isApproved && !isRejectionModalOpen) {
+  const handleRejectHandover = async () => {
+    if (!isRejectionModalOpen) {
       setIsRejectionModalOpen(true);
       return;
     }
-    if (!isApproved && !rejectionReason.trim()) {
+    if (!rejectionReason.trim()) {
       toast.error('Please provide a rejection reason');
       return;
     }
 
     setSubmitting(true);
-    const newStatus = isApproved ? 'Completed' : 'Handover Rejected';
     try {
       await api.patch(`/projects/${projectId}`, {
-        status: newStatus,
-        handoverApprover: isApproved ? project.handoverApprover?._id || project.handoverApprover : null,
-        handoverRejectionReason: isApproved ? null : rejectionReason,
+        status: 'Handover Rejected',
+        handoverApprover: null,
+        handoverRejectionReason: rejectionReason,
         auditAction: 'StatusChange',
-        auditDetails: isApproved
-          ? `Handover verified and approved by ${user?.name}. Project is ready for closure.`
-          : `Handover rejected by ${user?.name}. Reason: ${rejectionReason}. Project reverted.`
+        auditDetails: `Handover rejected by ${user?.name}. Reason: ${rejectionReason}. Project reverted.`
       });
-      toast.success(`Handover ${isApproved ? 'Approved' : 'Rejected'}!`);
+      toast.success('Handover Rejected!');
       setRejectionReason('');
       setIsRejectionModalOpen(false);
       onUpdate();
     } catch (e) {
-      toast.error(`Failed to ${isApproved ? 'approve' : 'reject'} handover`);
+      toast.error('Failed to reject handover');
     } finally {
       setSubmitting(false);
     }
   };
+
+  const handleCertificatesAdd = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const additions = Array.from(files).map(file => ({
+      file,
+      previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
+    }));
+    setCertificateFiles(prev => [...prev, ...additions]);
+  };
+
+  const removeCertificateAt = (index: number) => {
+    setCertificateFiles(prev => {
+      const target = prev[index];
+      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const clearCertificates = () => {
+    setCertificateFiles(prev => {
+      prev.forEach(c => { if (c.previewUrl) URL.revokeObjectURL(c.previewUrl); });
+      return [];
+    });
+  };
+
+  const handleConfirmCompletion = async () => {
+    if (!clientRepName.trim()) {
+      toast.error('Please enter the client representative name');
+      return;
+    }
+    if (!handoverDate) {
+      toast.error('Please select the handover date');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      let certificateUrls: string[] | undefined;
+      if (certificateFiles.length > 0) {
+        setUploadingCertificate(true);
+        certificateUrls = await Promise.all(certificateFiles.map(c => uploadToCloudinary(c.file)));
+        setUploadingCertificate(false);
+      }
+
+      await api.patch(`/projects/${projectId}`, {
+        status: 'Completed',
+        handoverApprover: project.handoverApprover?._id || project.handoverApprover,
+        handoverRejectionReason: null,
+        clientRepName: clientRepName.trim(),
+        handoverDate,
+        handoverNotes: handoverNotes.trim(),
+        ...(certificateUrls ? { handoverCertificateUrls: certificateUrls } : {}),
+        auditAction: 'StatusChange',
+        auditDetails: `Handover verified and approved by ${user?.name}. Client representative: ${clientRepName.trim()}. Project is ready for closure.`
+      });
+      toast.success('Handover Approved!');
+      setIsCompletionFormOpen(false);
+      setClientRepName('');
+      setHandoverNotes('');
+      clearCertificates();
+      onUpdate();
+    } catch (e: any) {
+      console.error('Handover completion failed:', e);
+      toast.error(e?.response?.data?.message || e?.message || 'Failed to approve handover');
+    } finally {
+      setSubmitting(false);
+      setUploadingCertificate(false);
+    }
+  };
+
+  const canViewHandover = hasProjectPermission(user, project, 'handover:view');
+
+  if (!canViewHandover) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 bg-white/60 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm mt-4">
+        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+          <XOctagon className="w-8 h-8 text-slate-400" />
+        </div>
+        <h2 className="text-xl font-bold text-slate-900 mb-2">Access Denied</h2>
+        <p className="text-slate-500 text-sm max-w-sm text-center mb-6">
+          You do not have the required "Handover Management" permission to view this tab.
+        </p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -353,8 +450,11 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
 
   const isAssignedToMe = (project?.snaggedBy?._id || project?.snaggedBy) === currentUserId;
   const isInspector = (project?.snaggedBy?._id || project?.snaggedBy) === currentUserId;
-  const canAssignSnagging = user?.role?.permissions?.includes('*') || user?.role?.permissions?.includes('snag:assign') || user?.role?.name === 'Admin';
-  const canCompleteSnag = user?.role?.permissions?.includes('*') || user?.role?.permissions?.includes('snag:complete') || user?.role?.name === 'Admin';
+  // ── Permissions ────────────────────────────────────────────────────────
+  const isAdmin = user?.role?.name === 'Admin' || user?.role?.permissions?.includes('*');
+  const isLocked = isProjectLocked(project);
+  const canAssignSnagging = !isLocked && hasProjectPermission(user, project, 'snag:assign');
+  const canCompleteSnag = !isLocked && hasProjectPermission(user, project, 'snag:complete');
 
   const renderChecklistGroup = (
     title: string,
@@ -370,14 +470,14 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
     const Icon = icon;
 
     return (
-      <div className="bg-white border border-slate-150 rounded-2xl overflow-hidden shadow-sm">
+      <div className="bg-white border border-slate-100/70 rounded-2xl overflow-hidden shadow-sm">
         <button
           type="button"
           onClick={() => toggleSection(key)}
           className="w-full flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors"
         >
           <div className="flex items-center space-x-3 text-left">
-            <div className={cn('p-2.5 rounded-xl border shrink-0', isOk ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-amber-50 border-amber-100 text-amber-600')}>
+            <div className={cn('p-2 rounded-xl border border-transparent shrink-0', isOk ? 'bg-emerald-50/80 text-emerald-600' : 'bg-amber-50/80 text-amber-600')}>
               <Icon className="w-5 h-5" />
             </div>
             <div>
@@ -389,7 +489,7 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
           </div>
 
           <div className="flex items-center space-x-2">
-            <span className={cn('px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider', isOk ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-150')}>
+            <span className={cn('px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider', isOk ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/20' : 'bg-amber-50 text-amber-700 border border-amber-200/20')}>
               {isOk ? 'PASSED' : 'PENDING'}
             </span>
             {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
@@ -423,16 +523,15 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
 
   // ── Render Completed View ──
   if (currentStatus === 'Completed') {
-    const handoverAudit = project.auditTrail?.find(
-      (log: any) => log.action === 'StatusChange' && log.details?.includes('Project Handover Completed')
-    );
-    const savedClientRep = handoverAudit?.details?.match(/Client Representative:\s*(.*?)(?=\.\s*\w+:|$)/)?.[1] || project.clientRepName || 'N/A';
-    const savedHandoverDate = handoverAudit?.details?.match(/Handover Date:\s*(.*?)(?=\.\s*\w+:|$)/)?.[1] || 'N/A';
-    const savedNotes = handoverAudit?.details?.match(/Notes:\s*(.*?)(?=\.\s*\w+:|$)/)?.[1] || 'None';
-    const savedCertUrl = handoverAudit?.details?.match(/Certificate URL:\s*(.*?)(?=\.\s*\w+:|$)/)?.[1] || '';
+    const savedClientRep = project.clientRepName || 'N/A';
+    const savedHandoverDate = project.handoverDate
+      ? new Date(project.handoverDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+      : 'N/A';
+    const savedNotes = project.handoverNotes || 'None';
+    const savedCertUrls: string[] = Array.isArray(project.handoverCertificateUrls) ? project.handoverCertificateUrls : [];
 
     return (
-      <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="space-y-6">
         <GlassCard className="p-8 text-center border-emerald-200 overflow-hidden relative" gradient>
           <div className="absolute top-0 right-0 p-8 opacity-5">
             <Award className="w-64 h-64 text-emerald-600" />
@@ -462,7 +561,7 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
             </div>
             <div className="bg-gray-50/50 p-4 rounded-xl border border-gray-100">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Certificate</span>
-              <span className="text-slate-800 font-black text-sm mt-1 block">ARCHIVED</span>
+              <span className="text-slate-800 font-black text-sm mt-1 block">{savedCertUrls.length > 0 ? `ARCHIVED (${savedCertUrls.length})` : 'NONE'}</span>
             </div>
           </div>
         </GlassCard>
@@ -473,18 +572,21 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
               <FileText className="w-4 h-4 text-blue-500" />
               Completion Sign-Off
             </h4>
-            <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 flex flex-col items-center justify-center py-6">
-              <Award className="w-12 h-12 text-slate-400 mb-3" />
-              {savedCertUrl ? (
-                <a
-                  href={savedCertUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-md active:scale-95"
-                >
-                  <Download className="w-4 h-4" />
-                  Download Certificate
-                </a>
+            <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 flex flex-col items-center justify-center py-6 gap-2.5">
+              <Award className="w-12 h-12 text-slate-400" />
+              {savedCertUrls.length > 0 ? (
+                savedCertUrls.map((url, i) => (
+                  <a
+                    key={i}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-md active:scale-95 w-full justify-center"
+                  >
+                    <Download className="w-4 h-4" />
+                    {savedCertUrls.length > 1 ? `Certificate ${i + 1}` : 'Download Certificate'}
+                  </a>
+                ))
               ) : (
                 <span className="text-xs text-slate-400 italic">No document attached</span>
               )}
@@ -533,13 +635,13 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
 
   // ── Render Handover Tab Layout ──
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6">
       {/* Tab Header Card */}
-      <div className="flex items-center space-x-4 p-5 bg-white border border-slate-150 rounded-3xl shadow-sm">
+      <div className="flex items-center space-x-4 p-4.5 bg-white/85 backdrop-blur-md border border-slate-200/50 rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05),inset_0_1px_1px_rgba(255,255,255,0.8)]">
         <div className={cn(
-          'p-3 rounded-2xl border shrink-0',
-          currentStatus === 'Pending Handover' ? 'bg-amber-50 border-amber-100 text-amber-600' :
-          currentStatus === 'Handover Rejected' ? 'bg-red-50 border-red-100 text-red-600' : 'bg-blue-50 border-blue-100 text-blue-600'
+          'p-2.5 rounded-xl border border-transparent shrink-0',
+          currentStatus === 'Pending Handover' ? 'bg-amber-50/80 text-amber-600' :
+          currentStatus === 'Handover Rejected' ? 'bg-red-50/80 text-red-600' : 'bg-blue-50/80 text-blue-600'
         )}>
           {currentStatus === 'Pending Handover' ? (
             <Clock className="w-7 h-7 animate-pulse" />
@@ -556,17 +658,17 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
       </div>
 
       {/* 1. Snagging management layout (Under Snagging / Snagging Completed) */}
-      {(currentStatus === 'Under Snagging' || currentStatus === 'Snagging Completed') ? (
+      {currentStatus === 'Under Snagging' ? (
         <div className="space-y-6">
           <div className="bg-slate-50 border border-slate-200 rounded-3xl p-5 shadow-sm">
             <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
               <div className="flex items-center space-x-2">
                 <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
                 <h4 className="text-sm font-bold text-slate-800">
-                  {currentStatus === 'Snagging Completed' ? 'Snagging Completed' : 'Project Under Snagging'}
+                  Project Under Snagging
                 </h4>
               </div>
-              {snags.length > 0 && !isAssignedToMe && selectedSnagIds.length > 0 && (
+              {snags.length > 0 && !isAssignedToMe && !isLocked && selectedSnagIds.length > 0 && (
                 <button
                   onClick={handleBulkSendForFixing}
                   disabled={submitting}
@@ -638,7 +740,7 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
                             Assign
                           </button>
                         )}
-                        {snag.status === 'In Progress' && (isAssignee || canCompleteSnag) && (
+                        {snag.status === 'In Progress' && !isLocked && (isAssignee || canCompleteSnag) && (
                           <button
                             onClick={() => setCompletingSnag(snag)}
                             className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 px-2 py-1 rounded-lg text-[10px] font-bold border border-emerald-100"
@@ -660,6 +762,17 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
           {/* Readiness validation lists */}
           {validationData && (
             <div className="space-y-3">
+              {!validationData.isValid && (
+                <div className="bg-amber-50/60 border border-amber-200/30 rounded-xl p-3.5 mb-3 text-xs text-amber-800 flex items-start space-x-3">
+                  <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-600" />
+                  <div className="space-y-1">
+                    <p className="font-bold">Project is not ready for handover!</p>
+                    <p className="opacity-90 leading-relaxed">
+                      Please resolve all issues, complete all milestones/tasks, and approve drawings, BOQ items, and active risks to initiate the handover process.
+                    </p>
+                  </div>
+                </div>
+              )}
               <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 ml-1">Handover Validation Checks</h4>
               
               {/* Checklist Group Cards */}
@@ -800,7 +913,7 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
             {currentStatus === 'Pending Handover' ? (
               (project.handoverApprover?._id || project.handoverApprover) === currentUserId ? (
                 /* Approver box */
-                <div className="bg-amber-50/30 border border-amber-200 rounded-3xl p-5 text-center space-y-4">
+                <div className="bg-amber-50/20 border border-amber-200/30 rounded-2xl p-4.5 text-center space-y-4">
                   <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl w-fit mx-auto border border-amber-100">
                     <Clock className="w-6 h-6 animate-pulse" />
                   </div>
@@ -812,14 +925,14 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
                   </div>
                   <div className="flex items-center justify-center space-x-3 max-w-xs mx-auto">
                     <button
-                      onClick={() => handleApproveHandover(false)}
+                      onClick={() => handleRejectHandover()}
                       disabled={submitting}
                       className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-red-600/10"
                     >
                       Reject
                     </button>
                     <button
-                      onClick={() => handleApproveHandover(true)}
+                      onClick={() => setIsCompletionFormOpen(true)}
                       disabled={submitting}
                       className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-blue-600/10"
                     >
@@ -829,7 +942,7 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
                 </div>
               ) : (
                 /* Waiting for approver notice */
-                <div className="bg-slate-50 border border-slate-200 rounded-3xl p-5 text-center space-y-3">
+                <div className="bg-slate-50 border border-slate-200/40 rounded-3xl p-5 text-center space-y-3">
                   <div className="p-3 bg-white border text-slate-500 rounded-2xl w-fit mx-auto shadow-sm">
                     <Clock className="w-5 h-5 animate-pulse" />
                   </div>
@@ -846,12 +959,12 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
             ) : currentStatus === 'Handover Rejected' ? (
               /* Handover Rejection box */
               <div className="space-y-4">
-                <div className="bg-red-50 border border-red-200 rounded-3xl p-5 space-y-3">
+                <div className="bg-red-50/60 border border-red-200/30 rounded-2xl p-4.5 space-y-3">
                   <div className="flex items-center space-x-2 text-red-700">
                     <XOctagon className="w-5 h-5 shrink-0" />
                     <h4 className="text-sm font-bold">Handover Request Rejected</h4>
                   </div>
-                  <p className="text-xs text-red-600 font-medium bg-white rounded-2xl p-4 border border-red-100/50 leading-relaxed italic">
+                  <p className="text-xs text-red-600 font-medium bg-white/80 rounded-xl p-3.5 border border-red-100/30 leading-relaxed italic">
                     "{(project as any).handoverRejectionReason || 'No details provided.'}"
                   </p>
                 </div>
@@ -870,7 +983,13 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
               <div className="space-y-4">
                 {validationData?.isValid ? (
                   <button
-                    onClick={() => setIsApproverModalOpen(true)}
+                    onClick={() => {
+                      if (isLocked || !hasProjectPermission(user, project, 'handover:create')) {
+                        toast.error("You don't have permission to initialize handover completion.");
+                        return;
+                      }
+                      setIsApproverModalOpen(true);
+                    }}
                     disabled={submitting}
                     className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-blue-600/10 flex items-center justify-center space-x-2"
                   >
@@ -878,15 +997,13 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
                     <span>Request Project Handover</span>
                   </button>
                 ) : (
-                  <div className="bg-amber-50/50 border border-amber-200 rounded-3xl p-4 text-xs flex items-start space-x-3 text-amber-800">
-                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
-                    <div className="space-y-1">
-                      <p className="font-bold">Project is not ready for handover!</p>
-                      <p className="opacity-90 leading-relaxed">
-                        Please resolve all issues, complete all milestones/tasks, and approve drawings, BOQ items, and active risks to initiate the handover process.
-                      </p>
-                    </div>
-                  </div>
+                  <button
+                    disabled
+                    className="w-full py-3 bg-slate-100 text-slate-400 rounded-xl text-sm font-bold cursor-not-allowed flex items-center justify-center space-x-2 border border-slate-200"
+                  >
+                    <ClipboardCheck className="w-4 h-4 text-slate-400" />
+                    <span>Request Project Handover</span>
+                  </button>
                 )}
               </div>
             )}
@@ -913,7 +1030,7 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
                 <div className="p-6 border-b border-gray-100 flex items-center justify-between shrink-0">
                   <div>
                     <h3 className="text-lg font-bold text-gray-900">Select Handover Approver</h3>
-                    <p className="text-xs text-slate-500 mt-1">Select a member with approval permissions.</p>
+                    <p className="text-xs text-slate-500 mt-1">Pick any project member to review and approve this handover.</p>
                   </div>
                   <button onClick={() => setIsApproverModalOpen(false)} className="p-2 text-slate-400 hover:text-gray-900 bg-gray-50 rounded-xl transition-colors">
                     <X className="w-5 h-5" />
@@ -928,26 +1045,36 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
                     </div>
                   ) : approvers.length === 0 ? (
                     <div className="text-center py-12 text-slate-400 text-xs italic">
-                      No members with `handover:approve` permissions found.
+                      No project members found.
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {approvers.map((approver) => (
-                        <button
-                          key={approver._id}
-                          type="button"
-                          onClick={() => handleRequestHandover(approver)}
-                          className="w-full flex items-center space-x-3 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-2xl text-left transition-all group"
-                        >
-                          <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0">
-                            {approver.name?.[0]?.toUpperCase() || 'U'}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-slate-900 truncate group-hover:text-blue-600 transition-colors">{approver.name}</p>
-                            <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">{approver.role?.name || 'Approver'}</p>
-                          </div>
-                        </button>
-                      ))}
+                      {approvers.map((approver) => {
+                        // Project-specific role is authoritative — a member may have no
+                        // (or a different) global role but still hold a real role on this
+                        // project. Falling back straight to a hardcoded 'Approver' label
+                        // hid everyone's actual role, so resolve it properly instead.
+                        const projectEntry = approver.projects?.find(
+                          (p: any) => String(p.project?._id || p.project) === String(projectId)
+                        );
+                        const roleName = projectEntry?.role?.name || approver.role?.name || 'Member';
+                        return (
+                          <button
+                            key={approver._id}
+                            type="button"
+                            onClick={() => handleRequestHandover(approver)}
+                            className="w-full flex items-center space-x-3 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-2xl text-left transition-all group"
+                          >
+                            <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0">
+                              {approver.name?.[0]?.toUpperCase() || 'U'}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-slate-900 truncate group-hover:text-blue-600 transition-colors">{approver.name}</p>
+                              <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">{roleName}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1004,11 +1131,147 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, project, on
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleApproveHandover(false)}
+                      onClick={() => handleRejectHandover()}
                       disabled={!rejectionReason.trim()}
                       className="flex-[2] py-2.5 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all"
                     >
                       Submit Rejection
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* HANDOVER COMPLETION SIGN-OFF MODAL */}
+      <AnimatePresence>
+        {isCompletionFormOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setIsCompletionFormOpen(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-md relative z-10"
+            >
+              <div className="bg-white rounded-3xl border border-gray-150 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="p-6 border-b border-gray-100 flex items-center justify-between shrink-0">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">Handover Completion Sign-Off</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">Record who accepted the handover and archive a certificate.</p>
+                  </div>
+                  <button onClick={() => setIsCompletionFormOpen(false)} className="p-2 text-slate-400 hover:text-gray-900 bg-gray-50 rounded-xl transition-colors shrink-0">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="p-6 space-y-4 overflow-y-auto">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                      Client Representative *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={clientRepName}
+                      onChange={e => setClientRepName(e.target.value)}
+                      placeholder="Name of the person accepting the handover"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                      Handover Date *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={handoverDate}
+                      onChange={e => setHandoverDate(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                      Feedback / Comments
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={handoverNotes}
+                      onChange={e => setHandoverNotes(e.target.value)}
+                      placeholder="Any closing notes from the client or the team..."
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                      Completion Certificates (optional)
+                    </label>
+
+                    {certificateFiles.length > 0 && (
+                      <div className="space-y-2 mb-2">
+                        {certificateFiles.map((c, i) => (
+                          <div key={i} className="flex items-center gap-3 px-3 py-3 border border-gray-200 rounded-xl bg-slate-50">
+                            {c.previewUrl ? (
+                              <img src={c.previewUrl} alt="Certificate preview" className="w-12 h-12 rounded-lg object-cover border border-gray-200 shrink-0" />
+                            ) : (
+                              <div className="w-12 h-12 rounded-lg bg-white border border-gray-200 flex items-center justify-center shrink-0">
+                                <FileText className="w-5 h-5 text-slate-400" />
+                              </div>
+                            )}
+                            <span className="text-xs text-slate-600 truncate flex-1">{c.file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeCertificateAt(i)}
+                              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                              title="Remove"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <label className="flex items-center gap-3 px-4 py-3 border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50/40 rounded-xl cursor-pointer transition-all">
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        multiple
+                        className="hidden"
+                        onChange={e => { handleCertificatesAdd(e.target.files); e.target.value = ''; }}
+                      />
+                      <FileText className="w-4 h-4 text-slate-400 shrink-0" />
+                      <span className="text-xs text-slate-500">
+                        {certificateFiles.length > 0 ? 'Click to attach more (image or PDF)' : 'Click to attach certificates (image or PDF) — multiple allowed'}
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-end space-x-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsCompletionFormOpen(false)}
+                      className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600 text-xs font-bold transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmCompletion}
+                      disabled={submitting || uploadingCertificate || !clientRepName.trim() || !handoverDate}
+                      className="flex-[2] py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
+                    >
+                      {(submitting || uploadingCertificate) && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      {uploadingCertificate ? 'Uploading…' : 'Confirm & Complete Handover'}
                     </button>
                   </div>
                 </div>

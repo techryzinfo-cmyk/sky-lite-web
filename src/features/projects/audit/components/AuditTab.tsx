@@ -33,10 +33,12 @@ const ACTION_META: Record<string, { icon: React.ElementType; color: string; dotC
   // Members
   MemberAdded:    { icon: UserPlus,       color: 'text-sky-700 bg-sky-50 border-sky-200', dotColor: 'bg-sky-500 ring-sky-100', label: 'Member Added',     category: 'members' },
   MemberRemoved:  { icon: UserMinus,      color: 'text-amber-700 bg-amber-50 border-amber-200', dotColor: 'bg-amber-500 ring-amber-100', label: 'Member Removed',   category: 'members' },
-  // Issues
-  IssueAdded:     { icon: AlertCircle,    color: 'text-red-700 bg-red-50 border-red-200', dotColor: 'bg-red-500 ring-red-100', label: 'Issue Raised',     category: 'issues'  },
-  IssueUpdated:   { icon: AlertTriangle,  color: 'text-orange-700 bg-orange-50 border-orange-200', dotColor: 'bg-orange-500 ring-orange-100', label: 'Issue Updated',    category: 'issues'  },
-  IssueDeleted:   { icon: Trash2,         color: 'text-red-700 bg-red-50 border-red-200', dotColor: 'bg-red-500 ring-red-100', label: 'Issue Deleted',    category: 'issues'  },
+  // Issues — filed under the same "snags" category everywhere else in the
+  // app (Snags & Issues Management is one combined module), so they share
+  // a single audit filter/count instead of a separate "Issues" bucket.
+  IssueAdded:     { icon: AlertCircle,    color: 'text-red-700 bg-red-50 border-red-200', dotColor: 'bg-red-500 ring-red-100', label: 'Issue Raised',     category: 'snags'  },
+  IssueUpdated:   { icon: AlertTriangle,  color: 'text-orange-700 bg-orange-50 border-orange-200', dotColor: 'bg-orange-500 ring-orange-100', label: 'Issue Updated',    category: 'snags'  },
+  IssueDeleted:   { icon: Trash2,         color: 'text-red-700 bg-red-50 border-red-200', dotColor: 'bg-red-500 ring-red-100', label: 'Issue Deleted',    category: 'snags'  },
   // Snags
   SnagAdded:      { icon: Wrench,         color: 'text-orange-700 bg-orange-50 border-orange-200', dotColor: 'bg-orange-500 ring-orange-100', label: 'Snag Reported',    category: 'snags'   },
   SnagUpdated:    { icon: Hammer,         color: 'text-amber-700 bg-amber-50 border-amber-200', dotColor: 'bg-amber-500 ring-amber-100', label: 'Snag Updated',     category: 'snags'   },
@@ -54,7 +56,6 @@ const ACTION_META: Record<string, { icon: React.ElementType; color: string; dotC
 const FILTERS = [
   { key: 'all',     label: 'All',     icon: History },
   { key: 'project', label: 'Project', icon: Folder },
-  { key: 'issues',  label: 'Issues',  icon: AlertCircle },
   { key: 'snags',   label: 'Snags',   icon: Wrench },
   { key: 'risks',   label: 'Risks',   icon: AlertTriangle },
   { key: 'members', label: 'Members', icon: Users },
@@ -131,7 +132,7 @@ export const AuditTab: React.FC<AuditTabProps> = ({ project }) => {
   }, [allEntries, activeFilter]);
 
   const totalByCategory = useMemo(() => {
-    const counts: Record<string, number> = { project: 0, issues: 0, snags: 0, risks: 0, members: 0, finance: 0 };
+    const counts: Record<string, number> = { project: 0, snags: 0, risks: 0, members: 0, finance: 0 };
     allEntries.forEach(e => {
       const cat = (ACTION_META[e.action] || ACTION_META.Update)?.category;
       if (cat && counts[cat] !== undefined) {
@@ -159,7 +160,7 @@ export const AuditTab: React.FC<AuditTabProps> = ({ project }) => {
   }, [paginatedLogs]);
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto px-1 sm:px-4">
+    <div className="space-y-6 px-1 sm:px-4">
       {/* Header Info */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -181,12 +182,12 @@ export const AuditTab: React.FC<AuditTabProps> = ({ project }) => {
           <p className="text-2xl font-black text-blue-600">{allEntries.length}</p>
         </GlassCard>
         <GlassCard className="p-4 border-gray-200" gradient>
-          <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Issues</p>
-          <p className="text-2xl font-black text-red-600">{totalByCategory.issues}</p>
-        </GlassCard>
-        <GlassCard className="p-4 border-gray-200" gradient>
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Snags</p>
           <p className="text-2xl font-black text-orange-600">{totalByCategory.snags}</p>
+        </GlassCard>
+        <GlassCard className="p-4 border-gray-200" gradient>
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Risks</p>
+          <p className="text-2xl font-black text-yellow-600">{totalByCategory.risks}</p>
         </GlassCard>
         <GlassCard className="p-4 border-gray-200" gradient>
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Finance</p>

@@ -15,7 +15,7 @@ export default function NotFound() {
           <FileQuestion className="w-12 h-12 text-blue-500" />
         </div>
 
-        <h1 className="text-8xl font-black text-gray-900 mb-2">404</h1>
+        <h1 className="text-8xl font-extrabold text-gray-900 mb-2">404</h1>
         <h2 className="text-2xl font-bold text-gray-900 mb-3">Page Not Found</h2>
         <p className="text-slate-500 mb-8 leading-relaxed">
           The page you're looking for doesn't exist or has been moved. Double-check the URL or head back to safety.

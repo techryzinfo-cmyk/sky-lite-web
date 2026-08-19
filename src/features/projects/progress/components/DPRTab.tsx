@@ -25,12 +25,16 @@ import { cn } from '@/lib/utils';
 import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
 import { DPRModal } from '@/features/projects/progress/components/DPRModal';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
+import { isProjectLocked } from '@/lib/permissions';
 
 interface DPRTabProps {
   projectId: string;
 }
 
 export const DPRTab: React.FC<DPRTabProps> = ({ projectId }) => {
+  const { project } = useProjectContext();
+  const isLocked = isProjectLocked(project);
   const [reports, setReports] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>(null);
   const [chartTab, setChartTab] = useState<'overTime' | 'weekly' | 'monthly'>('overTime');
@@ -121,13 +125,15 @@ export const DPRTab: React.FC<DPRTabProps> = ({ projectId }) => {
               <p className="text-xl font-black text-blue-600">{reports[0] ? new Date(reports[0].createdAt).toLocaleDateString() : 'N/A'}</p>
             </div>
           </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Post Update</span>
-          </button>
+          {!isLocked && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Post Update</span>
+            </button>
+          )}
         </div>
       </div>
 

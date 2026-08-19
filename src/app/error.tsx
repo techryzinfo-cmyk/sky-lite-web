@@ -17,7 +17,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
           <AlertTriangle className="w-12 h-12 text-red-500" />
         </div>
 
-        <h1 className="text-8xl font-black text-gray-900 mb-2">500</h1>
+        <h1 className="text-8xl font-extrabold text-gray-900 mb-2">500</h1>
         <h2 className="text-2xl font-bold text-gray-900 mb-3">Something Went Wrong</h2>
         <p className="text-slate-500 mb-3 leading-relaxed">
           An unexpected error occurred. The team has been notified. You can try refreshing the page or go back to the dashboard.

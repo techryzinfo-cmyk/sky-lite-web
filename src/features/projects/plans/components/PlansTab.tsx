@@ -6,12 +6,15 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Folder, FolderPlus, MoreVertical, FileText, ChevronRight,
-  CheckCircle2, XCircle, Clock, X, Loader2,
+  CheckCircle2, XCircle, Clock, X, Loader2, Lock,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
 import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
+import { useAuth } from '@/providers/AuthContext';
+import { hasProjectPermission, isProjectLocked } from '@/lib/permissions';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 import { PlanRoom } from '@/features/projects/plans/components/PlanRoom';
 
 interface PlansTabProps {
@@ -19,6 +22,14 @@ interface PlansTabProps {
 }
 
 export const PlansTab: React.FC<PlansTabProps> = ({ projectId }) => {
+  const { user } = useAuth();
+  const { project } = useProjectContext();
+  const isAdmin = user?.role?.name === 'Admin' || (user?.role?.permissions?.includes('*') ?? false);
+  const isLocked = isProjectLocked(project);
+  const canView = isAdmin || hasProjectPermission(user, project, 'plans:view');
+  const canCreate = !isLocked && (isAdmin || hasProjectPermission(user, project, 'plans:create'));
+  const canUpdate = !isLocked && (isAdmin || hasProjectPermission(user, project, 'plans:update') || hasProjectPermission(user, project, 'plans:edit'));
+  const canDelete = !isLocked && (isAdmin || hasProjectPermission(user, project, 'plans:delete'));
   const [folders, setFolders]                     = useState<any[]>([]);
   const [loading, setLoading]                     = useState(true);
   const [selectedFolderId, setSelectedFolderId]   = useState<string | null>(null);
@@ -95,6 +106,17 @@ export const PlansTab: React.FC<PlansTabProps> = ({ projectId }) => {
 
   const selectedFolder = folders.find(f => f._id === selectedFolderId);
 
+  if (!canView) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+          <Lock className="w-6 h-6 text-gray-400" />
+        </div>
+        <p className="text-sm font-bold text-slate-500">You don't have permission to view the Drawing Management module.</p>
+      </div>
+    );
+  }
+
   return (
     <SkeletonLoader loading={loading} preset="list">
       {/* AnimatePresence mode="wait" smoothly swaps folder grid ↔ PlanRoom
@@ -134,13 +156,15 @@ export const PlansTab: React.FC<PlansTabProps> = ({ projectId }) => {
                     : 'Create folders to organise your drawings and plans.'}
                 </p>
               </div>
-              <button
-                onClick={() => setIsCreateModalOpen(true)}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-blue-600/20 active:scale-[0.98]"
-              >
-                <FolderPlus className="w-4 h-4" />
-                <span>New Folder</span>
-              </button>
+              {canCreate && (
+                <button
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-blue-600/20 active:scale-[0.98]"
+                >
+                  <FolderPlus className="w-4 h-4" />
+                  <span>New Folder</span>
+                </button>
+              )}
             </div>
 
             {/* Folder grid */}
@@ -164,30 +188,36 @@ export const PlansTab: React.FC<PlansTabProps> = ({ projectId }) => {
                         <div className="p-3 rounded-2xl bg-blue-50 border border-blue-100 group-hover/folder:bg-blue-100 transition-colors">
                           <Folder className="w-6 h-6 text-blue-600" />
                         </div>
-                        <div className="relative" onClick={e => e.stopPropagation()}>
-                          <button
-                            onClick={() => setFolderMenuId(folderMenuId === folder._id ? null : folder._id)}
-                            className="p-1.5 text-slate-400 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100"
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
-                          {folderMenuId === folder._id && (
-                            <div className="absolute right-0 top-8 w-36 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
-                              <button
-                                onClick={() => { setRenamingFolder({ _id: folder._id, name: folder.name }); setFolderMenuId(null); }}
-                                className="w-full px-4 py-2.5 text-left text-sm font-semibold text-slate-600 hover:bg-gray-50 transition-colors"
-                              >
-                                Rename
-                              </button>
-                              <button
-                                onClick={() => handleDeleteFolder(folder._id)}
-                                className="w-full px-4 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                        {(canUpdate || canDelete) && (
+                          <div className="relative" onClick={e => e.stopPropagation()}>
+                            <button
+                              onClick={() => setFolderMenuId(folderMenuId === folder._id ? null : folder._id)}
+                              className="p-1.5 text-slate-400 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                            {folderMenuId === folder._id && (
+                              <div className="absolute right-0 top-8 w-36 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                                {canUpdate && (
+                                  <button
+                                    onClick={() => { setRenamingFolder({ _id: folder._id, name: folder.name }); setFolderMenuId(null); }}
+                                    className="w-full px-4 py-2.5 text-left text-sm font-semibold text-slate-600 hover:bg-gray-50 transition-colors"
+                                  >
+                                    Rename
+                                  </button>
+                                )}
+                                {canDelete && (
+                                  <button
+                                    onClick={() => handleDeleteFolder(folder._id)}
+                                    className="w-full px-4 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                                  >
+                                    Delete
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       <h4 className="text-base font-black text-gray-900 mb-0.5 group-hover/folder:text-blue-700 transition-colors truncate">
@@ -252,13 +282,15 @@ export const PlansTab: React.FC<PlansTabProps> = ({ projectId }) => {
                   <p className="text-sm text-slate-400 mt-1.5 max-w-xs">
                     Create a folder to start organising technical drawings and plans.
                   </p>
-                  <button
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="mt-5 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-500 transition-all shadow-sm"
-                  >
-                    <FolderPlus className="w-4 h-4" />
-                    New Folder
-                  </button>
+                  {canCreate && (
+                    <button
+                      onClick={() => setIsCreateModalOpen(true)}
+                      className="mt-5 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-500 transition-all shadow-sm"
+                    >
+                      <FolderPlus className="w-4 h-4" />
+                      New Folder
+                    </button>
+                  )}
                 </div>
               )}
             </div>

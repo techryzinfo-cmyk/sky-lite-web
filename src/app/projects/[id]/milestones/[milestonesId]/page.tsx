@@ -15,6 +15,9 @@ import { cn } from '@/lib/utils';
 import api from '@/services/api.client';
 import { uploadToCloudinary } from '@/lib/upload';
 import { useToast } from '@/providers/ToastContext';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
+import { useAuth } from '@/providers/AuthContext';
+import { isProjectLocked, hasProjectPermission } from '@/lib/permissions';
 
 type MilestoneStatus = 'Pending' | 'In Progress' | 'Completed' | 'On Hold';
 const STATUS_OPTIONS: MilestoneStatus[] = ['Pending', 'In Progress', 'Completed', 'On Hold'];
@@ -43,10 +46,24 @@ const emptySubmitForm = (): SubmitForm => ({
 
 const inputCls = "w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all";
 
+// Native date inputs only open the calendar popup when the tiny icon glyph
+// is clicked — clicking anywhere else in the box just places a text cursor.
+// Force the picker open on any click within the field.
+const openDatePicker = (e: React.MouseEvent<HTMLInputElement>) => {
+  try { (e.currentTarget as any).showPicker?.(); } catch {}
+};
+
 export default function MilestoneDetailPage() {
   const { id: projectId, milestonesId: milestoneId } = useParams<{ id: string; milestonesId: string }>();
   const router = useRouter();
   const toast = useToast();
+  const { project } = useProjectContext();
+  const { user } = useAuth();
+  const isLocked = isProjectLocked(project);
+  const canCreate  = !isLocked && hasProjectPermission(user, project, 'tasks:create');
+  const canUpdate  = !isLocked && hasProjectPermission(user, project, 'tasks:update');
+  const canAssign  = !isLocked && hasProjectPermission(user, project, 'tasks:assign');
+  const canComplete = !isLocked && hasProjectPermission(user, project, 'tasks:complete');
 
   const [milestone, setMilestone]   = useState<any>(null);
   const [members, setMembers]       = useState<Member[]>([]);
@@ -124,6 +141,7 @@ export default function MilestoneDetailPage() {
 
   // ── Status change ────────────────────────────────────────────────────────────
   const handleStatusChange = async (status: MilestoneStatus) => {
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     setSavingStatus(true);
     try {
       const res = await api.patch(`/projects/${projectId}/milestones/${milestoneId}`, { status });
@@ -135,6 +153,8 @@ export default function MilestoneDetailPage() {
 
   // ── Submit task ──────────────────────────────────────────────────────────────
   const handleSubmitTask = async (taskIndex: number) => {
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
+    if (!canComplete) { toast.error("You don't have permission to complete tasks."); return; }
     const form = submitForms[taskIndex] ?? emptySubmitForm();
     setSubmitting(taskIndex);
     const tasks: any[] = milestone.tasks || [];
@@ -196,6 +216,8 @@ export default function MilestoneDetailPage() {
 
   // ── Uncheck task ─────────────────────────────────────────────────────────────
   const handleUncheck = async (taskIndex: number) => {
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
+    if (!canComplete) { toast.error("You don't have permission to complete tasks."); return; }
     setSubmitting(taskIndex);
     const tasks: any[] = milestone.tasks || [];
     const updatedTasks = tasks.map((t: any, i: number) =>
@@ -212,6 +234,8 @@ export default function MilestoneDetailPage() {
 
   // ── Edit task ────────────────────────────────────────────────────────────────
   const openEdit = (taskIndex: number) => {
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
+    if (!canUpdate && !canAssign) { toast.error("You don't have permission to edit tasks."); return; }
     const t = milestone.tasks[taskIndex];
     setEditingTask({
       taskIndex,
@@ -226,6 +250,11 @@ export default function MilestoneDetailPage() {
 
   const handleSaveEdit = async () => {
     if (!editingTask) return;
+    if (!canUpdate && !canAssign) { toast.error("You don't have permission to edit tasks."); return; }
+    if (!editingTask.form.assignedTo) {
+      toast.error('Please assign this task to a team member');
+      return;
+    }
     const { startDate, endDate } = editingTask.form;
     if (startDate && endDate && endDate < startDate) {
       toast.error('End date cannot be before start date');
@@ -256,6 +285,13 @@ export default function MilestoneDetailPage() {
   // ── Add task ─────────────────────────────────────────────────────────────────
   const handleAddTask = async () => {
     if (!addTaskForm.title.trim()) return;
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
+    if (!canCreate) { toast.error("You don't have permission to create tasks."); return; }
+    if (!addTaskForm.assignedTo) {
+      toast.error('Please assign this task to a team member');
+      return;
+    }
+    if (!canAssign) { toast.error("You don't have permission to assign tasks."); return; }
     if (addTaskForm.startDate && addTaskForm.endDate && addTaskForm.endDate < addTaskForm.startDate) {
       toast.error('End date cannot be before start date');
       return;
@@ -306,24 +342,25 @@ export default function MilestoneDetailPage() {
         </button>
 
         {/* ── Milestone header ── */}
-        <GlassCard className="p-6 border-gray-200" gradient>
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div className="flex items-start gap-4 flex-1 min-w-0">
-              <div className="w-12 h-12 rounded-2xl bg-blue-100 border border-blue-200 flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
                 <Flag className="w-6 h-6 text-blue-600" />
               </div>
               <div className="flex-1 min-w-0">
-                <h1 className="text-2xl font-bold text-gray-900 leading-tight">{milestone.name}</h1>
+                <h1 className="text-xl font-semibold text-gray-900 leading-tight truncate">{milestone.name}</h1>
                 {milestone.description && (
-                  <p className="text-sm text-slate-500 mt-1 leading-relaxed">{milestone.description}</p>
+                  <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">{milestone.description}</p>
                 )}
-                <div className="flex flex-wrap items-center gap-3 mt-3">
+                <div className="flex flex-wrap items-center gap-3 mt-4">
                   <div className="flex items-center gap-2">
                     {savingStatus && <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin" />}
                     <select
                       value={milestone.status || 'Pending'}
                       onChange={e => handleStatusChange(e.target.value as MilestoneStatus)}
-                      className={cn('px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border cursor-pointer focus:outline-none appearance-none', getStatusStyle(milestone.status))}
+                      disabled={isLocked}
+                      className={cn('px-2.5 py-1 rounded-md text-[10px] font-medium border focus:outline-none appearance-none', isLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer', getStatusStyle(milestone.status))}
                     >
                       {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
@@ -335,7 +372,7 @@ export default function MilestoneDetailPage() {
                     </span>
                   )}
                   {milestone.completedAt && (
-                    <span className="flex items-center gap-1.5 text-xs text-emerald-600">
+                    <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       Completed {new Date(milestone.completedAt).toLocaleDateString()}
                     </span>
@@ -345,48 +382,50 @@ export default function MilestoneDetailPage() {
             </div>
 
             {/* Progress ring */}
-            <div className="flex flex-col items-center gap-1 shrink-0">
-              <div className="relative w-20 h-20">
-                <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
-                  <circle cx="40" cy="40" r="32" fill="none" stroke="#e5e7eb" strokeWidth="8" />
+            <div className="flex flex-col items-center gap-2 shrink-0">
+              <div className="relative w-16 h-16">
+                <svg className="w-16 h-16 -rotate-90" viewBox="0 0 80 80">
+                  <circle cx="40" cy="40" r="32" fill="none" stroke="#f3f4f6" strokeWidth="6" />
                   <circle
                     cx="40" cy="40" r="32" fill="none"
                     stroke={milestone.status === 'Completed' ? '#10b981' : milestone.status === 'On Hold' ? '#f59e0b' : '#3b82f6'}
-                    strokeWidth="8" strokeLinecap="round"
+                    strokeWidth="6" strokeLinecap="round"
                     strokeDasharray={`${2 * Math.PI * 32}`}
                     strokeDashoffset={`${2 * Math.PI * 32 * (1 - progress / 100)}`}
                     className="transition-all duration-500"
                   />
                 </svg>
-                <span className="absolute inset-0 flex items-center justify-center text-lg font-black text-gray-900">{progress}%</span>
+                <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-gray-900">{progress}%</span>
               </div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{completedCount}/{tasks.length} Tasks</p>
+              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{completedCount}/{tasks.length} Tasks</p>
             </div>
           </div>
-        </GlassCard>
+        </div>
 
         {/* ── Task list ── */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-gray-900">Tasks</h2>
+            {canCreate && (
             <button
               onClick={() => setShowAddTask(v => !v)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-all shadow-sm"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-all shadow-sm"
             >
               <Plus className="w-4 h-4" />
               Add Task
             </button>
+            )}
           </div>
 
           {/* ── Add task inline form ── */}
           <AnimatePresence>
             {showAddTask && (
               <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
-                <GlassCard className="p-5 border-blue-200 bg-blue-50/30" gradient>
-                  <p className="text-xs font-black text-blue-700 uppercase tracking-wider mb-4">New Task</p>
+                <div className="p-5 border border-blue-100 bg-blue-50/30 rounded-xl shadow-sm">
+                  <p className="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-4">New Task</p>
                   <div className="space-y-3">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Title *</label>
+                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Title *</label>
                       <input
                         autoFocus type="text" value={addTaskForm.title}
                         onChange={e => setAddTaskForm(p => ({ ...p, title: e.target.value }))}
@@ -395,15 +434,16 @@ export default function MilestoneDetailPage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Description</label>
+                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Description</label>
                       <input type="text" value={addTaskForm.description}
                         onChange={e => setAddTaskForm(p => ({ ...p, description: e.target.value }))}
                         className={inputCls} placeholder="Optional details..." />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Start Date</label>
+                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Start Date</label>
                         <input type="date" value={addTaskForm.startDate}
+                          onClick={openDatePicker}
                           onChange={e => {
                             const s = e.target.value;
                             setAddTaskForm(p => ({
@@ -415,19 +455,20 @@ export default function MilestoneDetailPage() {
                           className={inputCls} />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">End Date</label>
+                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">End Date</label>
                         <input type="date" value={addTaskForm.endDate}
                           min={addTaskForm.startDate || undefined}
+                          onClick={openDatePicker}
                           onChange={e => setAddTaskForm(p => ({ ...p, endDate: e.target.value }))}
                           className={inputCls} />
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assign To</label>
+                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Assign To *</label>
                       <select value={addTaskForm.assignedTo}
                         onChange={e => setAddTaskForm(p => ({ ...p, assignedTo: e.target.value }))}
                         className={inputCls}>
-                        <option value="">— Unassigned —</option>
+                        <option value="">— Select a team member —</option>
                         {members.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
                       </select>
                     </div>
@@ -435,34 +476,36 @@ export default function MilestoneDetailPage() {
                       <button
                         type="button"
                         onClick={() => { setShowAddTask(false); setAddTaskForm({ title: '', description: '', startDate: '', endDate: '', assignedTo: '' }); }}
-                        className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-slate-600 transition-all"
+                        className="flex-1 py-2.5 rounded-md bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-slate-600 transition-all"
                       >
                         Cancel
                       </button>
                       <button
                         type="button" onClick={handleAddTask}
-                        disabled={isSavingAdd || !addTaskForm.title.trim()}
-                        className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-sm font-bold text-white transition-all flex items-center justify-center gap-2"
+                        disabled={isSavingAdd || !addTaskForm.title.trim() || !addTaskForm.assignedTo}
+                        className="flex-1 py-2.5 rounded-md bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-sm font-medium text-white transition-all flex items-center justify-center gap-2"
                       >
                         {isSavingAdd ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4" />Add Task</>}
                       </button>
                     </div>
                   </div>
-                </GlassCard>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
 
           {tasks.length === 0 && !showAddTask && (
-            <div className="flex flex-col items-center justify-center py-24 border-2 border-dashed border-gray-200 rounded-3xl">
+            <div className="flex flex-col items-center justify-center py-24 border-2 border-dashed border-gray-200 rounded-xl">
               <AlertCircle className="w-12 h-12 text-gray-300 mb-4" />
               <p className="text-slate-500 font-medium">No tasks yet.</p>
-              <button
-                onClick={() => setShowAddTask(true)}
-                className="mt-3 text-sm font-bold text-blue-600 hover:text-blue-500 transition-colors"
-              >
-                + Add the first task
-              </button>
+              {canCreate && (
+                <button
+                  onClick={() => setShowAddTask(true)}
+                  className="mt-3 text-sm font-medium text-blue-600 hover:text-blue-500 transition-colors"
+                >
+                  + Add the first task
+                </button>
+              )}
             </div>
           )}
 
@@ -473,7 +516,7 @@ export default function MilestoneDetailPage() {
             const isExpanded  = expandedTask === i;
 
             return (
-              <GlassCard key={i} className={cn('border transition-all', task.isCompleted ? 'border-emerald-100 bg-emerald-50/40' : 'border-gray-200 hover:border-blue-200')} gradient>
+              <div key={i} className={cn('bg-white rounded-xl shadow-sm border transition-all overflow-hidden', task.isCompleted ? 'border-emerald-100 bg-emerald-50/20' : 'border-gray-200 hover:border-blue-200')}>
 
                 {/* Task header row — click anywhere to open submit form (incomplete) or toggle detail (completed) */}
                 <div
@@ -481,7 +524,7 @@ export default function MilestoneDetailPage() {
                   onClick={() => {
                     if (task.isCompleted) {
                       setExpandedTask(isExpanded ? null : i);
-                    } else {
+                    } else if (canComplete) {
                       const opening = !form.open;
                       setForm(i, {
                         open: opening,
@@ -496,11 +539,12 @@ export default function MilestoneDetailPage() {
                   <button
                     onClick={e => {
                       e.stopPropagation();
+                      if (!canComplete) return;
                       task.isCompleted
                         ? handleUncheck(i)
                         : setForm(i, { open: !form.open, ...((!form.open && form.materials.length === 0 && materials.length > 0) ? { materials: [{ materialId: '', quantity: '' }] } : {}) });
                     }}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !canComplete}
                     className="shrink-0 mt-0.5 focus:outline-none"
                   >
                     {isSubmitting
@@ -519,7 +563,7 @@ export default function MilestoneDetailPage() {
                       </p>
                       <div className="flex items-center gap-1 shrink-0">
                         {/* Edit — only if not completed */}
-                        {!task.isCompleted && (
+                        {!task.isCompleted && !isLocked && (canUpdate || canAssign) && (
                           <button
                             onClick={e => { e.stopPropagation(); openEdit(i); }}
                             className="p-1.5 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
@@ -595,7 +639,7 @@ export default function MilestoneDetailPage() {
                   {!task.isCompleted && form.open && (
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
                       <div className="px-5 pb-5 pt-4 border-t border-blue-100 bg-blue-50/30 space-y-5">
-                        <p className="text-xs font-black text-blue-700 uppercase tracking-wider">Submit Task Completion</p>
+                        <p className="text-xs font-bold text-blue-700 uppercase tracking-wider">Submit Task Completion</p>
 
                         <div className="grid md:grid-cols-2 gap-5">
                           {/* Left col — note + photo */}
@@ -739,7 +783,7 @@ export default function MilestoneDetailPage() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </GlassCard>
+              </div>
             );
           })}
         </div>
@@ -780,6 +824,7 @@ export default function MilestoneDetailPage() {
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Start</label>
                     <input type="date" value={editingTask.form.startDate}
+                      onClick={openDatePicker}
                       onChange={e => {
                         const s = e.target.value;
                         setEditingTask(p => p ? {
@@ -797,22 +842,23 @@ export default function MilestoneDetailPage() {
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">End</label>
                     <input type="date" value={editingTask.form.endDate}
                       min={editingTask.form.startDate || undefined}
+                      onClick={openDatePicker}
                       onChange={e => setEditingTask(p => p ? { ...p, form: { ...p.form, endDate: e.target.value } } : null)}
                       className={inputCls} />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assign To</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assign To *</label>
                   <select value={editingTask.form.assignedTo}
                     onChange={e => setEditingTask(p => p ? { ...p, form: { ...p.form, assignedTo: e.target.value } } : null)}
                     className={inputCls}>
-                    <option value="">— Unassigned —</option>
+                    <option value="">— Select a team member —</option>
                     {members.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
                   </select>
                 </div>
                 <div className="flex gap-3 pt-1">
                   <button onClick={() => setEditingTask(null)} className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-slate-600 transition-all">Cancel</button>
-                  <button onClick={handleSaveEdit} disabled={isSavingEdit || !editingTask.form.title.trim()}
+                  <button onClick={handleSaveEdit} disabled={isSavingEdit || !editingTask.form.title.trim() || !editingTask.form.assignedTo}
                     className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-sm font-bold text-white transition-all flex items-center justify-center gap-2">
                     {isSavingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle2 className="w-4 h-4" />Save</>}
                   </button>

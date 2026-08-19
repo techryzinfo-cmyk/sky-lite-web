@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ArrowLeft, Upload, FileText, Trash2, CheckCircle2, XCircle,
   Clock, Eye, Send, Loader2, UserCheck, MessageSquare, PenLine,
@@ -10,8 +10,11 @@ import api from '@/services/api.client';
 import { uploadToCloudinary } from '@/lib/upload';
 import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
+import { hasProjectPermission, isProjectLocked } from '@/lib/permissions';
+import { useProjectContext } from '@/features/projects/contexts/ProjectContext';
 import { DocumentViewer } from '@/features/projects/documents/components/DocumentViewer';
 import { UserPickerModal } from '@/components/modals/UserPickerModal';
+import { PlanAnnotator } from './PlanAnnotator';
 
 interface PlanRoomProps {
   folder: any;
@@ -21,42 +24,53 @@ interface PlanRoomProps {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  Approved : 'text-emerald-700 bg-emerald-50  border-emerald-200',
-  Rejected : 'text-red-700    bg-red-50       border-red-200',
-  Pending  : 'text-amber-700  bg-amber-50     border-amber-200',
-  Draft    : 'text-slate-500  bg-gray-100     border-gray-200',
+  Approved: 'text-emerald-700 bg-emerald-50  border-emerald-200',
+  Rejected: 'text-red-700    bg-red-50       border-red-200',
+  Pending: 'text-amber-700  bg-amber-50     border-amber-200',
+  Draft: 'text-slate-500  bg-gray-100     border-gray-200',
 };
 
 export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, onUpdate }) => {
-  const [isUploading, setIsUploading]             = useState(false);
-  const [isProcessing, setIsProcessing]           = useState(false);
-  const [viewingDoc, setViewingDoc]               = useState<any>(null);
-  const [annotationCounts, setAnnotationCounts]   = useState<Record<string, number>>({});
-  const [approverDocId, setApproverDocId]         = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [viewingDoc, setViewingDoc] = useState<any>(null);
+  const [annotatingDoc, setAnnotatingDoc] = useState<any>(null);
+  const [annotationCounts, setAnnotationCounts] = useState<Record<string, number>>({});
+  const [approverDocId, setApproverDocId] = useState<string | null>(null);
 
-  const toast   = useToast();
+  const toast = useToast();
   const { user } = useAuth();
-  const isAdmin = user?.role?.name === 'Admin';
+  const { project } = useProjectContext();
+  
+  const isLocked = isProjectLocked(project);
+  const canDeleteDocument = !isLocked && hasProjectPermission(user, project, 'plans:delete');
+  const canCreatePlans = !isLocked && hasProjectPermission(user, project, 'plans:create');
+  const canEditPlans = !isLocked && (hasProjectPermission(user, project, 'plans:update') || hasProjectPermission(user, project, 'plans:edit'));
+  const canApprovePlans = !isLocked && hasProjectPermission(user, project, 'plans:approve');
+  const canAssignPlans = !isLocked && hasProjectPermission(user, project, 'plans:assign');
+  const isAdmin = user?.role?.name === 'Admin' || (user?.role?.permissions?.includes('*') ?? false);
+  const canViewAnnotations = hasProjectPermission(user, project, 'annotations:view');
 
-  // Single folder-level call to get all annotation counts
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await api.get(`/projects/${projectId}/folders/${folder._id}/annotations`);
-        const counts: Record<string, number> = {};
-        (res.data || []).forEach((ann: any) => {
-          const docId = typeof ann.document === 'object' ? ann.document._id : ann.document;
-          if (docId) counts[docId] = (counts[docId] || 0) + 1;
-        });
-        setAnnotationCounts(counts);
-      } catch { /* annotations are optional */ }
-    };
-    load();
+  const fetchAnnotationCounts = useCallback(async () => {
+    try {
+      const res = await api.get(`/projects/${projectId}/folders/${folder._id}/annotations`);
+      const counts: Record<string, number> = {};
+      (res.data || []).forEach((ann: any) => {
+        const docId = typeof ann.document === 'object' ? ann.document._id : ann.document;
+        if (docId) counts[docId] = (counts[docId] || 0) + 1;
+      });
+      setAnnotationCounts(counts);
+    } catch { /* annotations are optional */ }
   }, [projectId, folder._id]);
+
+  useEffect(() => {
+    fetchAnnotationCounts();
+  }, [fetchAnnotationCounts]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!canCreatePlans) { toast.error('You do not have permission to upload plans.'); return; }
     setIsUploading(true);
     try {
       const url = await uploadToCloudinary(file);
@@ -89,13 +103,13 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
     const v = doc.versions?.at(-1);
     return {
       ...doc,
-      url             : v?.url             || doc.url,
-      uploadedAt      : v?.uploadedAt      || doc.uploadedAt || new Date(),
-      size            : v?.size            || doc.size       || 0,
-      approvalStatus  : v?.approvalStatus  || doc.approvalStatus || 'Draft',
-      approvals       : v?.approvals       || doc.approvals  || [],
-      versionId       : v?._id,
-      versionNumber   : v?.versionNumber,
+      url: v?.url || doc.url,
+      uploadedAt: v?.uploadedAt || doc.uploadedAt || new Date(),
+      size: v?.size || doc.size || 0,
+      approvalStatus: v?.approvalStatus || doc.approvalStatus || 'Draft',
+      approvals: v?.approvals || doc.approvals || [],
+      versionId: v?._id,
+      versionNumber: v?.versionNumber,
     };
   };
 
@@ -113,16 +127,18 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
           <span className="font-bold text-sm">All Folders</span>
         </button>
 
-        <label className={cn(
-          'flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border transition-all shadow-sm cursor-pointer',
-          isUploading
-            ? 'bg-gray-50 border-gray-200 text-slate-400 pointer-events-none'
-            : 'bg-blue-600 border-blue-600 text-white hover:bg-blue-500 shadow-blue-600/25'
-        )}>
-          {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-          <span>{isUploading ? 'Uploading…' : 'Upload Plan'}</span>
-          <input type="file" className="hidden" onChange={handleUpload} disabled={isUploading} />
-        </label>
+        {canCreatePlans && (
+          <label className={cn(
+            'flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border transition-all shadow-sm cursor-pointer',
+            isUploading
+              ? 'bg-gray-50 border-gray-200 text-slate-400 pointer-events-none'
+              : 'bg-blue-600 border-blue-600 text-white hover:bg-blue-500 shadow-blue-600/25'
+          )}>
+            {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            <span>{isUploading ? 'Uploading…' : 'Upload Plan'}</span>
+            <input type="file" className="hidden" onChange={handleUpload} disabled={isUploading} />
+          </label>
+        )}
       </div>
 
       {/* ── Folder info bar ── */}
@@ -144,62 +160,70 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
       {/* ── Document list ── */}
       <div className="space-y-3">
         {folder.documents?.map((raw: any) => {
-          const doc          = mapDoc(raw);
-          const annCount     = annotationCounts[doc._id] || 0;
-          const statusStyle  = STATUS_STYLES[doc.approvalStatus] || STATUS_STYLES.Draft;
+          const doc = mapDoc(raw);
+          const annCount = annotationCounts[doc._id] || 0;
+          const statusStyle = STATUS_STYLES[doc.approvalStatus] || STATUS_STYLES.Draft;
 
           return (
             <div
               key={doc._id}
               className="bg-white border border-gray-200 rounded-2xl hover:border-blue-200 hover:shadow-sm transition-all group/doc"
             >
-              <div className="flex items-center gap-4 px-5 py-4">
-                {/* File icon */}
-                <div className="w-11 h-11 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center shrink-0 group-hover/doc:border-blue-200 transition-colors">
-                  <FileIconSvg className="w-5 h-5 text-slate-400" />
-                </div>
-
-                {/* File info */}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className="text-sm font-bold text-gray-900 truncate group-hover/doc:text-blue-700 transition-colors">
-                      {doc.name}
-                    </h4>
-                    <span className={cn('px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border shrink-0', statusStyle)}>
-                      {doc.approvalStatus}
-                    </span>
-                    {annCount > 0 && (
-                      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 border border-blue-100 text-[9px] font-black text-blue-700 shrink-0">
-                        <MessageSquare className="w-2.5 h-2.5" />
-                        {annCount}
-                      </span>
-                    )}
+              <div
+                className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 cursor-pointer"
+                onClick={() => setViewingDoc(doc)}
+              >
+                <div className="flex items-center gap-4 min-w-0">
+                  {/* File icon */}
+                  <div className="w-11 h-11 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center shrink-0 group-hover/doc:border-blue-200 transition-colors">
+                    <FileIconSvg className="w-5 h-5 text-slate-400" />
                   </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] text-slate-400 font-medium">
-                      {new Date(doc.uploadedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </span>
-                    {doc.size > 0 && (
-                      <>
-                        <span className="w-1 h-1 bg-gray-300 rounded-full" />
-                        <span className="text-[10px] text-slate-400 font-medium">
-                          {(doc.size / 1024 / 1024).toFixed(2)} MB
+
+                  {/* File info */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-sm font-bold text-gray-900 truncate group-hover/doc:text-blue-700 transition-colors">
+                        {doc.name}
+                      </h4>
+                      <span className={cn('px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border shrink-0', statusStyle)}>
+                        {doc.approvalStatus}
+                      </span>
+                      {annCount > 0 && (
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 border border-blue-100 text-[9px] font-black text-blue-700 shrink-0">
+                          <MessageSquare className="w-2.5 h-2.5" />
+                          {annCount}
                         </span>
-                      </>
-                    )}
-                    {doc.versionNumber && (
-                      <>
-                        <span className="w-1 h-1 bg-gray-300 rounded-full" />
-                        <span className="text-[10px] text-slate-400 font-medium">v{doc.versionNumber}</span>
-                      </>
-                    )}
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span className="text-[10px] text-slate-400 font-medium">
+                        {new Date(doc.uploadedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                      {doc.size > 0 && (
+                        <>
+                          <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            {(doc.size / 1024 / 1024).toFixed(2)} MB
+                          </span>
+                        </>
+                      )}
+                      {doc.versionNumber && (
+                        <>
+                          <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                          <span className="text-[10px] text-slate-400 font-medium">v{doc.versionNumber}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div
+                  className="flex items-center gap-1.5 flex-wrap shrink-0 sm:ml-auto"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {/* Approval workflow */}
-                  {doc.approvalStatus === 'Draft' && isAdmin && (
+                  {doc.approvalStatus === 'Draft' && canAssignPlans && (
                     <button
                       onClick={() => setApproverDocId(doc._id)}
                       className="p-2 rounded-xl bg-gray-50 border border-gray-200 text-slate-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-all"
@@ -208,7 +232,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
                       <Send className="w-3.5 h-3.5" />
                     </button>
                   )}
-                  {doc.approvalStatus === 'Pending' && (
+                  {doc.approvalStatus === 'Pending' && canApprovePlans && (
                     <>
                       <button
                         onClick={() => handleAction(doc._id, 'respond', { response: 'Approved', versionId: doc.versionId })}
@@ -241,9 +265,9 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
                   </button>
 
                   {/* Annotate — opens viewer in annotation mode */}
-                  {projectId && (
+                  {projectId && canViewAnnotations && (
                     <button
-                      onClick={() => setViewingDoc(doc)}
+                      onClick={() => setAnnotatingDoc(doc)}
                       className={cn(
                         'flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all',
                         annCount > 0
@@ -257,7 +281,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
                     </button>
                   )}
 
-                  {isAdmin && (
+                  {canDeleteDocument && (
                     <>
                       <div className="w-px h-6 bg-gray-200 mx-1" />
                       <button
@@ -281,7 +305,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
                       <div className={cn(
                         'w-5 h-5 rounded-lg flex items-center justify-center',
                         app.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' :
-                        app.status === 'Rejected' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'
+                          app.status === 'Rejected' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'
                       )}>
                         {app.status === 'Approved' ? <UserCheck className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
                       </div>
@@ -289,7 +313,7 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
                       <span className={cn(
                         'text-[9px] font-black uppercase tracking-widest',
                         app.status === 'Approved' ? 'text-emerald-600' :
-                        app.status === 'Rejected' ? 'text-red-600' : 'text-amber-600'
+                          app.status === 'Rejected' ? 'text-red-600' : 'text-amber-600'
                       )}>{app.status}</span>
                     </div>
                   ))}
@@ -317,6 +341,19 @@ export const PlanRoom: React.FC<PlanRoomProps> = ({ folder, projectId, onBack, o
         onClose={() => setViewingDoc(null)}
         document={viewingDoc}
         projectId={projectId}
+        folderId={folder._id}
+      />
+
+      <PlanAnnotator
+        isOpen={!!annotatingDoc}
+        onClose={() => setAnnotatingDoc(null)}
+        document={annotatingDoc}
+        projectId={projectId}
+        folderId={folder._id}
+        onUpdate={() => {
+          fetchAnnotationCounts();
+          onUpdate();
+        }}
       />
 
       <UserPickerModal

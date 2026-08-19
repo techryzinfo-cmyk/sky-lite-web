@@ -12,7 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Sky-Lite | Construction Management",
+  title: "SkyStruct Lite | Construction Management",
   description: "Next-gen construction management platform",
 };
 
@@ -23,7 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} antialiased`} suppressHydrationWarning>
-      <body className="min-h-screen bg-[#F8FAFF] text-gray-900 selection:bg-blue-100 overflow-x-hidden" suppressHydrationWarning>
+      <body className="font-sans min-h-screen bg-[#F8FAFF] text-gray-900 selection:bg-blue-100 overflow-x-hidden" suppressHydrationWarning>
         {/* Subtle background accent */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
           <div className="absolute top-[-5%] right-[-5%] w-[40%] h-[40%] rounded-full bg-blue-100/40 blur-[120px]" />

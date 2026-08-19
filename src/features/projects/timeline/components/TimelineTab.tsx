@@ -18,7 +18,6 @@ interface TimelineTabProps {
 const STATUS_COLORS: Record<string, { bar: string; fill: string; text: string; border: string }> = {
   'Completed':   { bar: 'bg-emerald-500', fill: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-400' },
   'In Progress': { bar: 'bg-blue-500',    fill: 'bg-blue-100',    text: 'text-blue-700',    border: 'border-blue-400'   },
-  'Delayed':     { bar: 'bg-red-500',     fill: 'bg-red-100',     text: 'text-red-700',     border: 'border-red-400'    },
   'Pending':     { bar: 'bg-slate-400',   fill: 'bg-slate-100',   text: 'text-slate-600',   border: 'border-slate-300'  },
   'On Hold':     { bar: 'bg-amber-400',   fill: 'bg-amber-100',   text: 'text-amber-700',   border: 'border-amber-400'  },
 };
@@ -26,7 +25,6 @@ const STATUS_COLORS: Record<string, { bar: string; fill: string; text: string; b
 const STATUS_DOT: Record<string, string> = {
   'Completed':   'bg-emerald-500',
   'In Progress': 'bg-blue-500',
-  'Delayed':     'bg-red-500',
   'Pending':     'bg-slate-400',
   'On Hold':     'bg-amber-400',
 };
@@ -85,20 +83,31 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({ projectId }) => {
 
   // Normalise milestone dates and attach per-task dates
   const normalized = milestones.map(m => {
-    const due = (m.dueDate || m.targetDate)
-      ? startOfDay(new Date(m.dueDate || m.targetDate))
-      : null;
-    const explicitStart = m.startDate ? startOfDay(new Date(m.startDate)) : null;
-
-    let barEnd: Date   = due ?? addDays(explicitStart ?? startOfDay(new Date(m.createdAt)), 14);
-    let barStart: Date = explicitStart ?? addDays(barEnd, -14);
-    if (barStart > barEnd) barStart = addDays(barEnd, -7);
+    let barStart = m.createdAt ? startOfDay(new Date(m.createdAt)) : startOfDay(new Date());
+    let barEnd = m.dueDate ? startOfDay(new Date(m.dueDate)) : addDays(barStart, 30);
 
     const tasks = (Array.isArray(m.tasks) ? m.tasks : []).map((t: any) => {
       const tStart = t.startDate ? startOfDay(new Date(t.startDate)) : barStart;
       const tEnd   = (t.dueDate || t.endDate) ? startOfDay(new Date(t.dueDate || t.endDate)) : barEnd;
       return { ...t, tStart, tEnd };
     });
+
+    if (tasks.length > 0) {
+      let minT: Date | null = null;
+      let maxT: Date | null = null;
+      tasks.forEach((t: any) => {
+        if (t.startDate) {
+          const s = startOfDay(new Date(t.startDate));
+          if (!minT || s < minT) minT = s;
+        }
+        if (t.endDate || t.dueDate) {
+          const e = startOfDay(new Date(t.endDate || t.dueDate));
+          if (!maxT || e > maxT) maxT = e;
+        }
+      });
+      if (minT) barStart = minT;
+      if (maxT) barEnd = maxT;
+    }
 
     return { ...m, label: m.name || m.title || 'Untitled', barStart, barEnd, tasks };
   });
@@ -456,16 +465,21 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({ projectId }) => {
       </div>
 
       {/* Status summary */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        {Object.entries(STATUS_COLORS).map(([status, c]) => {
-          const count = normalized.filter(m => (m.status || 'Pending') === status).length;
-          return (
-            <div key={status} className="bg-white rounded-2xl border border-gray-200 p-4 text-center shadow-sm">
-              <p className={cn('text-2xl font-black', c.text)}>{count}</p>
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">{status}</p>
+      <div className="mt-8">
+        <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">Milestone Summary</h4>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: 'Total', count: milestones.length, text: 'text-blue-500' },
+            { label: 'Done', count: milestones.filter(m => m.status === 'Completed').length, text: 'text-emerald-500' },
+            { label: 'Active', count: milestones.filter(m => m.status === 'In Progress').length, text: 'text-indigo-500' },
+            { label: 'Pending', count: milestones.filter(m => m.status === 'Pending').length, text: 'text-slate-400' },
+          ].map(s => (
+            <div key={s.label} className="bg-white rounded-2xl border border-gray-200 p-4 text-center shadow-sm">
+              <p className={cn('text-2xl font-black', s.text)}>{s.count}</p>
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">{s.label}</p>
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
     </div>
     </SkeletonLoader>

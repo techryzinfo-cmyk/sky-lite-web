@@ -8,8 +8,11 @@ import {
   ChevronRight, PanelRightClose, PanelRightOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/providers/ToastContext';
 import { useAuth } from '@/providers/AuthContext';
+import { useSocket } from '@/providers/SocketContext';
+import { useToast } from '@/providers/ToastContext';
+import { useProjectContext } from '../../contexts/ProjectContext';
+import { hasProjectPermission } from '@/lib/permissions';
 import api from '@/services/api.client';
 import { uploadToCloudinary } from '@/lib/upload';
 
@@ -18,6 +21,32 @@ interface DocumentViewerProps {
   onClose: () => void;
   document: any;
   projectId?: string;
+  // When set, this viewer is showing a Drawing Management plan document —
+  // annotations are read/written through the same folder-nested store the
+  // "Annotate" button (PlanAnnotator) uses, instead of the standalone
+  // top-level Annotation collection, so pins placed via either entry point
+  // are always the same set. Without a folderId (e.g. Handover documents,
+  // which aren't inside a plan folder), falls back to the original
+  // project-level annotations API.
+  folderId?: string;
+}
+
+// <img> can't render PDFs — the browser just shows a broken-image icon next
+// to the alt text (the filename), which is exactly what looked like a
+// missing preview. PDFs need an <iframe>/<object> instead.
+function isPdfDoc(doc: any): boolean {
+  const mime = doc?.mimeType || '';
+  const name = doc?.name || doc?.url || '';
+  return mime.toLowerCase().includes('pdf') || /\.pdf(\?|#|$)/i.test(name);
+}
+
+// Generate a stable client-side id for new annotations placed in the
+// folder-nested store, matching PlanAnnotator's id scheme.
+function uuidv4() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : ((r & 0x3) | 0x8)).toString(16);
+  });
 }
 
 interface Annotation {
@@ -35,7 +64,7 @@ interface Annotation {
 }
 
 export const DocumentViewer: React.FC<DocumentViewerProps> = ({
-  isOpen, onClose, document, projectId,
+  isOpen, onClose, document, projectId, folderId,
 }) => {
   const [zoom, setZoom]                     = useState(100);
   const [pinMode, setPinMode]               = useState(false);
@@ -58,19 +87,30 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
   const toast = useToast();
   const { user } = useAuth();
-  const isAdmin = user?.role?.name === 'Admin';
+  const { project } = useProjectContext();
+  const isAdmin = user?.role?.name === 'Admin' || (user?.role?.permissions?.includes('*') ?? false);
+  const canAnnotate = isAdmin || hasProjectPermission(user, project, 'annotations:create') || hasProjectPermission(user, project, 'annotations:update');
+  const canDeleteAnnotation = isAdmin || hasProjectPermission(user, project, 'annotations:delete');
 
   const loadAnnotations = useCallback(async () => {
     if (!projectId || !document?._id) return;
     try {
-      const res = await api.get(`/projects/${projectId}/annotations?document=${document._id}`);
-      setAnnotations((res.data || []).map((a: any) => ({
-        ...a,
-        x: a.position?.x ?? a.x ?? 0,
-        y: a.position?.y ?? a.y ?? 0,
-      })));
+      if (folderId) {
+        const res = await api.get(`/projects/${projectId}/folders/${folderId}/annotations?documentId=${document._id}`);
+        setAnnotations((res.data || []).map((a: any) => ({
+          ...a,
+          voiceNoteUri: a.audioUri || a.voiceNoteUri || '',
+        })));
+      } else {
+        const res = await api.get(`/projects/${projectId}/annotations?document=${document._id}`);
+        setAnnotations((res.data || []).map((a: any) => ({
+          ...a,
+          x: a.position?.x ?? a.x ?? 0,
+          y: a.position?.y ?? a.y ?? 0,
+        })));
+      }
     } catch { /* silent — annotations are optional */ }
-  }, [projectId, document?._id]);
+  }, [projectId, document?._id, folderId]);
 
   useEffect(() => {
     if (isOpen) {
@@ -97,20 +137,49 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     setTimeout(() => textInputRef.current?.focus(), 80);
   };
 
+  // Folder-nested annotations are stored as a bulk replace-all-for-document
+  // array (matching PlanAnnotator), so both save and delete below build the
+  // full updated array and PATCH it in one call.
+  const toFolderPayload = (list: Annotation[]) => list.map(a => ({
+    clientId: (a as any).clientId,
+    documentId: document._id,
+    x: a.x,
+    y: a.y,
+    text: a.text || '',
+    imageUri: a.imageUri || '',
+    audioUri: a.voiceNoteUri || (a as any).audioUri || '',
+  }));
+
   const handleSave = async () => {
     if (!pendingPos || !projectId) return;
     setIsSaving(true);
     try {
-      const res = await api.post(`/projects/${projectId}/annotations`, {
-        document: document._id,
-        documentName: document.name,
-        text: newText.trim() || '(No note)',
-        position: pendingPos,
-        imageUri: newImageUri || undefined,
-        voiceNoteUri: newVoiceUri || undefined,
-      });
-      const saved = res.data;
-      setAnnotations(prev => [{ ...saved, x: saved.position?.x ?? 0, y: saved.position?.y ?? 0 }, ...prev]);
+      if (folderId) {
+        const newAnn = {
+          clientId: uuidv4(),
+          x: pendingPos.x,
+          y: pendingPos.y,
+          text: newText.trim() || '(No note)',
+          imageUri: newImageUri || '',
+          voiceNoteUri: newVoiceUri || '',
+        } as unknown as Annotation;
+        const res = await api.patch(`/projects/${projectId}/folders/${folderId}/annotations`, {
+          documentId: document._id,
+          annotations: toFolderPayload([...annotations, newAnn]),
+        });
+        setAnnotations((res.data || []).map((a: any) => ({ ...a, voiceNoteUri: a.audioUri || '' })));
+      } else {
+        const res = await api.post(`/projects/${projectId}/annotations`, {
+          document: document._id,
+          documentName: document.name,
+          text: newText.trim() || '(No note)',
+          position: pendingPos,
+          imageUri: newImageUri || undefined,
+          voiceNoteUri: newVoiceUri || undefined,
+        });
+        const saved = res.data;
+        setAnnotations(prev => [{ ...saved, x: saved.position?.x ?? 0, y: saved.position?.y ?? 0 }, ...prev]);
+      }
       toast.success('Annotation saved');
       setNewText(''); setNewImageUri(''); setNewVoiceUri(''); setPendingPos(null);
     } catch (err: any) {
@@ -124,8 +193,17 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     e?.stopPropagation();
     if (!projectId) return;
     try {
-      await api.delete(`/projects/${projectId}/annotations/${id}`);
-      setAnnotations(prev => prev.filter(a => a._id !== id));
+      if (folderId) {
+        const remaining = annotations.filter(a => a._id !== id);
+        const res = await api.patch(`/projects/${projectId}/folders/${folderId}/annotations`, {
+          documentId: document._id,
+          annotations: toFolderPayload(remaining),
+        });
+        setAnnotations((res.data || []).map((a: any) => ({ ...a, voiceNoteUri: a.audioUri || '' })));
+      } else {
+        await api.delete(`/projects/${projectId}/annotations/${id}`);
+        setAnnotations(prev => prev.filter(a => a._id !== id));
+      }
       if (activePin === id) setActivePin(null);
     } catch {
       toast.error('Failed to delete annotation');
@@ -134,6 +212,10 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
   const handleStartRecording = async () => {
     try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        toast.error('Microphone needs a secure connection (HTTPS or localhost) to work here');
+        return;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
       audioChunksRef.current = [];
@@ -150,7 +232,15 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
       mediaRecorderRef.current = recorder;
       recorder.start();
       setIsRecording(true);
-    } catch { toast.error('Microphone access denied'); }
+    } catch (err: any) {
+      if (err?.name === 'NotAllowedError' || err?.name === 'SecurityError') {
+        toast.error('Microphone is blocked — allow it for this site in your browser settings and try again');
+      } else if (err?.name === 'NotFoundError') {
+        toast.error('No microphone found on this device');
+      } else {
+        toast.error('Microphone access denied or unavailable');
+      }
+    }
   };
 
   const handleStopRecording = () => {
@@ -190,12 +280,12 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 10 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
-            className="relative z-10 flex rounded-2xl overflow-hidden shadow-2xl bg-white"
+            className="relative z-10 flex flex-col sm:flex-row rounded-2xl overflow-hidden shadow-2xl bg-white"
             style={{ width: '95vw', maxWidth: 1120, maxHeight: '92vh', minHeight: 500 }}
             onClick={e => e.stopPropagation()}
           >
             {/* ════ LEFT: Document viewer ════ */}
-            <div className="flex flex-col flex-1 min-w-0">
+            <div className="flex flex-col flex-1 min-w-0 min-h-[260px] sm:min-h-0">
 
               {/* Header bar */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-white shrink-0 gap-3">
@@ -204,7 +294,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                     <X className="w-4 h-4" />
                   </button>
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-gray-900 truncate">{document?.name}</p>
+                    <p className="hidden sm:block text-sm font-bold text-gray-900 truncate">{document?.name}</p>
                     {document?.approvalStatus && (
                       <span className={cn(
                         'text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border',
@@ -222,33 +312,17 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                 <div className="flex items-center gap-1.5 shrink-0">
                   {/* Zoom cluster */}
                   <div className="flex items-center gap-0.5 px-1.5 py-1 bg-gray-50 border border-gray-200 rounded-xl">
-                    <button onClick={() => setZoom(z => Math.max(25, z - 25))} className="p-1 text-slate-400 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100">
+                    <button onClick={() => setZoom(z => Math.max(25, z - 25))} className="p-1 text-slate-400 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100 outline-none focus-visible:ring-2 focus-visible:ring-blue-200">
                       <ZoomOut className="w-3.5 h-3.5" />
                     </button>
                     <span className="text-[11px] font-bold text-gray-700 w-9 text-center">{zoom}%</span>
-                    <button onClick={() => setZoom(z => Math.min(300, z + 25))} className="p-1 text-slate-400 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100">
+                    <button onClick={() => setZoom(z => Math.min(300, z + 25))} className="p-1 text-slate-400 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100 outline-none focus-visible:ring-2 focus-visible:ring-blue-200">
                       <ZoomIn className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <button onClick={() => setZoom(100)} title="Reset zoom" className="p-1.5 rounded-xl border border-gray-200 text-slate-400 hover:text-gray-900 hover:bg-gray-50 transition-colors">
+                  <button onClick={() => setZoom(100)} title="Reset zoom" className="hidden sm:inline-flex p-1.5 rounded-xl border border-gray-200 text-slate-400 hover:text-gray-900 hover:bg-gray-50 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-200">
                     <RotateCcw className="w-3.5 h-3.5" />
                   </button>
-
-                  {/* Pin mode toggle */}
-                  {projectId && (
-                    <button
-                      onClick={() => { setPinMode(p => !p); setActivePin(null); }}
-                      className={cn(
-                        'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all',
-                        pinMode
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
-                          : 'border-gray-200 text-slate-500 hover:text-gray-800 hover:border-gray-300 bg-white'
-                      )}
-                    >
-                      <MapPin className="w-3.5 h-3.5" />
-                      {pinMode ? 'Click to pin' : 'Add Pin'}
-                    </button>
-                  )}
 
                   {/* Annotation panel toggle */}
                   <button
@@ -294,14 +368,24 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                   }}
                 >
                   {document?.url ? (
-                    <img
-                      ref={imageRef}
-                      src={document.url}
-                      alt={document.name}
-                      className="max-w-full object-contain rounded-xl block shadow-md"
-                      style={{ maxHeight: '72vh' }}
-                      draggable={false}
-                    />
+                    isPdfDoc(document) ? (
+                      <iframe
+                        ref={imageRef as any}
+                        src={document.url}
+                        title={document.name}
+                        className="rounded-xl block shadow-md bg-white border-0"
+                        style={{ width: 'min(80vw, 900px)', height: '72vh' }}
+                      />
+                    ) : (
+                      <img
+                        ref={imageRef}
+                        src={document.url}
+                        alt={document.name}
+                        className="max-w-full object-contain rounded-xl block shadow-md"
+                        style={{ maxHeight: '72vh' }}
+                        draggable={false}
+                      />
+                    )
                   ) : (
                     <div ref={imageRef as any} className="w-80 h-64 flex items-center justify-center text-slate-300 bg-white rounded-xl border border-gray-200">
                       <DocFileSvg className="w-20 h-20" />
@@ -353,12 +437,11 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
               {panelOpen && (
                 <motion.div
                   key="ann-panel"
-                  initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: 290, opacity: 1 }}
-                  exit={{ width: 0, opacity: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                   transition={{ duration: 0.18, ease: 'easeInOut' }}
-                  className="flex flex-col border-l border-gray-100 bg-white overflow-hidden shrink-0"
-                  style={{ minWidth: 0 }}
+                  className="flex flex-col border-t sm:border-t-0 sm:border-l border-gray-100 bg-white overflow-hidden shrink-0 w-full sm:w-[290px] max-h-[45vh] sm:max-h-none"
                 >
                   {/* Panel header */}
                   <div className="px-4 py-3 border-b border-gray-100 shrink-0 flex items-center gap-2">
@@ -457,12 +540,14 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                           <MapPin className="w-5 h-5 text-gray-300" />
                         </div>
                         <p className="text-sm font-bold text-slate-400">No annotations yet</p>
-                        <p className="text-xs text-slate-400 mt-1 leading-relaxed">Use "Add Pin" above to mark important points on this plan</p>
+                        {canAnnotate && (
+                          <p className="text-xs text-slate-400 mt-1 leading-relaxed">Use "Add Pin" above to mark important points on this plan</p>
+                        )}
                       </div>
                     ) : (
                       <div className="divide-y divide-gray-100">
                         {annotations.map((ann, idx) => {
-                          const canDelete = isAdmin || ann.createdBy === (user as any)?._id;
+                          const canDelete = canDeleteAnnotation || ann.createdBy === (user as any)?._id;
                           const isActive = activePin === ann._id;
                           return (
                             <div
@@ -513,7 +598,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                   </div>
 
                   {/* Panel footer — quick add button */}
-                  {!pendingPos && projectId && (
+                  {!pendingPos && projectId && canAnnotate && (
                     <div className="p-3 border-t border-gray-100 shrink-0">
                       <button
                         onClick={() => { setPinMode(p => !p); setActivePin(null); }}

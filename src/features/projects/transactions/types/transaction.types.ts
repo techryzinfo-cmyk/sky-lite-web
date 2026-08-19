@@ -14,6 +14,7 @@ export interface Transaction {
   category?: string;
   description?: string;
   linkedPurchase?: string | MaterialPurchase;
+  invoiceUrl?: string;
   createdAt: string;
   updatedAt: string;
 }

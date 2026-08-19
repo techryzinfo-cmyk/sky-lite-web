@@ -64,11 +64,28 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
       return;
     }
     setSaving(true);
+    
+    // Compute display name of selected approver
+    const user = approvers.find(u => u._id === selectedApproverId);
+    let displayName = 'Unknown User';
+    if (user) {
+      const projectMemberData = projectMembers.find(m => m._id === user._id);
+      displayName = projectMemberData?.name || user.name || 'Unknown User';
+      if (displayName && displayName.length > 25 && !displayName.includes(' ') && user.email) {
+        const emailPrefix = user.email.split('@')[0];
+        displayName = emailPrefix
+          .split(/[._-]/)
+          .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(' ');
+      }
+    }
+
     try {
       await api.patch(`/projects/${projectId}/boq/bulk-status`, {
         itemIds: [item._id],
         status: 'Pending',
         requestedApproverId: selectedApproverId,
+        requestedApproverName: displayName,
       });
       toast.success('Item sent for approval');
       onSuccess();
@@ -105,8 +122,8 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
             <div className="bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden">
               <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="p-2.5 rounded-xl bg-purple-50 border border-purple-200">
-                    <UserCheck className="w-5 h-5 text-purple-600" />
+                  <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200">
+                    <UserCheck className="w-5 h-5 text-blue-600" />
                   </div>
                   <div>
                     <h2 className="text-base font-bold text-gray-900">Send for Approval</h2>
@@ -120,9 +137,9 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
 
               <div className="p-6 space-y-4">
                 {/* Info banner */}
-                <div className="flex items-start gap-3 p-3 bg-purple-50 border border-purple-100 rounded-xl">
-                  <Send className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
-                  <p className="text-xs text-purple-700 leading-relaxed">
+                <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                  <Send className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                  <p className="text-xs text-blue-700 leading-relaxed">
                     Select an approver. The item status will change to <span className="font-bold">Pending</span> and the selected person will be notified.
                   </p>
                 </div>
@@ -134,7 +151,7 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
                     placeholder="Search approvers..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 pl-10 pr-4 text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 pl-10 pr-4 text-sm text-gray-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
                 </div>
 
@@ -172,13 +189,13 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
                           className={cn(
                             'w-full flex items-center space-x-3 p-3 rounded-xl border transition-all text-left',
                             isSelected
-                              ? 'bg-purple-50 border-purple-300'
+                              ? 'bg-blue-50 border-blue-300'
                               : 'bg-gray-50 border-gray-200 hover:border-gray-300'
                           )}
                         >
                           <div className={cn(
                             'w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0',
-                            isSelected ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'
+                            isSelected ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
                           )}>
                             {isSelected ? <Check className="w-4 h-4" /> : displayName?.[0]?.toUpperCase() || 'U'}
                           </div>
@@ -199,7 +216,7 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
                 </SkeletonLoader>
 
                 {selectedApproverId && (
-                  <p className="text-xs text-purple-600 font-semibold text-center">
+                  <p className="text-xs text-blue-600 font-semibold text-center">
                     1 approver selected — item will be set to Pending
                   </p>
                 )}
@@ -215,7 +232,7 @@ export const BOQApproversModal: React.FC<BOQApproversModalProps> = ({
                 <button
                   onClick={handleSendForApproval}
                   disabled={saving || !selectedApproverId}
-                  className="flex items-center space-x-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50 shadow-sm shadow-purple-600/20"
+                  className="flex items-center space-x-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50 shadow-sm shadow-blue-600/20"
                 >
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   <span>Send for Approval</span>

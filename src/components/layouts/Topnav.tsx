@@ -94,15 +94,20 @@ import { useAuth } from '@/providers/AuthContext';
 import {GlobalSearch} from '@/components/shared/GlobalSearch';
 import { NotificationCenter } from '@/components/shared/NotificationCenter';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { cn } from '@/lib/utils';
  
 interface TopnavProps {
   onMenuClick: () => void;
+  isSidebarCollapsed?: boolean;
+  headerContent?: React.ReactNode;
 }
  
-export const Topnav: React.FC<TopnavProps> = ({ onMenuClick }) => {
+export const Topnav: React.FC<TopnavProps> = ({ onMenuClick, isSidebarCollapsed, headerContent }) => {
   const { user, logout } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
  
   useEffect(() => {
     if (!showMenu) return;
@@ -114,23 +119,45 @@ export const Topnav: React.FC<TopnavProps> = ({ onMenuClick }) => {
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, [showMenu]);
+
+  const showSearch = !pathname.startsWith('/projects');
+
+  const isProjectsListPage = pathname === '/projects';
+  const isProjectDetailPage = pathname.startsWith('/projects/') && pathname !== '/projects';
+
   return (
-    <header className="h-16 fixed top-0 right-0 left-0 lg:left-64 bg-white border-b border-gray-200 z-30 transition-all">
+    <header className={cn(
+      "fixed top-0 right-0 left-0 z-30 transition-all duration-300",
+      isProjectsListPage
+        ? "h-12 bg-[#F8FAFF] border-b-0"
+        : "h-16 bg-white border-b border-gray-200",
+      isSidebarCollapsed ? 'lg:left-20' : 'lg:left-64'
+    )}>
       <div className="h-full px-4 lg:px-8 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={onMenuClick}
-            className="lg:hidden p-2 text-slate-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
+        <div className="flex items-center space-x-4 flex-1 min-w-0">
+          {!isProjectDetailPage && (
+            <button
+              onClick={onMenuClick}
+              className="lg:hidden p-2 text-slate-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+          )}
  
-          <GlobalSearch />
+          {headerContent ? (
+            <div className="flex-1 min-w-0">
+              {headerContent}
+            </div>
+          ) : (
+            showSearch && <GlobalSearch />
+          )}
         </div>
  
         <div className="flex items-center space-x-2 md:space-x-3">
-          <NotificationCenter />
- 
+          <div className="hidden sm:block">
+            <NotificationCenter />
+          </div>
+
           <div className="h-8 w-px bg-gray-200 mx-1 hidden sm:block"></div>
  
           <div className="relative" ref={menuRef}>

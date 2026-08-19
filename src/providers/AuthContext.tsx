@@ -25,7 +25,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
+    const savedSuperAdmin = localStorage.getItem('superAdmin');
     const token = Cookies.get('token') || localStorage.getItem('token');
+    const saToken = Cookies.get('saToken') || localStorage.getItem('saToken');
     
     let isTokenExpired = false;
     if (token) {
@@ -46,37 +48,92 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
+      localStorage.removeItem('saToken');
+      localStorage.removeItem('superAdmin');
       Cookies.remove('token');
+      Cookies.remove('saToken');
       setUser(null);
       router.push('/login');
-    } else if (savedUser && savedUser !== 'undefined' && savedUser !== 'null' && token) {
+    } else if (token && savedUser && savedUser !== 'undefined' && savedUser !== 'null') {
       try {
         setUser(JSON.parse(savedUser));
       } catch {
         localStorage.removeItem('user');
       }
+    } else if (saToken && savedSuperAdmin && savedSuperAdmin !== 'undefined' && savedSuperAdmin !== 'null') {
+      try {
+        setUser(JSON.parse(savedSuperAdmin));
+      } catch {
+        localStorage.removeItem('superAdmin');
+      }
+    } else {
+      localStorage.removeItem('user');
+      localStorage.removeItem('superAdmin');
+      setUser(null);
     }
     setLoading(false);
   }, []);
 
-  const login = async (credentials: any) => {
-    try {
-      const response = await api.post('/auth/login', credentials);
-      const { token, refreshToken, user: userData } = response.data;
+  // const login = async (credentials: any) => {
+  //   try {
+  //     const response = await api.post('/auth/login', credentials);
+  //     const { token, refreshToken, user: userData } = response.data;
       
+  //     localStorage.setItem('token', token);
+  //     localStorage.setItem('refreshToken', refreshToken);
+  //     localStorage.setItem('user', JSON.stringify(userData));
+      
+  //     // Set cookie for middleware
+  //     Cookies.set('token', token, { expires: 7 }); // 7 days
+      
+  //     setUser(userData);
+  //     router.push('/dashboard');
+  //   } catch (error) {
+  //     throw error;
+  //   }
+  // };
+
+
+  const login = async (credentials: any) => {
+    const { authType, ...payload } = credentials;
+
+    const handleSuperAdminLogin = async (loginPayload: any) => {
+      const saRes = await api.post('/superadmin/auth/login', loginPayload);
+      const { saToken, token: responseToken, superAdmin } = saRes.data;
+      const storedSaToken = saToken || responseToken || 'superadmin-session';
+
+      sessionStorage.setItem('saToken', storedSaToken);
+      localStorage.setItem('saToken', storedSaToken);
+      localStorage.setItem('superAdmin', JSON.stringify(superAdmin));
+      Cookies.set('saToken', storedSaToken, { expires: 7 });
+
+      router.push('/superadmin/dashboard');
+    };
+
+    if (authType === 'superadmin') {
+      await handleSuperAdminLogin(payload);
+      return;
+    }
+
+    try {
+      const response = await api.post('/auth/login', payload);
+      const { token, refreshToken, user: userData } = response.data;
+
       localStorage.setItem('token', token);
       localStorage.setItem('refreshToken', refreshToken);
       localStorage.setItem('user', JSON.stringify(userData));
-      
-      // Set cookie for middleware
-      Cookies.set('token', token, { expires: 7 }); // 7 days
-      
+
+      Cookies.set('token', token, { expires: 7 });
       setUser(userData);
       router.push('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
+      // Do not retry normal credentials against the superadmin endpoint.
       throw error;
     }
   };
+
+
+
 
   const register = async (data: any) => {
     try {
@@ -99,14 +156,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      await api.post('/auth/logout');
+      await api.post('/auth/logout', {}, { withCredentials: true });
     } catch {
-      // fire-and-forget — clear client state regardless
+      // fire-and-forget — clear normal user session anyway
     }
+
+    try {
+      await api.post('/superadmin/auth/logout', {}, { withCredentials: true });
+    } catch {
+      // fire-and-forget — clear superadmin session regardless
+    }
+
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
+    localStorage.removeItem('saToken');
+    localStorage.removeItem('superAdmin');
+    sessionStorage.removeItem('saToken');
     Cookies.remove('token');
+    Cookies.remove('token', { path: '/' });
+    Cookies.remove('refreshToken');
+    Cookies.remove('refreshToken', { path: '/' });
+    Cookies.remove('saToken');
+    Cookies.remove('saToken', { path: '/' });
+    Cookies.remove('superadmin_token');
+    Cookies.remove('superadmin_token', { path: '/' });
+    Cookies.remove('sa_token');
+    Cookies.remove('sa_token', { path: '/' });
     setUser(null);
     router.push('/login');
   };

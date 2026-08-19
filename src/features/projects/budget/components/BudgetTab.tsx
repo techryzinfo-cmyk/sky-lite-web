@@ -20,6 +20,7 @@ import api from '@/services/api.client';
 import { useToast } from '@/providers/ToastContext';
 import { UserPickerModal } from '@/components/modals/UserPickerModal';
 import { useAuth } from '@/providers/AuthContext';
+import { isProjectLocked } from '@/lib/permissions';
 
 interface BudgetTabProps {
   project: Project;
@@ -42,8 +43,10 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
   const hasBudgetApprovalPermission = user?.role?.name === 'Admin' ||
     user?.role?.permissions?.includes('budget:approve') ||
     user?.role?.permissions?.includes('*');
+  const isLocked = isProjectLocked(project);
 
   const handleBudgetAction = async (budgetId: string, action: 'Approved' | 'Rejected') => {
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     try {
       await api.patch(`/projects/${project._id}/budget-action`, { budgetId, action });
       toast.success(`Budget request ${action.toLowerCase()} successfully`);
@@ -56,6 +59,7 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
   const currentApprovers: any[] = (project as any).budgetApprovers || [];
 
   const handleSaveApprovers = async (userIds: string[]) => {
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     try {
       await api.patch(`/projects/${project._id}`, { budgetApprovers: userIds });
       toast.success('Budget approvers updated');
@@ -68,6 +72,7 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({ project, onUpdate }) => {
 
   const handleUpdateBudget = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLocked) { toast.error('This project is locked and can no longer be modified.'); return; }
     setIsUpdating(true);
 
     try {
